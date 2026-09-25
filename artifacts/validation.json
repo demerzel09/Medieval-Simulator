@@ -3,11 +3,11 @@
   "typecheck": "passed",
   "unitTests": {
     "files": 5,
-    "passed": 25,
+    "passed": 28,
     "failed": 0
   },
   "browserTests": {
-    "passed": 3,
+    "passed": 4,
     "failed": 0,
     "browser": "Chromium 153"
   },
@@ -16,10 +16,11 @@
   "npmAudit": 0,
   "humanPlaytest": "not performed",
   "scenarioHashes": {
-    "diplomacy": "39863807",
-    "military": "0f2d75d8",
-    "idle": "b31adfd0"
+    "diplomacy": "f7a1dca6",
+    "military": "bb7b2ab0",
+    "idle": "196a22c8"
   },
   "performanceArtifact": "benchmark.json",
-  "scope": "M0-M2 mechanism acceptance; M3 automated acceptance, human playtest pending; simplifications in docs/STATUS.md"
+  "scope": "M0-M2 mechanism acceptance; M3 automated acceptance, human playtest pending; simplifications in docs/STATUS.md",
+  "debugView": "1000 residents, staff events and daily activities verified"
 }

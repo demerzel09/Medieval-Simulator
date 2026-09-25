@@ -14,6 +14,10 @@ export function combatFixture(
   const a = Object.values(w.units).find((u) => u.factionId === "a")!,
     b = Object.values(w.units).find((u) => u.factionId === "b")!;
   const battle = beginBattle(w, "pass", [a.id, b.id], w.events[0].id);
+  for (const u of [a, b]) {
+    u.location = "pass";
+    for (const id of u.memberIds) w.people[id].location = "pass";
+  }
   a.x = 29;
   b.x = 30;
   a.y = b.y = 32;

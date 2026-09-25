@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Action, ActorObservation } from "../../packages/contracts";
+import type { DebugSnapshot } from "../../packages/sim/debug";
 import "@fontsource/noto-sans-jp/400.css";
 import "@fontsource/noto-sans-jp/700.css";
 import { persist, restore } from "./storage";
@@ -167,6 +168,14 @@ function App() {
   const [seed, setSeed] = useState(240924);
   const [started, setStarted] = useState(false);
   const [tab, setTab] = useState("地図");
+  const [devMode, setDevMode] = useState(false);
+  const [debug, setDebug] = useState<DebugSnapshot>();
+  const [debugQuery, setDebugQuery] = useState("");
+  const [debugPerson, setDebugPerson] = useState("a_0005");
+  const [debugOffset, setDebugOffset] = useState(0);
+  const [audienceMode, setAudienceMode] = useState<"summon" | "visit">(
+    "summon",
+  );
   const [place, setPlace] = useState("capital");
   const [person, setPerson] = useState("a_0002");
   const [unit, setUnit] = useState("");
@@ -192,13 +201,21 @@ function App() {
   const previous = useRef(0);
   useEffect(() => {
     worker.onmessage = async ({ data }) => {
-      setBusy(false);
       if (data.type === "error") {
+        setBusy(false);
         setError(data.error);
         setRunning(false);
       }
       if (data.type === "state") {
+        setBusy(false);
         setO(data.observation);
+        if (devMode && tab === "開発")
+          worker.postMessage({
+            type: "debug",
+            query: debugQuery,
+            personId: debugPerson,
+            offset: debugOffset,
+          });
         if (data.result && !data.result.ok) setError(data.result.reason);
         else if (data.result)
           setNotice(
@@ -240,8 +257,18 @@ function App() {
           setError(String(e));
         }
       }
+      if (data.type === "debug") setDebug(data.snapshot);
     };
-  }, [stopReports]);
+  }, [stopReports, devMode, tab, debugQuery, debugPerson, debugOffset]);
+  useEffect(() => {
+    if (devMode && tab === "開発")
+      worker.postMessage({
+        type: "debug",
+        query: debugQuery,
+        personId: debugPerson,
+        offset: debugOffset,
+      });
+  }, [devMode, tab, debugQuery, debugPerson, debugOffset]);
   useEffect(() => {
     if (!running || busy) return;
     const t = setTimeout(() => {
@@ -380,7 +407,14 @@ function App() {
         <button onClick={() => setHelp(!help)}>遊び方</button>
       </div>
       <nav>
-        {["地図", "人物", "約束", "会戦", "振り返り"].map((t) => (
+        {[
+          "地図",
+          "人物",
+          "約束",
+          "会戦",
+          "振り返り",
+          ...(devMode ? ["開発"] : []),
+        ].map((t) => (
           <button
             className={tab === t ? "active" : ""}
             onClick={() => setTab(t)}
@@ -396,6 +430,17 @@ function App() {
             onChange={(e) => setStopReports(e.target.checked)}
           />
           重要報告で停止
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={devMode}
+            onChange={(e) => {
+              setDevMode(e.target.checked);
+              if (!e.target.checked && tab === "開発") setTab("地図");
+            }}
+          />
+          開発モード
         </label>
       </nav>
       {error && (
@@ -611,13 +656,32 @@ function App() {
                 <p>
                   本心は直接わかりません。届いた返答と、これまでの行動から判断してください。
                 </p>
+                <label>
+                  面談の方法{" "}
+                  <select
+                    value={audienceMode}
+                    onChange={(e) =>
+                      setAudienceMode(e.target.value as "summon" | "visit")
+                    }
+                  >
+                    <option value="summon">伝令を出して宮廷に呼ぶ</option>
+                    <option value="visit">書記を伴って訪ねる</option>
+                  </select>
+                </label>
                 <button
                   onClick={() =>
-                    cmd({ kind: "REQUEST_AUDIENCE", personId: person })
+                    cmd({
+                      kind: "REQUEST_AUDIENCE",
+                      personId: person,
+                      mode: audienceMode,
+                    })
                   }
                 >
-                  面談を依頼（2時間＋移動）
+                  面談を依頼
                 </button>
+                <p>
+                  書記が文書を整えます。呼び出しは伝令が招待状を届け、相手が応じて到着してから成立します。
+                </p>
                 <button
                   onClick={() =>
                     cmd({
@@ -646,6 +710,109 @@ function App() {
                   <p key={r.eventId}>{r.text}</p>
                 ))}
             </>
+          )}
+          {devMode && tab === "開発" && (
+            <section className="debug-panel">
+              <h2>全員の行動 · 開発用</h2>
+              <p>
+                世界の真実を表示します。通常の君主画面では未確認の情報は表示されません。
+              </p>
+              <label>
+                人物ID・名前・仕事を検索{" "}
+                <input
+                  value={debugQuery}
+                  onChange={(e) => {
+                    setDebugQuery(e.target.value);
+                    setDebugOffset(0);
+                  }}
+                />
+              </label>
+              <p>
+                該当 {debug?.total ?? 0} 人 · {debugOffset + 1}〜
+                {Math.min(debugOffset + 80, debug?.total ?? 0)}
+              </p>
+              <div className="debug-layout">
+                <div className="debug-list">
+                  {debug?.people.map((p) => (
+                    <button
+                      key={p.id}
+                      className={debugPerson === p.id ? "active" : ""}
+                      onClick={() => setDebugPerson(p.id)}
+                    >
+                      {p.id} {p.name} · {p.job} {p.roles.join("/")}{" "}
+                      {p.journey ?? ""}
+                    </button>
+                  ))}
+                  <div>
+                    <button
+                      disabled={debugOffset === 0}
+                      onClick={() =>
+                        setDebugOffset(Math.max(0, debugOffset - 80))
+                      }
+                    >
+                      前の80人
+                    </button>
+                    <button
+                      disabled={debugOffset + 80 >= (debug?.total ?? 0)}
+                      onClick={() => setDebugOffset(debugOffset + 80)}
+                    >
+                      次の80人
+                    </button>
+                  </div>
+                </div>
+                <div className="debug-detail">
+                  <h3>
+                    {debug?.selected?.name} ({debug?.selected?.id})
+                  </h3>
+                  <p>
+                    現在地 {debug?.selected?.location} ·{" "}
+                    {debug?.selected?.alive ? "生存" : "死亡"} ·{" "}
+                    {debug?.selected?.job} · {debug?.selected?.roles.join("/")}
+                  </p>
+                  <h4>個人の行動Event（新しい順）</h4>
+                  {debug?.selected?.events.map((e) => (
+                    <p key={e.id}>
+                      <b>
+                        {time(e.worldMinute)} {e.kind}
+                      </b>{" "}
+                      {e.text}
+                      <small>
+                        {" "}
+                        {e.id} ← {e.causes.join(", ") || "起点"}
+                      </small>
+                    </p>
+                  ))}
+                  <h4>毎日の活動（新しい順）</h4>
+                  {debug?.selected?.activities.map((a) => (
+                    <p key={a.id}>
+                      {time(a.worldMinute)} {a.detail}{" "}
+                      <small>← {a.sourceEventId}</small>
+                    </p>
+                  ))}
+                  <h4>この人が関わる輸送中の伝令</h4>
+                  {debug?.selected?.messages.map((m) => (
+                    <p key={m.id}>
+                      {m.id} {m.kind}: {m.sender} → {m.recipient} · 伝令{" "}
+                      {m.courierId} · 到着予定 {time(m.arriveAt)}
+                    </p>
+                  ))}
+                  <h4>面談</h4>
+                  {debug?.selected?.audiences.map((a) => (
+                    <p key={a.id}>
+                      {a.id} {a.mode} · {a.status} · 書記 {a.staffId} · 伝令{" "}
+                      {a.courierId ?? "未配属"}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <h3>輸送中の伝令（先頭100件）</h3>
+              {debug?.pendingMessages.map((m) => (
+                <p key={m.id}>
+                  {m.id} {m.kind} · {m.courierId ?? "未配属"} · {m.sender} →{" "}
+                  {m.recipient} ({m.destination}) · {time(m.arriveAt)}
+                </p>
+              ))}
+            </section>
           )}
           {tab === "約束" && (
             <>

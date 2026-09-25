@@ -22,6 +22,16 @@ const report = Object.fromEntries(
     ];
   }),
 );
+report.highland_51min = {
+  losses: combatFixture("highland", 51).battle.losses,
+  winner: combatFixture("highland", 51).battle.winner ?? null,
+  status: combatFixture("highland", 51).battle.status,
+};
+report.control_51min = {
+  losses: combatFixture("control", 51).battle.losses,
+  winner: combatFixture("control", 51).battle.winner ?? null,
+  status: combatFixture("control", 51).battle.status,
+};
 console.log(report);
 writeFileSync(
   "artifacts/combat-fixtures.json",

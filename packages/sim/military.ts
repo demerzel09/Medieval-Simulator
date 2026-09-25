@@ -10,32 +10,8 @@ import { clamp, event, random, uid, zero } from "./core";
 import { policyResponse } from "../ai";
 import { report, send, transfer } from "./economy";
 import content from "../content/scenario.json";
-export function route(
-  from: string,
-  to: string,
-): { distance: number; path: string[] } {
-  const dist: Record<string, number> = { [from]: 0 },
-    paths: Record<string, string[]> = { [from]: [from] },
-    done = new Set<string>();
-  while (true) {
-    const node = Object.keys(dist)
-      .filter((x) => !done.has(x))
-      .sort((a, b) => dist[a] - dist[b] || a.localeCompare(b))[0];
-    if (!node) throw Error("道がない");
-    if (node === to) return { distance: dist[node], path: paths[node] };
-    done.add(node);
-    for (const [a, b, d] of content.roads) {
-      const next = a === node ? String(b) : b === node ? String(a) : undefined;
-      if (next) {
-        const n = dist[node] + Number(d);
-        if (dist[next] === undefined || n < dist[next]) {
-          dist[next] = n;
-          paths[next] = [...paths[node], next];
-        }
-      }
-    }
-  }
-}
+import { route } from "./geography";
+export { route } from "./geography";
 export function delay(w: World, from: string, to: string, speed = 6) {
   return Math.max(1, Math.ceil((route(from, to).distance / speed) * 60));
 }
@@ -302,7 +278,15 @@ export function beginBattle(
 function ready(w: World, u: Unit) {
   return u.memberIds
     .map((id) => w.people[id])
-    .filter((p) => p.alive && !p.captiveBy && p.health > 0.3 && p.morale > 0.1);
+    .filter(
+      (p) =>
+        p.alive &&
+        !p.captiveBy &&
+        !p.journey &&
+        p.location === u.location &&
+        p.health > 0.3 &&
+        p.morale > 0.1,
+    );
 }
 export function power(w: World, u: Unit, b: Battle) {
   const ps = ready(w, u);

@@ -1,5 +1,6 @@
 import { newGame, tick, observe } from "../../packages/sim/engine";
 import { load, save, submit } from "../../packages/sim/core";
+import { debugSnapshot } from "../../packages/sim/debug";
 let world = newGame();
 self.onmessage = ({ data }) => {
   try {
@@ -32,6 +33,13 @@ self.onmessage = ({ data }) => {
     if (data.type === "load") world = load(data.save);
     if (data.type === "save") {
       self.postMessage({ type: "saved", save: save(world) });
+      return;
+    }
+    if (data.type === "debug") {
+      self.postMessage({
+        type: "debug",
+        snapshot: debugSnapshot(world, data.query, data.personId, data.offset),
+      });
       return;
     }
     self.postMessage({ type: "state", observation: observe(world), result });

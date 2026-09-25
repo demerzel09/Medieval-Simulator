@@ -103,3 +103,32 @@ test("sample save, battle reports and small screen remain usable", async ({
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
 });
+
+test("developer view lists all residents and shows staff actions without leaking into normal view", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "統治を始める" }).click();
+  await page.getByRole("button", { name: "了解", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "開発", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("checkbox", { name: "開発モード" }).check();
+  await page.getByRole("button", { name: "開発", exact: true }).click();
+  await expect(page.getByText("該当 1000 人", { exact: false })).toBeVisible();
+  await page.getByLabel("人物ID・名前・仕事を検索").fill("a_0005");
+  await expect(
+    page.getByRole("button", { name: /a_0005 書記イーサ/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "地図", exact: true }).click();
+  await page.getByRole("button", { name: "通行料＋不可侵を提案" }).click();
+  await page.getByRole("button", { name: "1時間", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "1時間", exact: true }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "開発", exact: true }).click();
+  await expect(
+    page.getByText("scribe_prepared", { exact: false }),
+  ).toBeVisible();
+  await page.screenshot({ path: "artifacts/debug-screen.png", fullPage: true });
+});

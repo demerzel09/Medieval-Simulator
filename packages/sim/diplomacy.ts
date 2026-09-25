@@ -1,4 +1,4 @@
-import type { Command, World } from "../contracts";
+import type { Audience, Command, Message, World } from "../contracts";
 import { clamp, event, uid } from "./core";
 import { report, send, transfer } from "./economy";
 import { delay } from "./military";
@@ -33,27 +33,75 @@ export function diplomacyAction(w: World, c: Command, cause: string) {
   }
   if (a.kind === "REQUEST_AUDIENCE") {
     const target = w.people[a.personId];
-    if (!target?.alive || target.factionId !== f) {
+    if (
+      !target?.alive ||
+      target.captiveBy ||
+      target.factionId !== f ||
+      target.id === p.id
+    ) {
       fail("面談相手が不在");
       return true;
     }
-    const time = delay(w, p.location, target.location);
-    for (const queued of w.queue.filter((q) => q.actorId === p.id)) {
-      queued.executeAt += time;
-      const historical = w.commands.find((q) => q.id === queued.id);
-      if (historical && historical !== queued)
-        historical.executeAt = queued.executeAt;
+    const mode = a.mode ?? "summon";
+    const audience: Audience = {
+      id: uid(w, "audience"),
+      requesterId: p.id,
+      targetId: target.id,
+      staffId: c.staffId!,
+      mode,
+      destination: mode === "summon" ? p.location : target.location,
+      targetOrigin: target.location,
+      status: mode === "summon" ? "inviting" : "traveling",
+      causeIds: [cause],
+    };
+    w.audiences.push(audience);
+    if (mode === "summon") {
+      const invitation = send(
+        w,
+        p.id,
+        target.id,
+        "audience_invite",
+        { audienceId: audience.id },
+        [cause],
+        delay(w, p.location, target.location),
+      );
+      if (!invitation) audience.status = "missed";
+      else
+        event(
+          w,
+          "audience_invited",
+          `${w.people[c.staffId!].name}が${target.name}への招待状を作成`,
+          [c.staffId!, p.id],
+          [cause],
+          { audienceId: audience.id, courierId: invitation.courierId },
+        );
+    } else {
+      const travel =
+        p.location === target.location
+          ? 1
+          : delay(w, p.location, target.location, 2);
+      audience.arriveAt = w.minute + travel;
+      p.journey = {
+        kind: "audience",
+        destination: target.location,
+        arriveAt: audience.arriveAt,
+      };
+      w.people[c.staffId!].journey = {
+        kind: "escort",
+        destination: target.location,
+        arriveAt: audience.arriveAt,
+      };
+      const departure = event(
+        w,
+        "audience_departure",
+        `${p.name}は${w.people[c.staffId!].name}と${target.name}のもとへ出発`,
+        [p.id, c.staffId!],
+        [cause],
+        { audienceId: audience.id, arriveAt: audience.arriveAt },
+      );
+      audience.causeIds.push(departure.id);
+      postponeCourt(w, p.id, c.staffId!, travel + 120);
     }
-    w.busyUntil[p.id] = (w.busyUntil[p.id] ?? w.minute) + time;
-    send(
-      w,
-      p.id,
-      target.id,
-      "reply",
-      { audience: true, location: target.location },
-      [cause],
-      time,
-    );
     return true;
   }
   if (a.kind === "ASSIGN_ROLE") {
@@ -84,7 +132,7 @@ export function diplomacyAction(w: World, c: Command, cause: string) {
   return false;
 }
 export function diplomaticMessage(w: World, m: World["messages"][number]) {
-  if (m.kind === "reply" && m.data.audience) {
+  if (m.kind === "reply" && m.data.legacyAudience) {
     const p = w.people[m.recipient],
       visitor = w.people[m.sender];
     visitor.location = String(m.data.location);
@@ -106,6 +154,10 @@ export function diplomaticMessage(w: World, m: World["messages"][number]) {
       m.causes,
     );
     p.trust[m.sender] = clamp((p.trust[m.sender] ?? 0.5) + 0.03);
+    return;
+  }
+  if (m.kind === "audience_invite") {
+    receiveInvitation(w, m);
     return;
   }
   const o = w.offers.find((o) => o.id === m.data.offerId);
@@ -195,6 +247,214 @@ export function diplomaticMessage(w: World, m: World["messages"][number]) {
         { treaty: t },
       );
     }
+  }
+}
+function postponeCourt(
+  w: World,
+  rulerId: string,
+  staffId: string,
+  minutes: number,
+  from = w.minute,
+) {
+  for (const queued of w.queue.filter(
+    (q) => q.actorId === rulerId && q.executeAt >= from,
+  )) {
+    queued.executeAt += minutes;
+    const historical = w.commands.find((q) => q.id === queued.id);
+    if (historical && historical !== queued)
+      historical.executeAt = queued.executeAt;
+  }
+  w.busyUntil[rulerId] = Math.max(w.busyUntil[rulerId] ?? 0, from) + minutes;
+  w.busyUntil[staffId] = Math.max(w.busyUntil[staffId] ?? 0, from) + minutes;
+}
+
+function receiveInvitation(w: World, m: Message) {
+  const audience = w.audiences.find((a) => a.id === m.data.audienceId);
+  if (!audience || audience.status !== "inviting") return;
+  const target = w.people[audience.targetId];
+  const ruler = w.people[audience.requesterId];
+  const trust = target.trust[ruler.id] ?? 0.5;
+  const awayOnDuty =
+    !!target.military && target.location !== audience.destination;
+  if (
+    !target.alive ||
+    target.captiveBy ||
+    target.journey ||
+    awayOnDuty ||
+    trust < 0.35 ||
+    target.hunger >= 4
+  ) {
+    audience.status = "refused";
+    const refusal = event(
+      w,
+      "audience_refused",
+      `${target.name}は面談の招きに応じなかった`,
+      [target.id, m.courierId!],
+      m.causes,
+      { audienceId: audience.id, trust },
+      [target.id, m.courierId!],
+    );
+    report(w, refusal, ruler.id, 1, target.id);
+    return;
+  }
+  audience.courierId = m.courierId;
+  audience.status = "traveling";
+  const travel =
+    target.location === audience.destination
+      ? 1
+      : delay(w, target.location, audience.destination, 2);
+  audience.arriveAt = w.minute + travel;
+  target.journey = {
+    kind: "audience",
+    destination: audience.destination,
+    arriveAt: audience.arriveAt,
+  };
+  if (m.courierId)
+    w.people[m.courierId].journey = {
+      kind: "escort",
+      destination: audience.destination,
+      arriveAt: audience.arriveAt,
+    };
+  const departure = event(
+    w,
+    "audience_guest_departure",
+    `${target.name}は${m.courierId ? w.people[m.courierId].name : "伝令"}と宮廷へ向かった`,
+    [target.id, ...(m.courierId ? [m.courierId] : [])],
+    m.causes,
+    { audienceId: audience.id, arriveAt: audience.arriveAt },
+    [target.id, ...(m.courierId ? [m.courierId] : [])],
+  );
+  audience.causeIds.push(departure.id);
+  postponeCourt(w, ruler.id, audience.staffId, 120, audience.arriveAt);
+  report(w, departure, ruler.id, 1, target.id);
+}
+
+export function advanceAudiences(w: World) {
+  for (const audience of w.audiences) {
+    const requester = w.people[audience.requesterId];
+    const target = w.people[audience.targetId];
+    const staff = w.people[audience.staffId];
+    if (audience.status === "traveling" && audience.arriveAt! <= w.minute) {
+      const traveler = audience.mode === "visit" ? requester : target;
+      traveler.location = audience.destination;
+      traveler.journey = undefined;
+      const escort =
+        audience.mode === "visit"
+          ? staff
+          : audience.courierId
+            ? w.people[audience.courierId]
+            : undefined;
+      if (escort) {
+        escort.location = audience.destination;
+        escort.journey = undefined;
+      }
+      if (
+        !requester.alive ||
+        !target.alive ||
+        requester.captiveBy ||
+        target.captiveBy ||
+        requester.location !== target.location
+      ) {
+        audience.status = "missed";
+        event(
+          w,
+          "audience_missed",
+          `${target.name}との面談は相手が不在で成立しなかった`,
+          [traveler.id, ...(escort ? [escort.id] : [])],
+          audience.causeIds,
+          { audienceId: audience.id },
+        );
+        continue;
+      }
+      audience.status = "meeting";
+      audience.finishAt = w.minute + 120;
+      const arrival = event(
+        w,
+        "audience_arrival",
+        `${requester.name}と${target.name}が面談の場にそろった`,
+        [
+          requester.id,
+          target.id,
+          staff.id,
+          ...(escort && escort.id !== staff.id ? [escort.id] : []),
+        ],
+        audience.causeIds,
+        { audienceId: audience.id },
+        [requester.id, target.id, staff.id],
+      );
+      audience.causeIds.push(arrival.id);
+    }
+    if (audience.status === "meeting" && audience.finishAt! <= w.minute) {
+      if (
+        !requester.alive ||
+        !target.alive ||
+        requester.captiveBy ||
+        target.captiveBy ||
+        requester.location !== target.location
+      ) {
+        audience.status = "missed";
+        event(
+          w,
+          "audience_missed",
+          `${target.name}との面談は中断された`,
+          [requester.id, target.id],
+          audience.causeIds,
+          { audienceId: audience.id },
+        );
+        continue;
+      }
+      audience.status = "completed";
+      const wish =
+        target.culture === "hearth"
+          ? "故郷と家族を守ってほしい。遠征には実際の扶助を。"
+          : target.culture === "honor"
+            ? "先代への奉仕を忘れず、私に指揮を任せてほしい。"
+            : "通行権と予測できる契約を望む。";
+      event(
+        w,
+        "audience",
+        `${target.name}の願い：${wish}`,
+        [target.id, requester.id, staff.id],
+        audience.causeIds,
+        { audienceId: audience.id },
+        [target.id, requester.id, staff.id],
+      );
+      target.trust[requester.id] = clamp(
+        (target.trust[requester.id] ?? 0.5) + 0.03,
+      );
+      if (
+        audience.mode === "summon" &&
+        target.location !== audience.targetOrigin
+      ) {
+        const destination = target.military
+          ? w.units[target.military.unitId].location
+          : audience.targetOrigin;
+        const arriveAt = w.minute + delay(w, target.location, destination, 2);
+        target.journey = { kind: "return", destination, arriveAt };
+        event(
+          w,
+          "audience_return",
+          `${target.name}が面談を終え、${w.settlements[destination].name}へ戻る`,
+          [target.id],
+          audience.causeIds,
+          { audienceId: audience.id, arriveAt },
+        );
+      }
+    }
+  }
+  for (const audience of w.audiences) {
+    if (audience.status !== "completed") continue;
+    const p = w.people[audience.targetId];
+    if (p.journey?.kind !== "return" || p.journey.arriveAt > w.minute) continue;
+    p.location = p.journey.destination;
+    p.journey = undefined;
+    event(
+      w,
+      "return_arrived",
+      `${p.name}が帰着した`,
+      [p.id],
+      audience.causeIds,
+    );
   }
 }
 export function finish(w: World) {

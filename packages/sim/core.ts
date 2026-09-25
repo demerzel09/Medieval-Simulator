@@ -76,10 +76,55 @@ export function load(s: string): World {
   const w = JSON.parse(s) as World;
   if (
     w.schemaVersion !== 1 ||
-    w.engineVersion !== "0.1.0" ||
+    !["0.1.0", "0.2.0"].includes(w.engineVersion) ||
     w.contentHash !== hash(content)
   )
     throw Error("互換性のないセーブ");
+  if (w.engineVersion === "0.1.0") {
+    w.audiences = [];
+    w.activities = [];
+    for (const faction of ["a", "b"]) {
+      const ruler = w.people[w.factions[faction].rulerId];
+      const available = Object.values(w.people)
+        .filter(
+          (p) =>
+            p.factionId === faction &&
+            p.alive &&
+            !p.captiveBy &&
+            !p.military &&
+            p.location === ruler.location &&
+            p.id !== ruler.id,
+        )
+        .sort((a, b) => a.id.localeCompare(b.id));
+      const [scribe, ...couriers] = available.slice(0, 4);
+      if (!scribe || couriers.length < 3)
+        throw Error("旧版セーブに家臣を配置できない");
+      scribe.roles.push("scribe");
+      scribe.job = "administrator";
+      for (const c of [...w.commands, ...w.queue])
+        if (c.actorId === ruler.id) c.staffId = scribe.id;
+      for (const courier of couriers) {
+        courier.roles.push("courier");
+        courier.job = "administrator";
+      }
+    }
+    for (const c of [...w.commands, ...w.queue]) {
+      if (c.action.kind === "REQUEST_AUDIENCE" && !c.action.mode)
+        c.action.mode = "visit";
+    }
+    for (const m of w.messages) {
+      if (m.kind === "reply" && m.data.audience) m.data.legacyAudience = true;
+      if (!m.courierId) {
+        const faction = w.people[m.sender]?.factionId ?? "a";
+        m.courierId = Object.values(w.people).find(
+          (p) => p.factionId === faction && p.roles.includes("courier"),
+        )?.id;
+        m.destination = w.people[m.recipient]?.location;
+      }
+    }
+    w.engineVersion = "0.2.0";
+    event(w, "save_migrated", "旧版の保存状態を読み込み、家臣の役職を補った");
+  }
   for (const c of w.queue) {
     actionSchema.parse(c.action);
     if (
@@ -152,6 +197,18 @@ export function check(w: World) {
     throw Error("duplicate household member");
   const all = Object.values(w.units).flatMap((u) => u.memberIds);
   if (new Set(all).size !== all.length) throw Error("duplicate soldier");
+  for (const m of w.messages)
+    if (m.courierId && !w.people[m.courierId]) throw Error("unknown courier");
+  for (const a of w.audiences)
+    if (
+      !w.people[a.requesterId] ||
+      !w.people[a.targetId] ||
+      !w.people[a.staffId]
+    )
+      throw Error("invalid audience actor");
+  for (const a of w.activities)
+    if (!w.people[a.personId] || !seenEvents.has(a.sourceEventId))
+      throw Error("invalid activity source");
 }
 export function submit(
   w: World,
@@ -174,8 +231,31 @@ export function submit(
     !["WAIT", "SEND_MESSAGE", "ACCEPT_PROMISE"].includes(parsed.data.kind)
   )
     return { ok: false, reason: "NO_AUTHORITY" };
+  const staff = p.roles.includes("ruler")
+    ? Object.values(w.people)
+        .filter(
+          (candidate) =>
+            candidate.factionId === p.factionId &&
+            candidate.roles.includes("scribe") &&
+            candidate.alive &&
+            !candidate.captiveBy &&
+            !candidate.military &&
+            candidate.location === p.location,
+        )
+        .sort(
+          (a, b) =>
+            (w.busyUntil[a.id] ?? 0) - (w.busyUntil[b.id] ?? 0) ||
+            a.id.localeCompare(b.id),
+        )[0]
+    : undefined;
+  if (p.roles.includes("ruler") && !staff)
+    return { ok: false, reason: "NO_AVAILABLE_SCRIBE" };
   const executeAt =
-    Math.max(w.minute, w.busyUntil[actorId] ?? 0) +
+    Math.max(
+      w.minute,
+      w.busyUntil[actorId] ?? 0,
+      staff ? (w.busyUntil[staff.id] ?? 0) : 0,
+    ) +
     (parsed.data.kind === "WAIT"
       ? Math.max(1, parsed.data.minutes)
       : parsed.data.kind === "REQUEST_AUDIENCE"
@@ -189,8 +269,10 @@ export function submit(
     sequence: w.commands.length,
     action: parsed.data,
     origin,
+    staffId: staff?.id,
   };
   w.busyUntil[actorId] = executeAt;
+  if (staff) w.busyUntil[staff.id] = executeAt;
   w.commands.push(c);
   w.queue.push(c);
   return { ok: true, id };

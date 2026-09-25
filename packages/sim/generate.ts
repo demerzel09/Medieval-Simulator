@@ -12,7 +12,7 @@ export function generate(seed = 240924, populations = [600, 400]): World {
   validateContent();
   const w: World = {
     schemaVersion: 1,
-    engineVersion: "0.1.0",
+    engineVersion: "0.2.0",
     contentHash: hash(content),
     seed,
     rng: {},
@@ -32,6 +32,8 @@ export function generate(seed = 240924, populations = [600, 400]): World {
     applied: [],
     events: [],
     messages: [],
+    audiences: [],
+    activities: [],
     promises: [],
     units: {},
     shipments: [],
@@ -165,6 +167,18 @@ export function generate(seed = 240924, populations = [600, 400]): World {
   w.people.a_0002.homeId = "farm";
   w.people.a_0002.values.family = 0.95;
   w.people.a_0003.culture = "contract";
+  for (const faction of ["a", "b"] as const) {
+    const scribe = w.people[`${faction}_0005`];
+    scribe.roles.push("scribe");
+    scribe.job = "administrator";
+    scribe.name = faction === "a" ? "書記イーサ" : "書記ノエル";
+    for (let i = 6; i <= 8; i++) {
+      const courier = w.people[`${faction}_${String(i).padStart(4, "0")}`];
+      courier.roles.push("courier");
+      courier.job = "administrator";
+      courier.name = `${faction === "a" ? "アウル" : "ベル"}の伝令 ${i - 5}`;
+    }
+  }
   for (const a of Object.values(w.accounts))
     for (const g of Object.keys(a) as (keyof typeof a)[]) w.baseline[g] += a[g];
   check(w);

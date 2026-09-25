@@ -54,6 +54,9 @@ const result = {
   hash: hash(w),
   elapsedMs: Math.round(performance.now() - start),
 };
+const routineReportIds = new Set(
+  w.events.filter((e) => e.kind === "unit_report").map((e) => e.id),
+);
 console.log(JSON.stringify(result, null, 2));
 if (args.includes("--record")) {
   mkdirSync("artifacts", { recursive: true });
@@ -64,7 +67,20 @@ if (args.includes("--record")) {
         ...result,
         commands: w.commands,
         events: w.events.filter(
-          (e) => !["economy", "unit_report"].includes(e.kind),
+          (e) =>
+            !["economy", "unit_report"].includes(e.kind) &&
+            !(
+              [
+                "courier_assigned",
+                "message_delivered",
+                "message_missed",
+              ].includes(e.kind) &&
+              e.data.kind === "report" &&
+              routineReportIds.has(e.causes[0])
+            ) &&
+            !(e.kind === "courier_assigned" && e.data.kind === "remittance") &&
+            !(e.kind === "message_delivered" && e.data.kind === "remittance") &&
+            !(e.kind === "message_missed" && e.data.kind === "remittance"),
         ),
       },
       null,

@@ -42,6 +42,11 @@ export interface Person {
   memories: string[];
   beliefs: Report[];
   reactions: Record<string, Response>;
+  journey?: {
+    kind: "audience" | "escort" | "return";
+    destination: string;
+    arriveAt: number;
+  };
 }
 export interface Household {
   id: string;
@@ -99,8 +104,41 @@ export interface Message {
     | "offer"
     | "reply"
     | "remittance"
-    | "promise";
+    | "promise"
+    | "audience_invite";
   data: Record<string, unknown>;
+  courierId?: string;
+  pickupAt?: number;
+  destination?: string;
+  dispatchEventId?: string;
+}
+export interface Audience {
+  id: string;
+  requesterId: string;
+  targetId: string;
+  staffId: string;
+  courierId?: string;
+  mode: "summon" | "visit";
+  destination: string;
+  targetOrigin: string;
+  status:
+    | "inviting"
+    | "traveling"
+    | "meeting"
+    | "completed"
+    | "refused"
+    | "missed";
+  arriveAt?: number;
+  finishAt?: number;
+  causeIds: string[];
+}
+export interface Activity {
+  id: string;
+  personId: string;
+  worldMinute: number;
+  kind: "work" | "military" | "journey" | "captive" | "rest";
+  detail: string;
+  sourceEventId: string;
 }
 export interface PromiseContract {
   id: string;
@@ -239,7 +277,11 @@ export const actionSchema = z.discriminatedUnion("kind", [
     amount: nat.max(10000),
   }),
   z.object({ kind: z.literal("SURRENDER"), unitId: id }),
-  z.object({ kind: z.literal("REQUEST_AUDIENCE"), personId: id }),
+  z.object({
+    kind: z.literal("REQUEST_AUDIENCE"),
+    personId: id,
+    mode: z.enum(["summon", "visit"]).default("summon"),
+  }),
   z.object({
     kind: z.literal("ASSIGN_ROLE"),
     personId: id,
@@ -261,6 +303,7 @@ export interface Command {
   sequence: number;
   action: Action;
   origin: "player" | "ordinary_ai" | "deliberative_ai" | "system";
+  staffId?: string;
 }
 export interface World {
   schemaVersion: 1;
@@ -284,6 +327,8 @@ export interface World {
   applied: string[];
   events: Event[];
   messages: Message[];
+  audiences: Audience[];
+  activities: Activity[];
   promises: PromiseContract[];
   units: Record<string, Unit>;
   shipments: Shipment[];

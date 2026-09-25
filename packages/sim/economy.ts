@@ -1,7 +1,14 @@
 import content from "../content/scenario.json";
-import type { Good, Person, PromiseContract, World } from "../contracts";
+import type {
+  Good,
+  Message,
+  Person,
+  PromiseContract,
+  World,
+} from "../contracts";
 import { clamp, event, uid, zero } from "./core";
 import { policyResponse } from "../ai";
+import { route } from "./geography";
 export type Entry = [string, string, Good, number];
 export function transfer(
   w: World,
@@ -49,17 +56,108 @@ export function send(
   data: Record<string, unknown>,
   causes: string[],
   delay = 1,
-) {
-  w.messages.push({
+): Message | undefined {
+  const source = w.people[sender],
+    target = w.people[recipient];
+  if (!source || !target) return;
+  const origin = source.location;
+  const destination =
+    kind === "order" && target.military
+      ? (w.units[target.military.unitId]?.destination ?? target.location)
+      : target.location;
+  // A proclamation can travel in one courier's bag to several people at the
+  // same settlement. It is one journey, with a distinct delivery to each person.
+  const shared = w.messages.find(
+    (m) =>
+      m.sentAt === w.minute &&
+      m.sender === sender &&
+      m.kind === kind &&
+      m.destination === destination &&
+      m.causes[0] === causes[0] &&
+      m.courierId,
+  );
+  let courierId = shared?.courierId;
+  let pickupAt = shared?.pickupAt;
+  let arriveAt = shared?.arriveAt;
+  let dispatchEventId = shared?.dispatchEventId;
+  if (!courierId) {
+    const candidates = Object.values(w.people)
+      .filter(
+        (p) =>
+          p.factionId === source.factionId &&
+          p.roles.includes("courier") &&
+          p.alive &&
+          !p.captiveBy &&
+          !p.military &&
+          !p.journey &&
+          !w.messages.some(
+            (m) => m.courierId === p.id && m.kind === "audience_invite",
+          ) &&
+          p.health > 0.3,
+      )
+      .map((p) => {
+        const previous = w.messages
+          .filter((m) => m.courierId === p.id)
+          .sort((a, b) => b.arriveAt - a.arriveAt)[0];
+        const readyAt = Math.max(w.minute, previous?.arriveAt ?? w.minute);
+        const readyLocation = previous?.destination ?? p.location;
+        const pickup =
+          readyAt + Math.ceil((route(readyLocation, origin).distance / 6) * 60);
+        const arrival =
+          pickup +
+          Math.max(
+            1,
+            delay,
+            Math.ceil((route(origin, destination).distance / 6) * 60),
+          );
+        return { person: p, pickup, arrival };
+      })
+      .sort(
+        (a, b) =>
+          a.arrival - b.arrival || a.person.id.localeCompare(b.person.id),
+      );
+    const selected = candidates[0];
+    if (!selected) {
+      event(
+        w,
+        "dispatch_failed",
+        "動ける伝令がなく、届け物を出せなかった",
+        [sender],
+        causes,
+        { kind, recipient },
+      );
+      return;
+    }
+    courierId = selected.person.id;
+    pickupAt = selected.pickup;
+    arriveAt = selected.arrival;
+    const departure = event(
+      w,
+      "courier_assigned",
+      `${selected.person.name}が${target.name}への${kind}を任された`,
+      [courierId, sender],
+      causes,
+      { kind, recipient, destination, pickupAt, arriveAt },
+      [courierId, sender],
+    );
+    dispatchEventId = departure.id;
+  }
+  const message: Message = {
     id: uid(w, "msg"),
     sender,
     recipient,
     sentAt: w.minute,
-    arriveAt: w.minute + Math.max(1, delay),
-    causes,
+    arriveAt: arriveAt!,
+    causes: dispatchEventId ? [...causes, dispatchEventId] : [...causes],
     kind,
     data,
-  });
+    courierId,
+    pickupAt,
+    destination,
+    dispatchEventId,
+  };
+  w.messages.push(message);
+  return message;
 }
 export function report(
   w: World,
@@ -104,7 +202,8 @@ export function dailyEconomy(w: World) {
     production = { food: 0, wood: 0, equipment: 0 },
     unpaid: Record<string, number> = {};
   for (const p of Object.values(w.people)) {
-    if (!p.alive || p.captiveBy || p.military || p.health <= 0.3) continue;
+    if (!p.alive || p.captiveBy || p.military || p.journey || p.health <= 0.3)
+      continue;
     const owner = `work_${p.factionId}`;
     if (p.job === "farmer") {
       produce(w, owner, "food", 3);
@@ -232,6 +331,43 @@ export function dailyEconomy(w: World) {
     },
     [],
   );
+  // One compact, causally linked daily record per person, including civilians.
+  for (const p of Object.values(w.people)) {
+    const kind = !p.alive
+      ? "rest"
+      : p.captiveBy
+        ? "captive"
+        : p.journey
+          ? "journey"
+          : p.military
+            ? "military"
+            : p.roles.includes("courier")
+              ? "journey"
+              : p.job === "administrator"
+                ? "rest"
+                : "work";
+    const detail = !p.alive
+      ? "死亡"
+      : p.captiveBy
+        ? "捕虜"
+        : p.journey
+          ? `${w.settlements[p.journey.destination].name}へ移動中`
+          : p.military
+            ? `${w.settlements[p.location].name}で軍務`
+            : p.roles.includes("courier")
+              ? "伝令待機または輸送"
+              : p.job === "administrator"
+                ? "行政・待機"
+                : `${p.job}として就労`;
+    w.activities.push({
+      id: uid(w, "act"),
+      personId: p.id,
+      worldMinute: w.minute,
+      kind,
+      detail,
+      sourceEventId: e.id,
+    });
+  }
   for (const f of Object.values(w.factions))
     report(w, e, f.rulerId, 120, f.rulerId);
   settlePromises(w);
@@ -330,7 +466,7 @@ export function recruit(
       !p.alive ||
       p.captiveBy ||
       p.military ||
-      p.roles.includes("ruler")
+      p.roles.some((role) => ["ruler", "scribe", "courier"].includes(role))
     )
       continue;
     const response = policyResponse(p, f.rulerId, purpose, 0.2, reward / 20);

@@ -19,7 +19,12 @@ import {
   battleTick,
   militaryHour,
 } from "./military";
-import { diplomacyAction, diplomaticMessage, finish } from "./diplomacy";
+import {
+  advanceAudiences,
+  diplomacyAction,
+  diplomaticMessage,
+  finish,
+} from "./diplomacy";
 import { generate } from "./generate";
 import { OrdinaryPlanner, policyResponse } from "../ai";
 export function newGame(seed = 240924, populations = [600, 400]) {
@@ -155,8 +160,49 @@ export function arrivals(w: World) {
   const due = w.messages.filter((m) => m.arriveAt <= w.minute);
   w.messages = w.messages.filter((m) => m.arriveAt > w.minute);
   for (const m of due) {
+    const courier = m.courierId ? w.people[m.courierId] : undefined;
+    if (
+      !courier?.alive ||
+      courier.captiveBy ||
+      courier.military ||
+      !m.destination ||
+      !w.people[m.recipient] ||
+      w.people[m.recipient].location !== m.destination
+    ) {
+      const missed = event(
+        w,
+        "message_missed",
+        `${courier?.name ?? "伝令"}の届け物は相手へ届かなかった`,
+        courier ? [courier.id] : [],
+        m.causes,
+        { messageId: m.id, kind: m.kind, recipient: m.recipient },
+      );
+      if (m.kind === "audience_invite") {
+        const audience = w.audiences.find((a) => a.id === m.data.audienceId);
+        if (audience) audience.status = "missed";
+        report(w, missed, m.sender, 1, courier?.id ?? m.sender);
+      }
+      if (courier && m.destination) courier.location = m.destination;
+      continue;
+    }
+    courier.location = m.destination;
+    const delivered = event(
+      w,
+      "message_delivered",
+      `${courier.name}が${w.people[m.recipient].name}へ${m.kind}を届けた`,
+      [courier.id, m.recipient],
+      m.causes,
+      { messageId: m.id, kind: m.kind },
+      [courier.id, m.recipient],
+    );
+    m.causes.push(delivered.id);
     if (m.kind === "order") receiveOrder(w, m);
-    if (m.kind === "offer" || m.kind === "reply") diplomaticMessage(w, m);
+    if (
+      m.kind === "offer" ||
+      m.kind === "reply" ||
+      m.kind === "audience_invite"
+    )
+      diplomaticMessage(w, m);
     if (m.kind === "report")
       receiveReport(w, m.recipient, String(m.data.eventId), m.sender);
     if (m.kind === "remittance")
@@ -212,6 +258,7 @@ export function arrivals(w: World) {
       }
     }
   }
+  advanceAudiences(w);
 }
 export function apply(w: World, c: Command) {
   const p = w.people[c.actorId];
@@ -219,12 +266,43 @@ export function apply(w: World, c: Command) {
     event(w, "rejected", "行動者が不在", [c.actorId]);
     return;
   }
+  const staff = c.staffId ? w.people[c.staffId] : undefined;
+  if (
+    c.staffId &&
+    (!staff?.alive || staff.captiveBy || staff.location !== p.location)
+  ) {
+    event(
+      w,
+      "command_unprepared",
+      `${p.name}の文書は書記が不在で完成しなかった`,
+      [p.id, ...(staff ? [staff.id] : [])],
+    );
+    return;
+  }
+  const prepared = staff
+    ? event(
+        w,
+        "scribe_prepared",
+        `${staff.name}が${p.name}の文書を整えた`,
+        [staff.id, p.id],
+        [],
+        { commandId: c.id },
+        [staff.id, p.id],
+      )
+    : undefined;
   const a = c.action,
     f = p.factionId;
-  const e = event(w, "command", `${p.name}：${a.kind}`, [p.id], [], {
-    commandId: c.id,
-    action: a,
-  });
+  const e = event(
+    w,
+    "command",
+    `${p.name}：${a.kind}`,
+    [p.id, ...(staff ? [staff.id] : [])],
+    prepared ? [prepared.id] : [],
+    {
+      commandId: c.id,
+      action: a,
+    },
+  );
   const fail = (reason: string) => event(w, "rejected", reason, [p.id], [e.id]);
   if (militaryAction(w, c, e.id) || diplomacyAction(w, c, e.id)) return;
   switch (a.kind) {
