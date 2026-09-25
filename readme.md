@@ -80,9 +80,11 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 [実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)に、E1前に確定する在庫・取引・時間・伝達・経済Task・旧処理との切替、E2前に数表で検証する家計と事業の資金循環をまとめました。[E0の現行経済90日計測](docs/ECONOMY_E0_BASELINE.md)は実施済みで、日別・世帯別の詳細と要約を保存しています。
 
+[E1の食料流通契約](docs/ECONOMY_E1_CONTRACT.md)では、20人の集落について人員、2kmの道路、勤務と配送の時刻、食料ロット・購入注文・資産清算を具体化しました。これは実装前の契約で、新経済のsimや受入fixtureはまだ動作しません。
+
 ## 次の作業
 
-1. [E0の基準](docs/ECONOMY_E0_BASELINE.md)を踏まえ、[実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)のE1前契約を確定してから食料流通を小集落で検証する。
+1. [E0の基準](docs/ECONOMY_E0_BASELINE.md)と[E1契約](docs/ECONOMY_E1_CONTRACT.md)に沿って、食料流通をsim/版付きコンテンツへ実装し、小集落で対照検証する。
 2. E2の実働・所得、E3の木材/装備と公職・軍への接続へ進み、既存90日ゲームの回帰も確認する。
 3. [人格インターフェースv2](docs/AGENT_INTERFACES_v2.md)の契約テストを準備し、経済Taskと書記・伝令・面談へ共通の実行境界を適用する。
 4. [人間試遊の記録票](docs/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。試遊結果と[STATUS.md](docs/STATUS.md)の未実装事項を見直し、M3の正式受入後にM4を検討する。

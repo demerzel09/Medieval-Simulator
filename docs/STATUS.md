@@ -28,7 +28,7 @@ A〜Cに共通する現行の設計案は [AGENT_INTERFACES_v2.md](AGENT_INTERFA
 
 現在の設計優先は[経済閉路](ECONOMY_LOOP_DESIGN.md)。[E0の現行90日基準計測](ECONOMY_E0_BASELINE.md)は実施済み。E1で食料の生産→実配送→市場での清算→世帯の食事、E2で実働と所得、E3で木材/装備と公職・軍への接続を検証する。20人・4世帯のfixtureと反事実は未実装で、**E1〜E3は未受入**。M3の人間試遊も引き続き未実施。
 
-[実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)を追加。E1は在庫正本・取引状態・時間占有・注文を知る人・経済Taskの最小契約・旧日次処理との切替・小集落の地理を確定してから実装する。E2は4世帯の資金循環と実働/生産量を数表にする必要がある。
+[実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)のE1前7項目を[食料の実物流通契約](ECONOMY_E1_CONTRACT.md)として仮決定した。在庫と通貨の正本、輸送/購入の別状態機械、時区間、到達情報、人物別Task、旧本編との世界単位の排他、20人の人員・道路・時刻を定めた。**文書契約のみで、E1のsim、コンテンツ読込、fixture実行・受入テストは未実装**。E2は4世帯の資金循環と実働/生産量を数表にする必要がある。
 
 E0計測器 `npm run economy:baseline` を追加し、無策3seed＋外交/軍事各1seedの90日、計450日を記録。日別・世帯別の詳細は `artifacts/economy-e0.json.gz`、比較用集計は `artifacts/economy-e0-summary.json`。基準seed・無策では日31〜90に食料66,060生産/55,135消費、90日目に共同口座へ食料23,351・装備8,657が残った。装備消費0。空腹の延べ4,915人日は軍務Activityで、民間Activityの空腹は0。90日目の日末復員後の身分だけで読むと誤分類する。これは現行経済の観測結果で、新経済の受入達成ではない。
 
@@ -83,6 +83,6 @@ E0で新たに確認（2026-09-25）：`npm run typecheck`成功、`npm test` 5�
 1. DESIGN/DECISIONS/本ファイルを読み、`npm ci`、`npm run typecheck`、`npm test`。
 2. `npm run dev` で遊び、`artifacts/sample-day3.json` / `sample-war-day4.json` をJSON入力から読み込む。
 3. 人間試遊は `docs/PLAYTEST.md` を使用して実施し、実際の結果を記入。
-4. [E0の基準](ECONOMY_E0_BASELINE.md)を踏まえ、[実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)のE1前契約を確定する。E1の小集落fixtureでは運搬人不在/買主資金不足/農民欠勤の結果差、資産・所有・所在地の保存、保存再生を検証する。
+4. [E0の基準](ECONOMY_E0_BASELINE.md)を踏まえ、[E1契約](ECONOMY_E1_CONTRACT.md)をsimと版付きコンテンツへ実装する。小集落fixtureでは運搬人不在/買主資金不足/農民欠勤の結果差、資産・所有・所在地の保存、保存再生を検証する。
 5. 動機・行動の共通化は [v2インターフェース](AGENT_INTERFACES_v2.md) の認識・動機・判断の対照例と受入テストを準備し、経済Taskにも同じ境界を適用する。各段で既存90日ゲームの受入条件を保つ。
 6. E2→E3で個別雇用主の所得循環と木材/装備・公職/軍を接続する。人間試遊の未完了を別に追跡し、結果を踏まえてM4を検討する。
