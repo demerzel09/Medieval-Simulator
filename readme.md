@@ -78,6 +78,8 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。現行の国別共同市場を、実在の農民・運搬人・売り手・買物係と、所在地・所有権・支払いのある食料流通から検証します。E0〜E3は計画中で、現行ゲームに実装された機能ではありません。
 
+[実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)に、E1前に確定する在庫・取引・時間・伝達・経済Task・旧処理との切替、E2前に数表で検証する家計と事業の資金循環をまとめました。E0の現行経済計測には着手できます。
+
 ## 次の作業
 
 1. [経済閉路の設計](docs/ECONOMY_LOOP_DESIGN.md)のE0で現行90日の経済基準値を記録し、E1の食料流通を小集落で検証する。
