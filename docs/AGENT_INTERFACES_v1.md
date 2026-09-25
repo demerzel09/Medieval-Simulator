@@ -13,7 +13,8 @@ WorldTruth ──知覚と通信──▶ PersonalView
                                    ▼
                              DecisionRequest
                                    │
-                rule / NN / LLM / 人間のアダプター
+                       人物固有のPersonalityModel
+                    （内部はrule / NN / LLM / 人間）
                                    ▼
                              DecisionResponse
                                    │
@@ -27,7 +28,7 @@ WorldTruth ──知覚と通信──▶ PersonalView
                          └──▶ 後続の知覚と評価
 ```
 
-この図の **DecisionRequest / DecisionResponse** を最大の交換境界とする。小さいモデルでも大きいモデルでも同じ形を使う。`WorldTruth → PersonalView`、`ActionAttempt → Event`、資産・人口・所有権・因果・時刻の更新は sim の責務として固定する。意思決定器へ `World` 参照、台帳の書込権、任意の効果関数を渡さない。インターフェースは世界の真実を保証しない。本人にとって可能に見えた行動が、実行時に失敗することを許す。
+この図の **DecisionRequest / DecisionResponse** を最大の交換境界とする。人物ごとに固有の `PersonalityModel` がその間にあり、内部機構がルールでもNNでもLLMでも境界は同じ。`WorldTruth → PersonalView`、`ActionAttempt → Event`、資産・人口・所有権・因果・時刻の更新は sim の責務として固定する。意思決定器へ `World` 参照、台帳の書込権、任意の効果関数を渡さない。インターフェースは世界の真実を保証しない。本人にとって可能に見えた行動が、実行時に失敗することを許す。
 
 認識・望み・採用した意図を分けるのは BDI/AgentSpeak に倣う。ただし完全な論理証明器は要しない。[Rao & Georgeff 1995](https://aaai.org/papers/icmas95-042-bdi-agents-from-theory-to-practice/)、[Rao 1996](https://apice.unibo.it/bin/view/Publication/RaoAgentspeak96)。エージェントと環境の相互作用をデータ契約として標準化すると、異なる学習手法を同じ環境で比べやすいという示唆は [PettingZoo](https://proceedings.nips.cc/paper_files/paper/2021/hash/803f7c4c3ff61b71be53a0c803bfb57f-Abstract.html) にある。本作がその順番制APIを直接採用するという意味ではない。
 
@@ -116,6 +117,8 @@ type DecisionRequestV1 = {
   schema: "decision.request.v1";
   requestId: Id;
   actorId: PersonId;
+  personalityId: Id;       // actorIdに一対一で結び付く持続的な人格
+  personalityRevision: number; // 保存済み人格状態の版
   catalogVersion: string;  // 文化・役職・述語・行動の静的定義を固定
   scope: {
     phase: "goal" | "taskResponse" | "plan" | "act";
@@ -138,6 +141,8 @@ type DecisionResponseV1 = {
   schema: "decision.response.v1";
   requestId: Id;
   actorId: PersonId;
+  personalityId: Id;
+  personalityRevision: number;
   frameHash: string;
   source: "player" | "rule" | "neural" | "llm" | "script";
   providerVersion: string;
@@ -155,7 +160,7 @@ type DecisionResponseV1 = {
 
 一つのリクエストは `scope.phase` の**一問だけ**を扱う。`goal` は何を目指すか、`taskResponse` は依頼を受ける・拒む・交渉するか、`plan` は採用した目的をどう進めるか、`act` は直近の一手を選ぶ。対応する候補種別は順に `adoptIntention`、`respondTask`、`beginPlan`、`attemptAction` とし、`compose` は `plan` だけに許す。全人物が全段階を毎分通る必要はない。緊急事態やTask到着などの `triggerRef` で再考し、進行中の仕事は必要な時だけ再計画する。`view` はその一問に関連する本人の認識の**投影**であり、本人の全記憶を毎回列挙しない。省略は「偽」や「存在しない」を意味せず、`viewCoverage` に切り詰めを記録する。`cultureIds` は本人に身についた文化的所属、`valueWeights` はその時点の価値傾向で、文化から一意に決まる値ではない。既知の道・地形・制度なども根拠と時刻を持つ `BeliefView` の述語で渡し、世界地図の真実を自動で複製しない。
 
-`requestId` と `frameHash` の不一致、未知の option/template、本人が知らない根拠ID、遅着、権限外の対象は不受理として Event に残し、通常ルールへフォールバックする。`decideBy <= applyAt` とし、受理した応答は指定の `applyAt` に適用する。応答は採用時にも、後の各行動の実行時にも再検証する。`source` と `receivedAt` は入力窓口が付与し、プロバイダーの自己申告を信用しない。外部モデルの実時間応答の揺れは、`applyAt` と採否・応答本文を入力ログに固定する。リプレイ時はモデルを呼び直さない。モデル版や特徴抽出版はセーブ・ログに残す。
+`requestId`・`frameHash`・人格ID/版の不一致、未知の option/template、本人が知らない根拠ID、遅着、権限外の対象は不受理として Event に残し、当人の人格に紐付く通常ルールへフォールバックする。`decideBy <= applyAt` とし、受理した応答は指定の `applyAt` に適用する。応答は採用時にも、後の各行動の実行時にも再検証する。`source` と `receivedAt` は入力窓口が付与し、プロバイダーの自己申告を信用しない。外部モデルの実時間応答の揺れは、`applyAt` と採否・応答本文を入力ログに固定する。リプレイ時はモデルを呼び直さない。人格状態、判断機構の版、採用済み応答、特徴抽出版をセーブ・ログに残す。
 
 v1の必須フィールドと意味は固定し、意味を変える場合は `v2` にする。述語・行動・計画テンプレートの追加は個別のSchema IDを上げる。未対応のSchemaは拒否する。外部プロバイダーの会話履歴や隠れ状態は世界の記録ではない。結果に影響させるなら、プロバイダー版と採用した応答を入力ログに保存し、途中セーブから外部モデルを再開する際の状態も版付きで保存する。
 
@@ -226,7 +231,8 @@ type ActionOutcomeV1 = {
 | `PerceptionProjector` | WorldのEvent＋知覚経路 → PersonalView/Belief | witnessと伝令到着 | 噂・情報の歪み。ただし真実を直接配らない |
 | `MotiveResolver` | PersonalView＋本人の長期状態 → MotiveView[] | 空腹、家族、文化、役職、約束を規則評価 | 学習した重み。ただし理由の出所を維持 |
 | `OptionProvider` | 観測＋動機＋意図＋Task → DecisionOption[] | 権限と既知情報から有限候補 | 新しい計画テンプレート、LLMの型付き組合せ |
-| `DecisionAdapter`＋Gateway | DecisionInput → ChoiceDraft → DecisionResponse | ルールによる選択と受理記録 | NNの候補採点、LLM、人間のUI |
+| `PersonalityModel` | DecisionInput＋固有人格状態 → ChoiceDraft | 一人の状態を保って判断 | 同じ人格を保ったまま内部機構を交換 |
+| `DecisionAdapter`＋Gateway | 人格内の判断機構 → ChoiceDraft → DecisionResponse | ルールによる選択と受理記録 | NNの候補採点、LLM、人間のUI |
 | `ExperienceUpdater`（任意） | 本人に届いた結果＋過去の期待 → 期待/信用の更新 | 観測された一致・不一致を記録 | 学習した更新式。ただし未到着の結果は使わない |
 | `TaskPlanner` | 選ばれた高位Task → 有限の子Task | 招待・配送・面談など定義済み分解 | 制約付き計画探索 |
 | `ActionExecutor` | ActionAttempt＋World → ActionOutcome＋Event | sim内の動詞別実装 | 効果の追加は検証済みコードだけ。モデル交換対象にしない |
@@ -242,31 +248,32 @@ type ActionOutcomeV1 = {
 flowchart LR
   req["DecisionRequest<br/>本人の認識・動機・候補・期待"] --> input["DecisionInput"]
   catalog["CatalogSlice<br/>版付きの静的な語彙"] --> input
-  input --> selection{"ホストが使用モデルを選択<br/>一回の判断につき一つ"}
-  assignment["モデル割当設定<br/>人物・役割など"] --> selection
 
-  subgraph adapters["交換可能な DecisionAdapter"]
+  subgraph persona["PersonalityModel：人物ごとに持続する人格"]
     direction TB
-    rule["Rule<br/>パターン／必要なら評価"]
+    state["PersonalityState<br/>価値観・記憶・期待・判断傾向"] --> mechanism{"decide()<br/>構成済みの内部機構を使用"}
+    rule["Rule<br/>パターン・評価"]
     nn["NN<br/>特徴抽出・候補採点"]
-    llm["LLM<br/>文脈を投影・型付き出力"]
-    human["Human<br/>候補をUIで選択"]
+    llm["LLM<br/>文脈投影・型付き出力"]
+    human["Human adapter<br/>プレイヤーが判断を代行"]
+    mechanism --> rule
+    mechanism --> nn
+    mechanism --> llm
+    mechanism --> human
   end
 
-  selection --> rule
-  selection --> nn
-  selection --> llm
-  selection --> human
+  input --> mechanism
+  observed["本人に届いた結果"] -.-> state
   rule --> draft["ChoiceDraft<br/>選択・根拠"]
   nn --> draft
   llm --> draft
   human --> draft
-  draft --> gateway["DecisionGateway<br/>検証・時刻とモデル版を記録"]
+  draft --> gateway["DecisionGateway<br/>人格ID・入力・時刻を検証して記録"]
   gateway --> response["DecisionResponse"]
   response --> sim["sim<br/>実行時に真実と資産を再検証"]
 ```
 
-矢印が4本あっても、**一回の判断で呼ぶアダプターは一つ**。全アダプターは同じ `DecisionInput` を受け、同じ `ChoiceDraft` を返す。主観的な予測器や習慣ルールは各アダプターの内部に置ける任意の方法であり、図の共通境界には含めない。ホストのモデル割当は人物自身の行動選択ではなく、`DecisionRequest` の意味を変えない。
+中心は**個々の人物に結び付いた `PersonalityModel`** である。ルール・NN・LLMはその人格が判断するための内部機構であり、同じ人物の人格を判断のたびに取り替えない。矢印が4本あっても、構成された判断機構を一回の判断で一つ使う。すべての機構は同じ `DecisionInput` を受け、同じ `ChoiceDraft` を返す。主観的な予測器や小さなルール群はさらに内部へ分けられる。人間の入力はその人物の判断を代行する操作であり、人物の人格状態を消去しない。どの機構を使うかという実装設定は、人物自身の意思決定とは別に版管理する。
 
 ```ts
 type CatalogSliceV1 = {
@@ -278,9 +285,23 @@ type CatalogSliceV1 = {
     label: string; description: string; // 表示・LLM用、真偽の根拠ではない
   }>;
 };
+type PersonalityStateV1 = {
+  id: Id; personId: PersonId; revision: number;
+  dispositions: {
+    cultureIds: string[]; valueWeights: Record<string, number>;
+    tendencyWeights: Record<string, number>;
+  };
+  personalMemoryRefs: Id[]; // 本人が経験・受信した記録だけ
+  expectationRefs: Id[]; activeIntentionRefs: Id[];
+  mechanism: {
+    id: string; version: string;
+    privateStateSchemaId?: string; privateState?: JsonValue;
+  };
+};
 type DecisionInputV1 = {
   request: DecisionRequestV1;
   catalog: CatalogSliceV1;
+  personality: PersonalityStateV1;
 };
 type ChoiceDraftV1 = Pick<DecisionResponseV1, "choice" | "reasonRefs" | "rationale">;
 interface DecisionAdapterV1 {
@@ -288,11 +309,18 @@ interface DecisionAdapterV1 {
   readonly providerVersion: string;
   decide(input: DecisionInputV1): ChoiceDraftV1 | Promise<ChoiceDraftV1>;
 }
+interface PersonalityModelV1 {
+  readonly personalityId: Id;
+  readonly personId: PersonId;
+  decide(input: DecisionInputV1): ChoiceDraftV1 | Promise<ChoiceDraftV1>;
+}
 ```
 
-sim は `DecisionRequest` を作って保存し、外部ホストが `CatalogSlice` とアダプターを接続する。`catalog.version` は `request.catalogVersion` と一致させる。アダプターの非同期性を sim に持ち込まない。ホストは `ChoiceDraft` を検証し、`source`・`receivedAt` を刻印して `DecisionResponse` にする。期限までに応答がなければ、同じ入力を使う通常ルールへ切り替える。プレイヤー操作もこの入口を通し、UIの自由入力が直接台帳や世界状態を変えない。
+`PersonalityState` は人物IDに一対一で対応し、判断のたびに新規作成しない。持続する価値傾向、文化的傾向、個人の経験参照と機構の版付き状態を保存する。役職・空腹・現在地のような可変の状況は `DecisionRequest.view` から読み、人格そのものと混同しない。既存の `Person` にある文化・価値・記憶・信用を最初の状態へ対応付け、同じ値を別々の台帳で管理しない。実装は共有ルールや共有NNを多数の人物で再利用してよいが、各人物の `PersonalityState` と履歴は固有である。`PersonalityModel` はその個人の持続する判断主体、`DecisionAdapter` は内部で使う判断機構という大小の境界である。機構を更新・交代しても人格IDは変えず、明示的な移行と版記録を要する。[Generative Agents](https://arxiv.org/abs/2304.03442) の記憶・経験・計画の接続と、[BDI原論文](https://cdn.aaai.org/ICMAS/1995/ICMAS95-042.pdf) の持続する信念・望み・意図の区別を参考にする。これらの論文が本作の人格表現を直接保証するという意味ではない。
 
-| アダプター | 同じ入力からの内部表現 | 出力 |
+sim は `DecisionRequest` と人格状態を保存し、ホストが当人の `PersonalityModel` を復元して `CatalogSlice` と接続する。`request.actorId`・`personalityId`・`personalityRevision` は保存状態と一致し、`catalog.version` は `request.catalogVersion` と一致しなければならない。`DecisionRequest.view.actor` の文化・価値は、同じ人格状態からの投影と照合する。人格の改訂番号は本人に届いた経験や採用した意図など、人格状態が実際に変わった時だけ進める。機構固有の `privateState` があればSchemaと版を付け、本人が知覚していない世界の真実を保存しない。アダプターの非同期性を sim に持ち込まない。ホストは `ChoiceDraft` を検証し、`source`・`receivedAt` を刻印して `DecisionResponse` にする。期限までに応答がなければ、その人物の状態を保ったまま既定のルール機構で選ぶ。プレイヤー操作もこの入口を通し、UIの自由入力が直接台帳や世界状態を変えない。
+
+| 人格内の判断機構 | 同じ入力からの内部表現 | 出力 |
 |---|---|---|
 | ルール | 型付き条件と動機ごとの寄与値 | 候補IDまたは制約付きテンプレート |
 | 小型NN | 版付き特徴抽出。可変長の人物・候補は集合/関係として表現可能 | 候補スコアから選んだID |
@@ -354,7 +382,7 @@ interface ImpactEstimatorV1 {
 
 ### 4.3 個人の期待と、選択器の実装自由度
 
-**共通インターフェースは予測の有無を決めない。** `DecisionAdapterV1.decide(DecisionInputV1)` は同じ入力から `ChoiceDraftV1` を返すだけである。単純なルール、習慣、候補の結果予測、NN、LLM、人間の判断は、アダプターの内部で使える方法である。`goal/taskResponse/plan/act` は問いの種類であり、単純さや熟慮の深さを指定しない。どのアダプターを人物に割り当てるかもホスト側の版付き設定で決め、採用したプロバイダーIDと版を記録する。モデル選択と人物自身の意思決定を混同しない。
+**共通インターフェースは予測の有無を決めない。** `PersonalityModelV1.decide(DecisionInputV1)` は同じ入力から `ChoiceDraftV1` を返す。単純なルール、習慣、候補の結果予測、NN、LLM、人間の判断は、その人格の `DecisionAdapter` が内部で使える方法である。`goal/taskResponse/plan/act` は問いの種類であり、単純さや熟慮の深さを指定しない。内部機構は人格の版付き設定に属し、判断のたびに別人格を選ぶのではない。採用した機構IDと版も記録する。
 
 多くの市民には、最初は役職・場所・時間・把握した例外に応じたルールを使える。「畑で働く」「道を進む」などは、パターンが一つの候補を選ぶだけでよい。そのルールが複雑な場面で自分の内部予測器を呼ぶ実装も可能だが、これを全アダプターの義務にはしない。[Dawら 2011](https://pubmed.ncbi.nlm.nih.gov/21435563/) と [Cushman & Morris 2015](https://pmc.ncbi.nlm.nih.gov/articles/PMC4653221/) は、習慣的制御と将来の結果を見込む制御の区別を考える参考になる。本作が人間の神経過程を再現しているという主張ではない。速い手掛かりによる判断については [Gigerenzer & Goldstein 1996](https://web.mit.edu/curhan/www/docs/Articles/biases/Gigerenzer_Goldstein_Reasoning%20Fast%20and%20Frugal.pdf) も参考にする。
 
@@ -377,13 +405,14 @@ interface SubjectiveForecasterV1 {
 }
 type DecisionTraceV1 = {
   requestId: Id; actorId: PersonId;
+  personalityId: Id; personalityRevision: number;
   providerId: string; providerVersion: string;
   chosenOptionId?: Id; causeRefs: Id[];
   methodRef?: string; forecastRefs?: Id[]; // 説明資料は任意
 };
 ```
 
-`SubjectiveForecaster` は使うモデルだけが持つ**任意の内部ポート**であり、`DecisionInput/ChoiceDraft` の必須項目ではない。すべての選択にはプロバイダー・選んだ候補・原因を記録し、予測したモデルだけ予測根拠を追加する。ルールのパターンIDも `methodRef` として追える。行動はどの方法で選ばれても同じ `ActionAttempt → Event` を通る。
+`SubjectiveForecaster` は使う人格モデルだけが持つ**任意の内部ポート**であり、`DecisionInput/ChoiceDraft` の必須項目ではない。すべての選択には人格ID・機構・選んだ候補・原因を記録し、予測したモデルだけ予測根拠を追加する。ルールのパターンIDも `methodRef` として追える。行動はどの方法で選ばれても同じ `ActionAttempt → Event` を通る。
 
 予測がある場合も、それは本人の主観である。経験、伝聞の送り手への信用、文化的な事前期待、願望による補正を分けて追えるようにする。文化が「何を良いと感じるか」という**選好**へ作用する場合と、「相手は協力するはずだ」という**期待**へ作用する場合を区別する。損失を強く嫌うことと損失の発生を高く見積もることも別である。[Kahneman & Tversky 1979](https://www.jstor.org/stable/1914185) は利得・損失の評価の参考になる。願望に沿う情報を信じやすい場合があるという実験結果は [Tappinら 2017](https://pmc.ncbi.nlm.nih.gov/articles/PMC5536309/) にあるが、全人物へ一律の「楽観バイアス」を与える根拠にはしない。
 
@@ -399,7 +428,7 @@ type DecisionTraceV1 = {
 
 ## 6. A・B・Cと将来の学習
 
-Aでは `MotiveResolver` は単純なルール、`TaskPlanner` は固定手順、`DecisionProvider` は現行の評価式を包む。Bでは長期意図、条件付き対人約束、役職義務、委任・再交渉を増やす。Cでは `DecisionProvider` や `OptionProvider` にNN/LLMを接続する。いずれも外側の交換契約と sim の実行権限は同じ。Cでも自然文による任意の世界効果は禁止し、未知の行動は型検証で拒否する。
+Aでは `MotiveResolver` は単純なルール、`TaskPlanner` は固定手順、`PersonalityModel` の内部機構は現行の評価式を包む。Bでは長期意図、条件付き対人約束、役職義務、委任・再交渉を増やす。Cでは人格の持続状態を保ったまま内部機構や `OptionProvider` にNN/LLMを接続する。いずれも外側の交換契約と sim の実行権限は同じ。Cでも自然文による任意の世界効果は禁止し、未知の行動は型検証で拒否する。
 
 小型NN用には `DecisionRequest` から数値特徴を作る `FeatureEncoder(version)` と候補マスクを別途版管理する。共有モデルが最大N候補を採点して `select` を返す。候補マスクは**本人に見える条件**だけで作る。世界の秘密から作った真の可否をNNへ漏らさない。特徴の意味と出力語彙を版管理すれば、ルールの教師データや別モデルとの比較に使える。模倣学習では自分の判断が後続の観測分布を変える点に注意する。[Ross, Gordon & Bagnell 2011](https://proceedings.mlr.press/v15/ross11a)。LLMは構造化出力のアダプターであり、人物の認識と行動カタログ以外にアクセスしない。
 
@@ -419,12 +448,15 @@ Aでは `MotiveResolver` は単純なルール、`TaskPlanner` は固定手順�
 12. 文化・役職・行動カタログの版不一致、未知の述語、未知の候補、遅着を拒否し、同じ入力を使ったルールフォールバックと原因Eventが再現する。
 13. 同じ `DecisionInput` に対し、予測器を持たない市民ルールと、主観的予測を持つモデルの双方が有効な `ChoiceDraft` を返す。予測器がないことを契約違反にしない。
 14. 未払いの世界Eventだけでは、まだ知らない農民の期待・信用・選択は変わらない。本人に報告が届いてからだけ更新し、期待と観測結果の因果参照を追える。
+15. 同じ人物が役職変更・数日の経験・プレイヤー代行を経ても人格IDを保つ。人格状態の版が古い応答は拒否され、個人の価値・期待・記憶の変化は保存再開後も続く。
+16. 二人が同じルール実装やNN重みを共有しても、異なる人格状態から同じ依頼に異なる応答を返せる。機構の更新は明示的な移行と版記録を伴い、seed・保存状態・採用応答からの再現性を保つ。
 
 社会シミュレーションとして使う前には、モデルの目的・過程・実験条件・評価パターンを記述する。[ODD 2020](https://www.jasss.org/23/2/7.html)。このインターフェース自体が社会の妥当性を保証するわけではない。
 
 ## 8. 既存コードとの対応と版管理
 
 - `ActorObservation` → `PersonalViewV1` へ拡張。既存の君主表示には投影アダプターを置く。個人認識を実装せずにWorldを全員へ渡す移行はしない。
+- 既存 `Person` の文化・価値・記憶と、新設する期待・意図を、人物IDに一対一の `PersonalityStateV1` の論理的な所有物として整理する。移行時に二重台帳を作らず、人格ID・状態改訂・内部機構の版を保存する。
 - `Planner.plan(observation): Action[]` → `DecisionAdapter`。現行AIを先に移し、同じリクエストで選択した記録を比較する。
 - `Command` はプレイヤーの指示とモデルの判断結果を取り込む入口として残し、最終的な人物Action・Task・Eventと区別する。各Commandを強制的な直接効果へしない。
 - `Message`、`Audience`、`PromiseContract` は一度に消さず、配送/面談のTaskとSocialCommitmentへ段階的に対応付ける。古いセーブは明示的な移行関数で読む。
