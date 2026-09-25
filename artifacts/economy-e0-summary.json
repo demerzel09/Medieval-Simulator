@@ -1,0 +1,341 @@
+{
+  "formatVersion": 1,
+  "scenarioId": "pass_and_harvest",
+  "engineVersion": "0.2.0",
+  "contentHash": "d623749e",
+  "periodDays": 90,
+  "cases": [
+    {
+      "seed": 240924,
+      "path": "idle",
+      "finalWorldHash": "196a22c8",
+      "outcome": "defeat",
+      "day": 90,
+      "population": 1000,
+      "alive": 1000,
+      "cumulativeProduced": {
+        "money": 0,
+        "food": 99195,
+        "wood": 17314,
+        "equipment": 8657
+      },
+      "cumulativeConsumed": {
+        "money": 0,
+        "food": 83820,
+        "wood": 17314,
+        "equipment": 0
+      },
+      "sharedWorkEnd": {
+        "a": {
+          "money": 15728,
+          "food": 14756,
+          "wood": 0,
+          "equipment": 5400
+        },
+        "b": {
+          "money": 10480,
+          "food": 8595,
+          "wood": 0,
+          "equipment": 3257
+        }
+      },
+      "treasuryEnd": {
+        "money": 20405,
+        "food": 3920,
+        "wood": 2000,
+        "equipment": 89
+      },
+      "personalAccountsEnd": {
+        "money": 33050,
+        "food": 0,
+        "wood": 0,
+        "equipment": 21
+      },
+      "householdsEnd": {
+        "money": 19075,
+        "food": 104,
+        "hungryCivilianMembers": 69,
+        "withHungryCivilian": 21
+      },
+      "days31to90": {
+        "foodProduced": 66060,
+        "foodConsumed": 55135,
+        "foodWorkToHouseholds": 54955,
+        "moneyHouseholdsToWork": 109910,
+        "equipmentProduced": 5657,
+        "equipmentConsumed": 0,
+        "daysWithHungryAlive": 60,
+        "hungryMilitaryActivityPersonDays": 4915,
+        "hungryNonMilitaryActivityPersonDays": 0,
+        "unpaidPersonDaysReported": 0
+      }
+    },
+    {
+      "seed": 42,
+      "path": "idle",
+      "finalWorldHash": "0fca6069",
+      "outcome": "defeat",
+      "day": 90,
+      "population": 1000,
+      "alive": 1000,
+      "cumulativeProduced": {
+        "money": 0,
+        "food": 100233,
+        "wood": 16868,
+        "equipment": 8434
+      },
+      "cumulativeConsumed": {
+        "money": 0,
+        "food": 83820,
+        "wood": 16868,
+        "equipment": 0
+      },
+      "sharedWorkEnd": {
+        "a": {
+          "money": 15712,
+          "food": 15304,
+          "wood": 0,
+          "equipment": 5220
+        },
+        "b": {
+          "money": 10464,
+          "food": 9101,
+          "wood": 0,
+          "equipment": 3214
+        }
+      },
+      "treasuryEnd": {
+        "money": 20405,
+        "food": 3920,
+        "wood": 2000,
+        "equipment": 89
+      },
+      "personalAccountsEnd": {
+        "money": 33272,
+        "food": 0,
+        "wood": 0,
+        "equipment": 21
+      },
+      "householdsEnd": {
+        "money": 18885,
+        "food": 88,
+        "hungryCivilianMembers": 69,
+        "withHungryCivilian": 22
+      },
+      "days31to90": {
+        "foodProduced": 66780,
+        "foodConsumed": 55135,
+        "foodWorkToHouseholds": 54955,
+        "moneyHouseholdsToWork": 109910,
+        "equipmentProduced": 5540,
+        "equipmentConsumed": 0,
+        "daysWithHungryAlive": 60,
+        "hungryMilitaryActivityPersonDays": 4915,
+        "hungryNonMilitaryActivityPersonDays": 0,
+        "unpaidPersonDaysReported": 0
+      }
+    },
+    {
+      "seed": 71,
+      "path": "idle",
+      "finalWorldHash": "9c129ae7",
+      "outcome": "defeat",
+      "day": 90,
+      "population": 1000,
+      "alive": 1000,
+      "cumulativeProduced": {
+        "money": 0,
+        "food": 99030,
+        "wood": 17492,
+        "equipment": 8726
+      },
+      "cumulativeConsumed": {
+        "money": 0,
+        "food": 83820,
+        "wood": 17452,
+        "equipment": 0
+      },
+      "sharedWorkEnd": {
+        "a": {
+          "money": 15728,
+          "food": 14756,
+          "wood": 0,
+          "equipment": 5400
+        },
+        "b": {
+          "money": 10480,
+          "food": 8430,
+          "wood": 40,
+          "equipment": 3326
+        }
+      },
+      "treasuryEnd": {
+        "money": 20405,
+        "food": 3920,
+        "wood": 2000,
+        "equipment": 89
+      },
+      "personalAccountsEnd": {
+        "money": 33106,
+        "food": 0,
+        "wood": 0,
+        "equipment": 21
+      },
+      "householdsEnd": {
+        "money": 19019,
+        "food": 104,
+        "hungryCivilianMembers": 69,
+        "withHungryCivilian": 21
+      },
+      "days31to90": {
+        "foodProduced": 65895,
+        "foodConsumed": 55135,
+        "foodWorkToHouseholds": 54955,
+        "moneyHouseholdsToWork": 109910,
+        "equipmentProduced": 5726,
+        "equipmentConsumed": 0,
+        "daysWithHungryAlive": 60,
+        "hungryMilitaryActivityPersonDays": 4915,
+        "hungryNonMilitaryActivityPersonDays": 0,
+        "unpaidPersonDaysReported": 0
+      }
+    },
+    {
+      "seed": 240924,
+      "path": "diplomacy",
+      "finalWorldHash": "f7a1dca6",
+      "outcome": "victory",
+      "day": 90,
+      "population": 1000,
+      "alive": 1000,
+      "cumulativeProduced": {
+        "money": 0,
+        "food": 99195,
+        "wood": 17510,
+        "equipment": 8755
+      },
+      "cumulativeConsumed": {
+        "money": 0,
+        "food": 84030,
+        "wood": 17510,
+        "equipment": 0
+      },
+      "sharedWorkEnd": {
+        "a": {
+          "money": 15728,
+          "food": 14756,
+          "wood": 0,
+          "equipment": 5400
+        },
+        "b": {
+          "money": 10480,
+          "food": 8385,
+          "wood": 0,
+          "equipment": 3355
+        }
+      },
+      "treasuryEnd": {
+        "money": 21205,
+        "food": 3920,
+        "wood": 2000,
+        "equipment": 89
+      },
+      "personalAccountsEnd": {
+        "money": 32620,
+        "food": 0,
+        "wood": 0,
+        "equipment": 21
+      },
+      "householdsEnd": {
+        "money": 18685,
+        "food": 104,
+        "hungryCivilianMembers": 69,
+        "withHungryCivilian": 21
+      },
+      "days31to90": {
+        "foodProduced": 66060,
+        "foodConsumed": 55345,
+        "foodWorkToHouseholds": 55165,
+        "moneyHouseholdsToWork": 110330,
+        "equipmentProduced": 5755,
+        "equipmentConsumed": 0,
+        "daysWithHungryAlive": 60,
+        "hungryMilitaryActivityPersonDays": 4705,
+        "hungryNonMilitaryActivityPersonDays": 0,
+        "unpaidPersonDaysReported": 0
+      }
+    },
+    {
+      "seed": 240924,
+      "path": "military",
+      "finalWorldHash": "bb7b2ab0",
+      "outcome": "victory",
+      "day": 90,
+      "population": 1000,
+      "alive": 991,
+      "cumulativeProduced": {
+        "money": 0,
+        "food": 100440,
+        "wood": 16380,
+        "equipment": 8190
+      },
+      "cumulativeConsumed": {
+        "money": 0,
+        "food": 84522,
+        "wood": 16380,
+        "equipment": 0
+      },
+      "sharedWorkEnd": {
+        "a": {
+          "money": 15760,
+          "food": 16540,
+          "wood": 0,
+          "equipment": 4590
+        },
+        "b": {
+          "money": 10480,
+          "food": 8880,
+          "wood": 0,
+          "equipment": 3600
+        }
+      },
+      "treasuryEnd": {
+        "money": 22408,
+        "food": 2378,
+        "wood": 2000,
+        "equipment": 65
+      },
+      "personalAccountsEnd": {
+        "money": 31627,
+        "food": 0,
+        "wood": 0,
+        "equipment": 45
+      },
+      "householdsEnd": {
+        "money": 16603,
+        "food": 120,
+        "hungryCivilianMembers": 36,
+        "withHungryCivilian": 13
+      },
+      "days31to90": {
+        "foodProduced": 66960,
+        "foodConsumed": 55174,
+        "foodWorkToHouseholds": 54600,
+        "moneyHouseholdsToWork": 109200,
+        "equipmentProduced": 5460,
+        "equipmentConsumed": 0,
+        "daysWithHungryAlive": 60,
+        "hungryMilitaryActivityPersonDays": 4286,
+        "hungryNonMilitaryActivityPersonDays": 0,
+        "unpaidPersonDaysReported": 0
+      }
+    }
+  ],
+  "limitations": [
+    "Job headcount and Activity(work) are labels, not measured work time.",
+    "Account stocks have no physical location.",
+    "Economy ledger flows cover dailyEconomy only; account snapshots cover all transfers.",
+    "Unpaid reports are daily shortfalls, not a persisted debt ledger.",
+    "Day 90 demobilization follows the economy event, so end-of-day military status differs from the activity/feeding cohort."
+  ]
+}

@@ -76,13 +76,13 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 動機・行動・社会的約束の共通化に関する[設計調査](docs/RESEARCH_MOTIVATION_ACTION.md)を踏まえ、A〜Cで共有する[人格の認知・行動インターフェースv2](docs/AGENT_INTERFACES_v2.md)を検討しています。文化と本人が知る状況による認識、動機づけ、判断から、[データ駆動のルーティン](docs/DATA_DRIVEN_ROUTINES.md)による複数人の仕事と実行までを設計しています。ルール・NN・LLM・人間は各ブロックの実装方法です。これは設計段階で、現行のゲームコードへの移行は未着手です。
 
-次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。現行の国別共同市場を、実在の農民・運搬人・売り手・買物係と、所在地・所有権・支払いのある食料流通から検証します。E0〜E3は計画中で、現行ゲームに実装された機能ではありません。
+次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。現行の国別共同市場を、実在の農民・運搬人・売り手・買物係と、所在地・所有権・支払いのある食料流通から検証します。E0の現行経済計測は完了し、E1〜E3の新経済は計画中で、現行ゲームに実装された機能ではありません。
 
-[実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)に、E1前に確定する在庫・取引・時間・伝達・経済Task・旧処理との切替、E2前に数表で検証する家計と事業の資金循環をまとめました。E0の現行経済計測には着手できます。
+[実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)に、E1前に確定する在庫・取引・時間・伝達・経済Task・旧処理との切替、E2前に数表で検証する家計と事業の資金循環をまとめました。[E0の現行経済90日計測](docs/ECONOMY_E0_BASELINE.md)は実施済みで、日別・世帯別の詳細と要約を保存しています。
 
 ## 次の作業
 
-1. [経済閉路の設計](docs/ECONOMY_LOOP_DESIGN.md)のE0で現行90日の経済基準値を記録し、E1の食料流通を小集落で検証する。
+1. [E0の基準](docs/ECONOMY_E0_BASELINE.md)を踏まえ、[実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)のE1前契約を確定してから食料流通を小集落で検証する。
 2. E2の実働・所得、E3の木材/装備と公職・軍への接続へ進み、既存90日ゲームの回帰も確認する。
 3. [人格インターフェースv2](docs/AGENT_INTERFACES_v2.md)の契約テストを準備し、経済Taskと書記・伝令・面談へ共通の実行境界を適用する。
 4. [人間試遊の記録票](docs/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。試遊結果と[STATUS.md](docs/STATUS.md)の未実装事項を見直し、M3の正式受入後にM4を検討する。
