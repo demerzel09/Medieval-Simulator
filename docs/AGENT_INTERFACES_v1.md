@@ -236,7 +236,37 @@ type ActionOutcomeV1 = {
 
 ### 4.1 判断器の共通入口
 
-`DecisionProvider` は人物の属性を数十個の引数で受けない。実装上の入口は次の形にする。`CatalogSlice` は版付きの**静的**定義から、そのリクエストに現れた文化・役職・規範・条件・行動だけを切り出す。説明文は表示用で、効果判定や隠れた世界状態を含めない。文化IDだけから性格を決めつけず、個人の `valueWeights`、経験と現在の動機を併せて渡す。
+`DecisionAdapter` は人物の属性を数十個の引数で受けない。実装上の入口は次の形にする。`CatalogSlice` は版付きの**静的**定義から、そのリクエストに現れた文化・役職・規範・条件・行動だけを切り出す。説明文は表示用で、効果判定や隠れた世界状態を含めない。文化IDだけから性格を決めつけず、個人の `valueWeights`、経験と現在の動機を併せて渡す。
+
+```mermaid
+flowchart LR
+  req["DecisionRequest<br/>本人の認識・動機・候補・期待"] --> input["DecisionInput"]
+  catalog["CatalogSlice<br/>版付きの静的な語彙"] --> input
+  input --> selection{"ホストが使用モデルを選択<br/>一回の判断につき一つ"}
+  assignment["モデル割当設定<br/>人物・役割など"] --> selection
+
+  subgraph adapters["交換可能な DecisionAdapter"]
+    direction TB
+    rule["Rule<br/>パターン／必要なら評価"]
+    nn["NN<br/>特徴抽出・候補採点"]
+    llm["LLM<br/>文脈を投影・型付き出力"]
+    human["Human<br/>候補をUIで選択"]
+  end
+
+  selection --> rule
+  selection --> nn
+  selection --> llm
+  selection --> human
+  rule --> draft["ChoiceDraft<br/>選択・根拠"]
+  nn --> draft
+  llm --> draft
+  human --> draft
+  draft --> gateway["DecisionGateway<br/>検証・時刻とモデル版を記録"]
+  gateway --> response["DecisionResponse"]
+  response --> sim["sim<br/>実行時に真実と資産を再検証"]
+```
+
+矢印が4本あっても、**一回の判断で呼ぶアダプターは一つ**。全アダプターは同じ `DecisionInput` を受け、同じ `ChoiceDraft` を返す。主観的な予測器や習慣ルールは各アダプターの内部に置ける任意の方法であり、図の共通境界には含めない。ホストのモデル割当は人物自身の行動選択ではなく、`DecisionRequest` の意味を変えない。
 
 ```ts
 type CatalogSliceV1 = {
