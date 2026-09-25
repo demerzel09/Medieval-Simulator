@@ -74,6 +74,8 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 設計原本は [DESIGN.md](docs/DESIGN.md)、出発点は [concept-original.md](docs/concept-original.md)。次の受入作業は [PLAYTEST.md](docs/PLAYTEST.md) です。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
 
+動機・行動・社会的約束の共通化に関する研究と設計候補は [設計調査（検討稿）](docs/RESEARCH_MOTIVATION_ACTION.md) にまとめています。実装方針は未決定です。
+
 ## 次の作業
 
 1. [人間試遊の記録票](docs/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。
