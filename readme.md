@@ -74,10 +74,11 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 設計原本は [DESIGN.md](docs/DESIGN.md)、出発点は [concept-original.md](docs/concept-original.md)。次の受入作業は [PLAYTEST.md](docs/PLAYTEST.md) です。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
 
-動機・行動・社会的約束の共通化に関する研究と設計候補は [設計調査（検討稿）](docs/RESEARCH_MOTIVATION_ACTION.md) にまとめています。実装方針は未決定です。
+動機・行動・社会的約束の共通化に関する[設計調査](docs/RESEARCH_MOTIVATION_ACTION.md)を踏まえ、A〜Cで共有する[人物判断インターフェースv1](docs/AGENT_INTERFACES_v1.md)を定義しました。人物が知る情報と判断提案、仕事、実際の行動結果を分けます。これは設計段階で、現行のゲームコードへの移行は未着手です。
 
 ## 次の作業
 
 1. [人間試遊の記録票](docs/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。
 2. [STATUS.md](docs/STATUS.md)の未実装項目と試遊で見つかった問題を優先して修正する。
 3. M3の正式受入を確認してから、M4の政治運動・文化変化へ進む。
+4. 人物判断インターフェースv1の契約テストを作り、既存の書記・伝令・面談から共通のTask/Action実行経路へ段階移行する。
