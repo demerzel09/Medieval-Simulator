@@ -52,6 +52,11 @@ type BeliefViewV1 = {
   sourceId: Id;
   confidence: number;
 };
+type ExpectationViewV1 = {
+  id: Id; subjectRef?: Id; contextTag: string; anticipated: ConditionRefV1;
+  subjectiveLikelihood: number; confidence: number;
+  horizonMinutes: number; updatedAt: Minute; evidenceIds: Id[];
+};
 type KnownPersonV1 = {
   personId: PersonId; knownRoles: string[];
   believedLocationId?: Id; trust?: number; evidenceIds: Id[];
@@ -76,6 +81,7 @@ type PersonalViewV1 = {
            cultureIds: string[]; valueWeights: Record<string, number>;
            health: number; hunger: number; fatigue: number };
   beliefs: BeliefViewV1[];
+  expectations: ExpectationViewV1[]; // 未来の見込み。観測済みの事実ではない
   knownPeople: KnownPersonV1[];
   knownTasks: KnownTaskV1[];
   knownCommitments: KnownCommitmentV1[]; // 世界の全約束ではない
@@ -220,7 +226,8 @@ type ActionOutcomeV1 = {
 | `PerceptionProjector` | WorldのEvent＋知覚経路 → PersonalView/Belief | witnessと伝令到着 | 噂・情報の歪み。ただし真実を直接配らない |
 | `MotiveResolver` | PersonalView＋本人の長期状態 → MotiveView[] | 空腹、家族、文化、役職、約束を規則評価 | 学習した重み。ただし理由の出所を維持 |
 | `OptionProvider` | 観測＋動機＋意図＋Task → DecisionOption[] | 権限と既知情報から有限候補 | 新しい計画テンプレート、LLMの型付き組合せ |
-| `DecisionAdapter`＋Gateway | DecisionInput → ChoiceDraft → DecisionResponse | ルール採点と受理記録 | NNの候補採点、LLM、人間のUI |
+| `DecisionAdapter`＋Gateway | DecisionInput → ChoiceDraft → DecisionResponse | ルールによる選択と受理記録 | NNの候補採点、LLM、人間のUI |
+| `ExperienceUpdater`（任意） | 本人に届いた結果＋過去の期待 → 期待/信用の更新 | 観測された一致・不一致を記録 | 学習した更新式。ただし未到着の結果は使わない |
 | `TaskPlanner` | 選ばれた高位Task → 有限の子Task | 招待・配送・面談など定義済み分解 | 制約付き計画探索 |
 | `ActionExecutor` | ActionAttempt＋World → ActionOutcome＋Event | sim内の動詞別実装 | 効果の追加は検証済みコードだけ。モデル交換対象にしない |
 | `CommitmentReducer` | Commitment＋原因Event → 新状態 | 期限と履行証拠を規則判定 | 新しい約束種類。LLMに真偽判定させない |
@@ -315,6 +322,45 @@ interface ImpactEstimatorV1 {
 
 **例:** 書記が君主から招待状作成を頼まれたとき、`taskResponse` の一問だけが起きる。家族の病気、給金、君主への信用、職務上の責務は別々の `MotiveView` として残り、「受ける」「延期を願う」「拒む」への予想影響を評価する。書記が受けた後の `act` では書く・移動する・休むなど現在の候補へ進む。君主の文化や書記の職業を一つの巨大な条件分岐に連結しない。
 
+### 4.3 個人の期待と、選択器の実装自由度
+
+**共通インターフェースは予測の有無を決めない。** `DecisionAdapterV1.decide(DecisionInputV1)` は同じ入力から `ChoiceDraftV1` を返すだけである。単純なルール、習慣、候補の結果予測、NN、LLM、人間の判断は、アダプターの内部で使える方法である。`goal/taskResponse/plan/act` は問いの種類であり、単純さや熟慮の深さを指定しない。どのアダプターを人物に割り当てるかもホスト側の版付き設定で決め、採用したプロバイダーIDと版を記録する。モデル選択と人物自身の意思決定を混同しない。
+
+多くの市民には、最初は役職・場所・時間・把握した例外に応じたルールを使える。「畑で働く」「道を進む」などは、パターンが一つの候補を選ぶだけでよい。そのルールが複雑な場面で自分の内部予測器を呼ぶ実装も可能だが、これを全アダプターの義務にはしない。[Dawら 2011](https://pubmed.ncbi.nlm.nih.gov/21435563/) と [Cushman & Morris 2015](https://pmc.ncbi.nlm.nih.gov/articles/PMC4653221/) は、習慣的制御と将来の結果を見込む制御の区別を考える参考になる。本作が人間の神経過程を再現しているという主張ではない。速い手掛かりによる判断については [Gigerenzer & Goldstein 1996](https://web.mit.edu/curhan/www/docs/Articles/biases/Gigerenzer_Goldstein_Reasoning%20Fast%20and%20Frugal.pdf) も参考にする。
+
+一方で、**期待は人物の認識の一種として共通入力に置く**。`BeliefView` は既に起きたことについての認識、`ExpectationView` はまだ起きていないことの本人の見込みである。仕事の報酬、伝令の到着、他者の協力などを本人は期待しうる。アダプターは期待を直接使っても、暗黙のパターン条件にしても、他の根拠を優先してもよい。必要な場合だけ、次の内部ポートで候補ごとの主観的予測を作る。
+
+```ts
+type SubjectiveForecastV1 = {
+  id: Id; optionId: Id; anticipated: ConditionRefV1;
+  subjectiveLikelihood: number; // 0..1。真の成功率ではない
+  confidence: number;            // 0..1。本人の情報の確かさ
+  horizonMinutes: number;
+  evidenceIds: Id[]; expectationIds: Id[];
+  adjustments: Array<{
+    kind: "experience" | "sourceTrust" | "culturalPrior" | "motivated";
+    amount: number; basisRefs: Id[];
+  }>;
+};
+interface SubjectiveForecasterV1 {
+  forecast(input: DecisionInputV1): SubjectiveForecastV1[];
+}
+type DecisionTraceV1 = {
+  requestId: Id; actorId: PersonId;
+  providerId: string; providerVersion: string;
+  chosenOptionId?: Id; causeRefs: Id[];
+  methodRef?: string; forecastRefs?: Id[]; // 説明資料は任意
+};
+```
+
+`SubjectiveForecaster` は使うモデルだけが持つ**任意の内部ポート**であり、`DecisionInput/ChoiceDraft` の必須項目ではない。すべての選択にはプロバイダー・選んだ候補・原因を記録し、予測したモデルだけ予測根拠を追加する。ルールのパターンIDも `methodRef` として追える。行動はどの方法で選ばれても同じ `ActionAttempt → Event` を通る。
+
+予測がある場合も、それは本人の主観である。経験、伝聞の送り手への信用、文化的な事前期待、願望による補正を分けて追えるようにする。文化が「何を良いと感じるか」という**選好**へ作用する場合と、「相手は協力するはずだ」という**期待**へ作用する場合を区別する。損失を強く嫌うことと損失の発生を高く見積もることも別である。[Kahneman & Tversky 1979](https://www.jstor.org/stable/1914185) は利得・損失の評価の参考になる。願望に沿う情報を信じやすい場合があるという実験結果は [Tappinら 2017](https://pmc.ncbi.nlm.nih.gov/articles/PMC5536309/) にあるが、全人物へ一律の「楽観バイアス」を与える根拠にはしない。
+
+期待の更新は **真のEvent発生時ではなく、その人物が結果を知覚した時** に行う。過去の期待と結果のReport/Eventを因果参照で結び、本人の `ExpectationView` や相手への信用を更新する。結果が届かなければ期待はそのまま残る。重要な相手・仕事・危険についての期待だけを永続化し、一時的な予測は必要な場合のデバッグ記録に残す。信用に関する予測と送り手への信頼を別に更新する発想には[社会的助言の予測誤差の研究](https://pubmed.ncbi.nlm.nih.gov/28119508/)を参考にする。
+
+たとえば農民は平常日に単純なルールで「畑で働く」を選ぶ。給金の未払いを**本人が知った**後でも、その人物を担当するルールが「休む」へ切り替えるだけでよい。より高度なアダプターなら、「今日も払われる見込み」と「休めば家族の食事がどうなるか」を比較できる。いずれも同じ入力・出力契約を使い、君主へ未払い報告が届かなければ君主の認識は変わらない。
+
 ## 5. 二つの実行例
 
 **面談の呼び出し:** 君主の動機（家臣の意向を知る）→ 面談を求める選択 → 書記への作成依頼 → 書記の受任 → 文書作成Event → 伝令の受任・移動・配達Event → 対象者の観測と承諾/拒否 → 同行移動Event → 宮廷で面談Event。伝令不足、負傷、相手の移動、拒否で中断する。君主は報告や現地の目撃なしに遠隔の失敗を知れない。各人の行動は自分の動機とTaskに結び付く。
@@ -341,6 +387,8 @@ Aでは `MotiveResolver` は単純なルール、`TaskPlanner` は固定手順�
 10. 書記の価値傾向、依頼者への信用、家族の病気、役職責務を独立に変えるfixtureで、同じ招待状依頼への評価が変わる。たとえば信用・責務の上昇は受任側へ、家族の急病は延期側へ寄与し、寄与量と根拠を表示できる。文化差は規範に対応する候補で検査する。
 11. `scope` ごとに無関係な認識を省き、候補切り詰めは決定的で `viewCoverage` に現れる。省略した情報や未知の対象を「存在しない」と判断する規則を置かない。
 12. 文化・役職・行動カタログの版不一致、未知の述語、未知の候補、遅着を拒否し、同じ入力を使ったルールフォールバックと原因Eventが再現する。
+13. 同じ `DecisionInput` に対し、予測器を持たない市民ルールと、主観的予測を持つモデルの双方が有効な `ChoiceDraft` を返す。予測器がないことを契約違反にしない。
+14. 未払いの世界Eventだけでは、まだ知らない農民の期待・信用・選択は変わらない。本人に報告が届いてからだけ更新し、期待と観測結果の因果参照を追える。
 
 社会シミュレーションとして使う前には、モデルの目的・過程・実験条件・評価パターンを記述する。[ODD 2020](https://www.jasss.org/23/2/7.html)。このインターフェース自体が社会の妥当性を保証するわけではない。
 

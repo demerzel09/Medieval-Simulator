@@ -74,7 +74,7 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 設計原本は [DESIGN.md](docs/DESIGN.md)、出発点は [concept-original.md](docs/concept-original.md)。次の受入作業は [PLAYTEST.md](docs/PLAYTEST.md) です。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
 
-動機・行動・社会的約束の共通化に関する[設計調査](docs/RESEARCH_MOTIVATION_ACTION.md)を踏まえ、A〜Cで共有する[人物判断インターフェースv1](docs/AGENT_INTERFACES_v1.md)を定義しました。人物が知る情報と判断提案、仕事、実際の行動結果を分け、ルール・NN・LLM・人間に共通する段階別の判断入口も設計しています。これは設計段階で、現行のゲームコードへの移行は未着手です。
+動機・行動・社会的約束の共通化に関する[設計調査](docs/RESEARCH_MOTIVATION_ACTION.md)を踏まえ、A〜Cで共有する[人物判断インターフェースv1](docs/AGENT_INTERFACES_v1.md)を定義しました。人物が知る情報と判断提案、仕事、実際の行動結果を分け、ルール・NN・LLM・人間に共通する段階別の判断入口も設計しています。期待は個人の認識に含めますが、未来の予測を使うかどうかは判断モデルが選びます。これは設計段階で、現行のゲームコードへの移行は未着手です。
 
 ## 次の作業
 
