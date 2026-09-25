@@ -1,14 +1,14 @@
 # E1契約: 食料を人が運び、市場で受け渡す
 
-状態: **E1実装前の契約を固定**。現行ゲームコードへの接続、20人fixtureの実行、受入テスト、性能測定は未着手。[E0基準](ECONOMY_E0_BASELINE.md)と[実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)を受け、E1で必要な七項目を決める。価格形成・賃金循環・装備はE2以降の課題であり、この契約の達成結果に含めない。
+状態: **独立した20人fixtureの食料流通を実装・検証済み**。現行本編への接続、汎用ルーティン展開、人格v2、長期の資金循環、性能測定は未実装。[E0基準](ECONOMY_E0_BASELINE.md)と[実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)を受け、E1で必要な七項目を決めた。価格形成・賃金循環・装備はE2以降の課題であり、この契約の達成結果に含めない。
 
 ## 1. 在庫と通貨の正本
 
-E1の新方式では**食料ロットだけが食料の正本**。`FoodLot {id, ownerId, place, quantity, reserved, causeIds}`を世界に保存する。`place`は`{kind:"settlement", id}`または`{kind:"cargo", shipmentId}`。`ownerId`は事業または世帯のIDで、積載中も所有者が変わらない。ロットの分割には新IDと元ロットの原因IDを付け、合計量を変えない。`reserved`は`0..quantity`で、同じ1単位を二つの依頼に約束できない。
+E1の新方式では**食料ロットだけが食料の正本**。`FoodLot {id, ownerId, place, quantity, reserved, causeEventId}`を世界に保存する。`place`は`farm`、`market`、`cargo:<shipmentId>`の識別子。`ownerId`は事業または世帯のIDで、積載中も所有者が変わらない。ロットの分割には新IDと元ロットの原因IDを付け、合計量を変えない。`reserved`は`0..quantity`で、同じ1単位を二つの依頼に約束できない。
 
-通貨は既存の所有者別`accounts[id].money`を正本とする。`MoneyHold {id, accountId, amount, orderId}`は支払可能額から差し引く**拘束**で、通貨を別口座へ複製しない。受領時に同一のsim遷移で買主→事業へ通貨を移し、拘束を解除する。失敗・期限切れは拘束だけを解除する。E1では食料以外の`accounts`の財を変更しない。
+通貨は新世界の所有者別`wallets[id]`を正本とする。旧本編の`accounts[id].money`とは混用しない。`MoneyHold {id, accountId, amount, orderId}`は支払可能額から差し引く**拘束**で、通貨を別口座へ複製しない。受領時に同一のsim遷移で買主→事業へ通貨を移し、拘束を解除する。失敗・期限切れは拘束だけを解除する。
 
-E1用世界では全`accounts[id].food=0`にして、食料合計をロットから数える。保存則は`Σaccounts.money = initialMoney`、`Σlots.quantity = initialFood + producedFood - consumedFood - explicitLossFood`。市場や荷車の食料を重複加算しない。旧世界ではロットを持たず、従来どおり`accounts.food`を正本とする。**同一世界内で新旧の食料経路を混用しない**。旧ゲームの軍用`Shipment`や既存セーブをE1で推測変換しない。
+E1用世界は旧`accounts`を持たず、食料合計をロットから数える。保存則は`Σwallets = initialMoney`、`Σlots.quantity = initialFood + producedFood - consumedFood - explicitLossFood`。市場や荷車の食料を重複加算しない。旧世界ではロットを持たず、従来どおり`accounts.food`を正本とする。**同一世界内で新旧の食料経路を混用しない**。旧ゲームの軍用`Shipment`や既存セーブをE1で推測変換しない。
 
 ## 2. 輸送と購入を分けた状態機械
 
@@ -93,4 +93,10 @@ E1は**世界単位の排他的なモード**で作る。既存の「峠と収�
 4. F6が日2に欠勤: その日の生産は基準より3食減る。受渡しが不足した世帯と、残った市場在庫を追える。
 5. 同一世帯が同じ通貨と現物へ二つの注文を出す: 予約で二重清算を防ぎ、取消/期限切れなら拘束を解除する。
 
-この契約の値はE1の検証用仮決定であり、既存の本編世界を2km道路・協同事業に書き換える指示ではない。E1の実装受入までは[STATUS](STATUS.md)で未実装と記録する。
+この契約の値はE1の検証用仮決定であり、既存の本編世界を2km道路・協同事業に書き換える指示ではない。
+
+## 実装差分（2026-09-26）
+
+`packages/sim/local-economy.ts`の独立世界でロット・資金拘束・配送・購入・人物別Task・因果Event・保存再開を動かした。`npm run economy:e1 -- baseline`と三つの対照ケースで観察できる。`packages/content/economy-e1.json`は役割、係数、時刻、版付きcapabilityを定義し、読込時に矛盾を拒否する。基準3日で60食生産/消費、配送21/21/18、世帯から事業へ120通貨が移る。全員の食事EventとTask、購入と配送の原因を保存する。
+
+この初版の時刻相・役割展開・効果ハンドラはコードに固定されている。上記第5節の`roleSlots`・依存Step・`onUnavailable`を備えた共通ルーティンランナー、人格によるTaskAnswer、認識の配送状態はまだない。農場への依頼到着Eventは記録するが、農場責任者の独立した認識モデルと依頼変更による作業変更はない。人物の拠点は到着時に更新し、移動中の区間はTask時刻とShipment状態で表すが、人物別の経路オブジェクトはない。E1の「食料が実際に人を経て循環する」検証は満たしたが、第3〜5節の汎用契約を完了したという意味ではない。旧本編への切替は未接続で、専用のschemaVersion 2世界だけが動作する。

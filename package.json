@@ -11,6 +11,7 @@
     "sim": "tsx packages/tools/runner.ts",
     "bench": "tsx packages/tools/bench.ts",
     "economy:baseline": "tsx packages/tools/economy-baseline.ts",
+    "economy:e1": "tsx packages/tools/economy-e1.ts",
     "content:validate": "tsx packages/tools/validate.ts",
     "test:browser": "playwright test",
     "fixtures": "tsx packages/tools/combat-report.ts"

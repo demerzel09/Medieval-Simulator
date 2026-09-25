@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "village_food_loop",
+  "price": 2,
+  "foodPerPerson": 1,
+  "farmOutputPerShift": 3,
+  "farmersOnShift": [7, 7, 6],
+  "cartCapacity": 21,
+  "roadKm": 2,
+  "walkKmh": 4,
+  "cartKmh": 2,
+  "initialHouseholdMoney": 40,
+  "times": {
+    "orders": 300,
+    "notice": 315,
+    "assignment": 330,
+    "farmCommute": 330,
+    "farmArrive": 360,
+    "cartDepart": 360,
+    "cartFarmArrive": 420,
+    "farmEnd": 720,
+    "loadEnd": 750,
+    "cartMarketArrive": 810,
+    "unloadEnd": 840,
+    "marketEnd": 900,
+    "meal": 1080
+  },
+  "households": [
+    { "id": "H0", "farmers": ["F0", "F1"], "buyer": "B0", "other": ["D0", "D1"] },
+    { "id": "H1", "farmers": ["F2", "F3"], "buyer": "B1", "other": ["D2", "D3"] },
+    { "id": "H2", "farmers": ["F4", "F5"], "buyer": "B2", "other": ["S", "D4"] },
+    { "id": "H3", "farmers": ["F6"], "buyer": "B3", "other": ["C", "D5", "D6"] }
+  ],
+  "roles": { "seller": "S", "carrier": "C", "farmManager": "F0" },
+  "routines": [
+    { "id": "farm.shift", "version": 1, "trigger": "daily", "role": "farmer", "capability": "work_shift" },
+    { "id": "market.replenish", "version": 1, "trigger": "notice", "role": "carrier", "capability": "carry_food" },
+    { "id": "market.sell", "version": 1, "trigger": "stock_arrival", "role": "seller", "capability": "market_sale" },
+    { "id": "household.buy", "version": 1, "trigger": "daily", "role": "buyer", "capability": "buy_food" },
+    { "id": "life.eat", "version": 1, "trigger": "daily", "role": "all", "capability": "eat_food" }
+  ]
+}
