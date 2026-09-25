@@ -1,0 +1,6953 @@
+{
+  "seed": 240924,
+  "path": "diplomacy",
+  "day": 90,
+  "outcome": "victory",
+  "population": 1000,
+  "dead": 0,
+  "passOwner": "b",
+  "treaties": 1,
+  "battles": [],
+  "hash": "39863807",
+  "elapsedMs": 495,
+  "commands": [
+    {
+      "id": "command_1",
+      "actorId": "a_0000",
+      "issuedAt": 0,
+      "executeAt": 60,
+      "sequence": 0,
+      "action": {
+        "kind": "NEGOTIATE",
+        "amount": 3000,
+        "nonAggression": true,
+        "durationDays": 120
+      },
+      "origin": "player"
+    },
+    {
+      "id": "command_2",
+      "actorId": "b_0000",
+      "issuedAt": 1440,
+      "executeAt": 1500,
+      "sequence": 1,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_3",
+      "actorId": "b_0000",
+      "issuedAt": 10080,
+      "executeAt": 10140,
+      "sequence": 2,
+      "action": {
+        "kind": "RECRUIT",
+        "count": 5,
+        "purpose": "defense",
+        "termDays": 90,
+        "reward": 0
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_4",
+      "actorId": "b_0000",
+      "issuedAt": 18720,
+      "executeAt": 18780,
+      "sequence": 3,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_5",
+      "actorId": "b_0000",
+      "issuedAt": 20160,
+      "executeAt": 20220,
+      "sequence": 4,
+      "action": {
+        "kind": "RECRUIT",
+        "count": 5,
+        "purpose": "defense",
+        "termDays": 90,
+        "reward": 0
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_6",
+      "actorId": "b_0000",
+      "issuedAt": 21600,
+      "executeAt": 21660,
+      "sequence": 5,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_7",
+      "actorId": "b_0000",
+      "issuedAt": 24480,
+      "executeAt": 24540,
+      "sequence": 6,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_8",
+      "actorId": "b_0000",
+      "issuedAt": 27360,
+      "executeAt": 27420,
+      "sequence": 7,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_9",
+      "actorId": "b_0000",
+      "issuedAt": 30240,
+      "executeAt": 30300,
+      "sequence": 8,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_10",
+      "actorId": "b_0000",
+      "issuedAt": 33120,
+      "executeAt": 33180,
+      "sequence": 9,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_11",
+      "actorId": "b_0000",
+      "issuedAt": 36000,
+      "executeAt": 36060,
+      "sequence": 10,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_12",
+      "actorId": "b_0000",
+      "issuedAt": 38880,
+      "executeAt": 38940,
+      "sequence": 11,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_13",
+      "actorId": "b_0000",
+      "issuedAt": 40320,
+      "executeAt": 40380,
+      "sequence": 12,
+      "action": {
+        "kind": "RECRUIT",
+        "count": 5,
+        "purpose": "defense",
+        "termDays": 90,
+        "reward": 0
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_14",
+      "actorId": "b_0000",
+      "issuedAt": 41760,
+      "executeAt": 41820,
+      "sequence": 13,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_15",
+      "actorId": "b_0000",
+      "issuedAt": 44640,
+      "executeAt": 44700,
+      "sequence": 14,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_16",
+      "actorId": "b_0000",
+      "issuedAt": 47520,
+      "executeAt": 47580,
+      "sequence": 15,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_17",
+      "actorId": "b_0000",
+      "issuedAt": 50400,
+      "executeAt": 50460,
+      "sequence": 16,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_18",
+      "actorId": "b_0000",
+      "issuedAt": 53280,
+      "executeAt": 53340,
+      "sequence": 17,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_19",
+      "actorId": "b_0000",
+      "issuedAt": 56160,
+      "executeAt": 56220,
+      "sequence": 18,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_20",
+      "actorId": "b_0000",
+      "issuedAt": 59040,
+      "executeAt": 59100,
+      "sequence": 19,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_21",
+      "actorId": "b_0000",
+      "issuedAt": 60480,
+      "executeAt": 60540,
+      "sequence": 20,
+      "action": {
+        "kind": "RECRUIT",
+        "count": 5,
+        "purpose": "defense",
+        "termDays": 90,
+        "reward": 0
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_22",
+      "actorId": "b_0000",
+      "issuedAt": 61920,
+      "executeAt": 61980,
+      "sequence": 21,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_23",
+      "actorId": "b_0000",
+      "issuedAt": 64800,
+      "executeAt": 64860,
+      "sequence": 22,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_24",
+      "actorId": "b_0000",
+      "issuedAt": 67680,
+      "executeAt": 67740,
+      "sequence": 23,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_25",
+      "actorId": "b_0000",
+      "issuedAt": 70560,
+      "executeAt": 70620,
+      "sequence": 24,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_26",
+      "actorId": "b_0000",
+      "issuedAt": 73440,
+      "executeAt": 73500,
+      "sequence": 25,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_27",
+      "actorId": "b_0000",
+      "issuedAt": 76320,
+      "executeAt": 76380,
+      "sequence": 26,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_28",
+      "actorId": "b_0000",
+      "issuedAt": 79200,
+      "executeAt": 79260,
+      "sequence": 27,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_29",
+      "actorId": "b_0000",
+      "issuedAt": 82080,
+      "executeAt": 82140,
+      "sequence": 28,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_30",
+      "actorId": "b_0000",
+      "issuedAt": 84960,
+      "executeAt": 85020,
+      "sequence": 29,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_31",
+      "actorId": "b_0000",
+      "issuedAt": 87840,
+      "executeAt": 87900,
+      "sequence": 30,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_32",
+      "actorId": "b_0000",
+      "issuedAt": 90720,
+      "executeAt": 90780,
+      "sequence": 31,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_33",
+      "actorId": "b_0000",
+      "issuedAt": 93600,
+      "executeAt": 93660,
+      "sequence": 32,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_34",
+      "actorId": "b_0000",
+      "issuedAt": 96480,
+      "executeAt": 96540,
+      "sequence": 33,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_35",
+      "actorId": "b_0000",
+      "issuedAt": 99360,
+      "executeAt": 99420,
+      "sequence": 34,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_36",
+      "actorId": "b_0000",
+      "issuedAt": 102240,
+      "executeAt": 102300,
+      "sequence": 35,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_37",
+      "actorId": "b_0000",
+      "issuedAt": 105120,
+      "executeAt": 105180,
+      "sequence": 36,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_38",
+      "actorId": "b_0000",
+      "issuedAt": 108000,
+      "executeAt": 108060,
+      "sequence": 37,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_39",
+      "actorId": "b_0000",
+      "issuedAt": 110880,
+      "executeAt": 110940,
+      "sequence": 38,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_40",
+      "actorId": "b_0000",
+      "issuedAt": 113760,
+      "executeAt": 113820,
+      "sequence": 39,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_41",
+      "actorId": "b_0000",
+      "issuedAt": 116640,
+      "executeAt": 116700,
+      "sequence": 40,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_42",
+      "actorId": "b_0000",
+      "issuedAt": 119520,
+      "executeAt": 119580,
+      "sequence": 41,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_43",
+      "actorId": "b_0000",
+      "issuedAt": 122400,
+      "executeAt": 122460,
+      "sequence": 42,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_44",
+      "actorId": "b_0000",
+      "issuedAt": 125280,
+      "executeAt": 125340,
+      "sequence": 43,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    },
+    {
+      "id": "command_45",
+      "actorId": "b_0000",
+      "issuedAt": 128160,
+      "executeAt": 128220,
+      "sequence": 44,
+      "action": {
+        "kind": "ISSUE_ORDER",
+        "unitId": "unit_0000006",
+        "intent": "defend",
+        "destination": "pass",
+        "fallback": "enemy",
+        "retreatFood": 1
+      },
+      "origin": "ordinary_ai"
+    }
+  ],
+  "events": [
+    {
+      "id": "e_0000001",
+      "worldMinute": 0,
+      "kind": "start",
+      "text": "峠の商用通行権を90日目までに確保せよ。条約または占領が必要。",
+      "actorIds": [
+        "a_0000"
+      ],
+      "causes": [],
+      "data": {},
+      "witnesses": [
+        "a_0000"
+      ]
+    },
+    {
+      "id": "e_0000004",
+      "worldMinute": 0,
+      "kind": "recruit",
+      "text": "40人が防衛の軍籍に加入",
+      "actorIds": [
+        "a_0000"
+      ],
+      "causes": [
+        "e_0000001"
+      ],
+      "data": {
+        "count": 40
+      },
+      "witnesses": [
+        "a_0000"
+      ]
+    },
+    {
+      "id": "e_0000005",
+      "worldMinute": 0,
+      "kind": "start",
+      "text": "峠の商用通行権を90日目までに確保せよ。条約または占領が必要。",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {},
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0000008",
+      "worldMinute": 0,
+      "kind": "recruit",
+      "text": "30人が防衛の軍籍に加入",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [
+        "e_0000005"
+      ],
+      "data": {
+        "count": 30
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0000013",
+      "worldMinute": 60,
+      "kind": "command",
+      "text": "君主レオン：NEGOTIATE",
+      "actorIds": [
+        "a_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_1",
+        "action": {
+          "kind": "NEGOTIATE",
+          "amount": 3000,
+          "nonAggression": true,
+          "durationDays": 120
+        }
+      },
+      "witnesses": [
+        "a_0000"
+      ]
+    },
+    {
+      "id": "e_0000032",
+      "worldMinute": 960,
+      "kind": "diplomatic_answer",
+      "text": "ベル領主ラド：通行条約を受諾",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [
+        "e_0000013"
+      ],
+      "data": {
+        "score": 0.4642592592592593,
+        "materialGain": 0.7407407407407407,
+        "securityGain": 0.5,
+        "trust": 0.5,
+        "normFit": 0.8,
+        "militaryOpportunity": 0.6
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0000055",
+      "worldMinute": 1500,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_2",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0000057",
+      "worldMinute": 1501,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0000055"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0000068",
+      "worldMinute": 1860,
+      "kind": "treaty",
+      "text": "商用通行権を獲得。通行料3000、軍用通行は対象外。門衛へ通知中。",
+      "actorIds": [
+        "a_0000"
+      ],
+      "causes": [
+        "e_0000032"
+      ],
+      "data": {
+        "treaty": {
+          "id": "treaty_0000067",
+          "offerId": "offer_0000014",
+          "from": "a",
+          "to": "b",
+          "route": "pass",
+          "commercial": true,
+          "military": false,
+          "expiresAt": 172860,
+          "notifiedAt": 2100
+        }
+      },
+      "witnesses": [
+        "a_0000"
+      ]
+    },
+    {
+      "id": "e_0000077",
+      "worldMinute": 2221,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0000057"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0000057",
+          "reportedFood": 220
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0000525",
+      "worldMinute": 10140,
+      "kind": "command",
+      "text": "ベル領主ラド：RECRUIT",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_3",
+        "action": {
+          "kind": "RECRUIT",
+          "count": 5,
+          "purpose": "defense",
+          "termDays": 90,
+          "reward": 0
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0000526",
+      "worldMinute": 10140,
+      "kind": "recruit",
+      "text": "5人が防衛の軍籍に加入",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [
+        "e_0000525"
+      ],
+      "data": {
+        "count": 5
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0000928",
+      "worldMinute": 18060,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0000057"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0000057",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0000951",
+      "worldMinute": 18780,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_4",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0000953",
+      "worldMinute": 18781,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0000951"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0000971",
+      "worldMinute": 19501,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0000953"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0000953",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001034",
+      "worldMinute": 20220,
+      "kind": "command",
+      "text": "ベル領主ラド：RECRUIT",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_5",
+        "action": {
+          "kind": "RECRUIT",
+          "count": 5,
+          "purpose": "defense",
+          "termDays": 90,
+          "reward": 0
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001035",
+      "worldMinute": 20220,
+      "kind": "recruit",
+      "text": "5人が防衛の軍籍に加入",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [
+        "e_0001034"
+      ],
+      "data": {
+        "count": 5
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001036",
+      "worldMinute": 20280,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0000953"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0000953",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001075",
+      "worldMinute": 21660,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_6",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001077",
+      "worldMinute": 21661,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001075"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001095",
+      "worldMinute": 22381,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001077"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001077",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001158",
+      "worldMinute": 23160,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001077"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001077",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001197",
+      "worldMinute": 24540,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_7",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001199",
+      "worldMinute": 24541,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001197"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001217",
+      "worldMinute": 25261,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001199"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001199",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001280",
+      "worldMinute": 26040,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001199"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001199",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001319",
+      "worldMinute": 27420,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_8",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001321",
+      "worldMinute": 27421,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001319"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001339",
+      "worldMinute": 28141,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001321"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001321",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001402",
+      "worldMinute": 28920,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001321"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001321",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001441",
+      "worldMinute": 30300,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_9",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001443",
+      "worldMinute": 30301,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001441"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001461",
+      "worldMinute": 31021,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001443"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001443",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001524",
+      "worldMinute": 31800,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001443"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001443",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001563",
+      "worldMinute": 33180,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_10",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001565",
+      "worldMinute": 33181,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001563"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001583",
+      "worldMinute": 33901,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001565"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001565",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001646",
+      "worldMinute": 34680,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001565"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001565",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001685",
+      "worldMinute": 36060,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_11",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001687",
+      "worldMinute": 36061,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001685"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001705",
+      "worldMinute": 36781,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001687"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001687",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001768",
+      "worldMinute": 37560,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001687"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001687",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001807",
+      "worldMinute": 38940,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_12",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001809",
+      "worldMinute": 38941,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001807"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001827",
+      "worldMinute": 39661,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001809"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001809",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001890",
+      "worldMinute": 40380,
+      "kind": "command",
+      "text": "ベル領主ラド：RECRUIT",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_13",
+        "action": {
+          "kind": "RECRUIT",
+          "count": 5,
+          "purpose": "defense",
+          "termDays": 90,
+          "reward": 0
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001892",
+      "worldMinute": 40380,
+      "kind": "recruit",
+      "text": "5人が防衛の軍籍に加入",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [
+        "e_0001890"
+      ],
+      "data": {
+        "count": 5
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001893",
+      "worldMinute": 40440,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001809"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001809",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001940",
+      "worldMinute": 41820,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_14",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0001942",
+      "worldMinute": 41821,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001940"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0001964",
+      "worldMinute": 42541,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001942"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001942",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002031",
+      "worldMinute": 43320,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0001942"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0001942",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002078",
+      "worldMinute": 44700,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_15",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002080",
+      "worldMinute": 44701,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002078"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002102",
+      "worldMinute": 45421,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002080"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002080",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002169",
+      "worldMinute": 46200,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002080"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002080",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002216",
+      "worldMinute": 47580,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_16",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002218",
+      "worldMinute": 47581,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002216"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002240",
+      "worldMinute": 48301,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002218"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002218",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002307",
+      "worldMinute": 49080,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002218"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002218",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002354",
+      "worldMinute": 50460,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_17",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002356",
+      "worldMinute": 50461,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002354"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002378",
+      "worldMinute": 51181,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002356"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002356",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002445",
+      "worldMinute": 51960,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002356"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002356",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002492",
+      "worldMinute": 53340,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_18",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002494",
+      "worldMinute": 53341,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002492"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002516",
+      "worldMinute": 54061,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002494"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002494",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002583",
+      "worldMinute": 54840,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002494"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002494",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002630",
+      "worldMinute": 56220,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_19",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002632",
+      "worldMinute": 56221,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002630"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002654",
+      "worldMinute": 56941,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002632"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002632",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002721",
+      "worldMinute": 57720,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002632"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002632",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002768",
+      "worldMinute": 59100,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_20",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002770",
+      "worldMinute": 59101,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002768"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002792",
+      "worldMinute": 59821,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002770"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002770",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002859",
+      "worldMinute": 60540,
+      "kind": "command",
+      "text": "ベル領主ラド：RECRUIT",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_21",
+        "action": {
+          "kind": "RECRUIT",
+          "count": 5,
+          "purpose": "defense",
+          "termDays": 90,
+          "reward": 0
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002860",
+      "worldMinute": 60540,
+      "kind": "recruit",
+      "text": "5人が防衛の軍籍に加入",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [
+        "e_0002859"
+      ],
+      "data": {
+        "count": 5
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002861",
+      "worldMinute": 60600,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002770"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002770",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002908",
+      "worldMinute": 61980,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_22",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0002910",
+      "worldMinute": 61981,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002908"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002932",
+      "worldMinute": 62701,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002910"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002910",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0002999",
+      "worldMinute": 63480,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0002910"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0002910",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003046",
+      "worldMinute": 64860,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_23",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0003048",
+      "worldMinute": 64861,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003046"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003070",
+      "worldMinute": 65581,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003048"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003048",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003137",
+      "worldMinute": 66360,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003048"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003048",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003184",
+      "worldMinute": 67740,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_24",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0003186",
+      "worldMinute": 67741,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003184"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003208",
+      "worldMinute": 68461,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003186"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003186",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003275",
+      "worldMinute": 69240,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003186"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003186",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003322",
+      "worldMinute": 70620,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_25",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0003324",
+      "worldMinute": 70621,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003322"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003346",
+      "worldMinute": 71341,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003324"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003324",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003413",
+      "worldMinute": 72120,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003324"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003324",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003460",
+      "worldMinute": 73500,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_26",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0003462",
+      "worldMinute": 73501,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003460"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003484",
+      "worldMinute": 74221,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003462"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003462",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003551",
+      "worldMinute": 75000,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003462"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003462",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003598",
+      "worldMinute": 76380,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_27",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0003600",
+      "worldMinute": 76381,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003598"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003622",
+      "worldMinute": 77101,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003600"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003600",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003689",
+      "worldMinute": 77880,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003600"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003600",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003736",
+      "worldMinute": 79260,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_28",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0003738",
+      "worldMinute": 79261,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003736"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003760",
+      "worldMinute": 79981,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003738"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003738",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003827",
+      "worldMinute": 80760,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003738"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003738",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003874",
+      "worldMinute": 82140,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_29",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0003876",
+      "worldMinute": 82141,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003874"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003898",
+      "worldMinute": 82861,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003876"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003876",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0003965",
+      "worldMinute": 83640,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0003876"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0003876",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004012",
+      "worldMinute": 85020,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_30",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004014",
+      "worldMinute": 85021,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004012"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004036",
+      "worldMinute": 85741,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004014"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004014",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004103",
+      "worldMinute": 86520,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004014"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004014",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004150",
+      "worldMinute": 87900,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_31",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004152",
+      "worldMinute": 87901,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004150"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004174",
+      "worldMinute": 88621,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004152"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004152",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004241",
+      "worldMinute": 89400,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004152"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004152",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004288",
+      "worldMinute": 90780,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_32",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004290",
+      "worldMinute": 90781,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004288"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004312",
+      "worldMinute": 91501,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004290"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004290",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004379",
+      "worldMinute": 92280,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004290"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004290",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004426",
+      "worldMinute": 93660,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_33",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004428",
+      "worldMinute": 93661,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004426"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004450",
+      "worldMinute": 94381,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004428"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004428",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004517",
+      "worldMinute": 95160,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004428"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004428",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004564",
+      "worldMinute": 96540,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_34",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004566",
+      "worldMinute": 96541,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004564"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004588",
+      "worldMinute": 97261,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004566"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004566",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004655",
+      "worldMinute": 98040,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004566"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004566",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004702",
+      "worldMinute": 99420,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_35",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004704",
+      "worldMinute": 99421,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004702"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004726",
+      "worldMinute": 100141,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004704"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004704",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004793",
+      "worldMinute": 100920,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004704"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004704",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004840",
+      "worldMinute": 102300,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_36",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004842",
+      "worldMinute": 102301,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004840"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004864",
+      "worldMinute": 103021,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004842"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004842",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004931",
+      "worldMinute": 103800,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004842"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004842",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0004978",
+      "worldMinute": 105180,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_37",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0004980",
+      "worldMinute": 105181,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004978"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005002",
+      "worldMinute": 105901,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004980"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004980",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005069",
+      "worldMinute": 106680,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0004980"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0004980",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005116",
+      "worldMinute": 108060,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_38",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0005118",
+      "worldMinute": 108061,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005116"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005140",
+      "worldMinute": 108781,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005118"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005118",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005207",
+      "worldMinute": 109560,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005118"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005118",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005254",
+      "worldMinute": 110940,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_39",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0005256",
+      "worldMinute": 110941,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005254"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005278",
+      "worldMinute": 111661,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005256"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005256",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005345",
+      "worldMinute": 112440,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005256"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005256",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005392",
+      "worldMinute": 113820,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_40",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0005394",
+      "worldMinute": 113821,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005392"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005416",
+      "worldMinute": 114541,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005394"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005394",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005483",
+      "worldMinute": 115320,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005394"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005394",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005530",
+      "worldMinute": 116700,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_41",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0005532",
+      "worldMinute": 116701,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005530"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005554",
+      "worldMinute": 117421,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005532"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005532",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005621",
+      "worldMinute": 118200,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005532"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005532",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005668",
+      "worldMinute": 119580,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_42",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0005670",
+      "worldMinute": 119581,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005668"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005692",
+      "worldMinute": 120301,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005670"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005670",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005759",
+      "worldMinute": 121080,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005670"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005670",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005806",
+      "worldMinute": 122460,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_43",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0005808",
+      "worldMinute": 122461,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005806"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005830",
+      "worldMinute": 123181,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005808"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005808",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005897",
+      "worldMinute": 123960,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005808"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005808",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005944",
+      "worldMinute": 125340,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_44",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0005946",
+      "worldMinute": 125341,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005944"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0005968",
+      "worldMinute": 126061,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005946"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005946",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0006035",
+      "worldMinute": 126840,
+      "kind": "arrival",
+      "text": "ベル・2の部隊がベルの城へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0005946"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "enemy",
+          "intent": "retreat",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0005946",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0006082",
+      "worldMinute": 128220,
+      "kind": "command",
+      "text": "ベル領主ラド：ISSUE_ORDER",
+      "actorIds": [
+        "b_0000"
+      ],
+      "causes": [],
+      "data": {
+        "commandId": "command_45",
+        "action": {
+          "kind": "ISSUE_ORDER",
+          "unitId": "unit_0000006",
+          "intent": "defend",
+          "destination": "pass",
+          "fallback": "enemy",
+          "retreatFood": 1
+        }
+      },
+      "witnesses": [
+        "b_0000"
+      ]
+    },
+    {
+      "id": "e_0006084",
+      "worldMinute": 128221,
+      "kind": "order_response",
+      "text": "ベル・2：comply（defend命令）",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0006082"
+      ],
+      "data": {
+        "unitId": "unit_0000006",
+        "response": "comply"
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0006106",
+      "worldMinute": 128941,
+      "kind": "arrival",
+      "text": "ベル・2の部隊が鷹爪の峠へ到着",
+      "actorIds": [
+        "b_0001"
+      ],
+      "causes": [
+        "e_0006084"
+      ],
+      "data": {
+        "unit": {
+          "id": "unit_0000006",
+          "factionId": "b",
+          "commanderId": "b_0001",
+          "memberIds": [
+            "b_0001",
+            "b_0002",
+            "b_0003",
+            "b_0004",
+            "b_0005",
+            "b_0006",
+            "b_0007",
+            "b_0008",
+            "b_0009",
+            "b_0010",
+            "b_0011",
+            "b_0012",
+            "b_0013",
+            "b_0014",
+            "b_0015",
+            "b_0016",
+            "b_0017",
+            "b_0018",
+            "b_0019",
+            "b_0020"
+          ],
+          "location": "pass",
+          "intent": "defend",
+          "fallback": "enemy",
+          "retreatFood": 1,
+          "readyAt": 0,
+          "x": 48,
+          "y": 32,
+          "orderEvent": "e_0006084",
+          "reportedFood": 0
+        }
+      },
+      "witnesses": [
+        "b_0001"
+      ]
+    },
+    {
+      "id": "e_0006173",
+      "worldMinute": 129600,
+      "kind": "ending",
+      "text": "90日間を生き延び、峠の通行権を確保した。",
+      "actorIds": [
+        "a_0000"
+      ],
+      "causes": [],
+      "data": {},
+      "witnesses": [
+        "a_0000"
+      ]
+    }
+  ]
+}

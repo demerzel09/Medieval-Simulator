@@ -1,0 +1,23 @@
+{
+  "profile": "world-1000",
+  "population": 1000,
+  "seeds": [
+    240924,
+    42,
+    71
+  ],
+  "warmupDays": 10,
+  "measuredDays": 100,
+  "samples": 300,
+  "p50Ms": 4.171317000000045,
+  "p95Ms": 6.2864210000000185,
+  "maxMs": 7.926276000000001,
+  "rssMB": 204.6796875,
+  "environment": {
+    "cpu": "AMD Ryzen 7 7700 8-Core Processor",
+    "ramGB": 15.425434112548828,
+    "os": "6.18.33.2-microsoft-standard-WSL2",
+    "node": "v22.16.0"
+  },
+  "note": "日全体のheadless処理。M6やブラウザfpsの受入結果ではない。90日終了条件のみベンチでは無効。"
+}

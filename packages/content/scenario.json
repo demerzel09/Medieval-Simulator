@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "scenarioId": "pass_and_harvest",
+  "population": [600, 400],
+  "military": [40, 30],
+  "caps": [120, 80],
+  "prices": {
+    "food": 2,
+    "wood": 3,
+    "equipment": 12
+  },
+  "wages": {
+    "civilian": 2,
+    "military": 4
+  },
+  "combat": {
+    "casualtyRate": 0.01,
+    "fatality": 0.3,
+    "lossMorale": 0.5,
+    "fatigueMorale": 0.01
+  },
+  "roads": [
+    ["capital", "farm", 24],
+    ["capital", "trade", 36],
+    ["farm", "trade", 20],
+    ["trade", "pass", 30],
+    ["farm", "pass", 48],
+    ["pass", "enemy", 24]
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "date": "2026-09-25",
+  "typecheck": "passed",
+  "unitTests": {
+    "files": 5,
+    "passed": 25,
+    "failed": 0
+  },
+  "browserTests": {
+    "passed": 3,
+    "failed": 0,
+    "browser": "Chromium 153"
+  },
+  "build": "passed",
+  "contentValidation": "passed",
+  "npmAudit": 0,
+  "humanPlaytest": "not performed",
+  "scenarioHashes": {
+    "diplomacy": "39863807",
+    "military": "0f2d75d8",
+    "idle": "b31adfd0"
+  },
+  "performanceArtifact": "benchmark.json",
+  "scope": "M0-M2 mechanism acceptance; M3 automated acceptance, human playtest pending; simplifications in docs/STATUS.md"
+}

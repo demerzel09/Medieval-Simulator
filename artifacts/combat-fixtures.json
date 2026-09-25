@@ -1,0 +1,50 @@
+{
+  "control": {
+    "losses": {
+      "a": 13,
+      "b": 11
+    },
+    "winner": null,
+    "status": "active"
+  },
+  "highland": {
+    "losses": {
+      "a": 10,
+      "b": 16
+    },
+    "winner": null,
+    "status": "active"
+  },
+  "hungry": {
+    "losses": {
+      "a": 9,
+      "b": 5
+    },
+    "winner": "b",
+    "status": "ended"
+  },
+  "distant": {
+    "losses": {
+      "a": 9,
+      "b": 11
+    },
+    "winner": null,
+    "status": "active"
+  },
+  "retreat_now": {
+    "losses": {
+      "a": 1,
+      "b": 0
+    },
+    "winner": "b",
+    "status": "ended"
+  },
+  "retreat_late": {
+    "losses": {
+      "a": 9,
+      "b": 10
+    },
+    "winner": "b",
+    "status": "ended"
+  }
+}
