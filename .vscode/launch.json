@@ -47,6 +47,19 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
     },
     {
+      "name": "自律 A2: 買物係の空間デバッグ画面",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?e1=a2",
+        "action": "debugWithChrome"
+      },
+      "presentation": { "group": "経済", "order": 0 },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
+    },
+    {
       "name": "90日: 外交",
       "type": "node-terminal",
       "request": "launch",
@@ -86,6 +99,14 @@
       "cwd": "${workspaceFolder}",
       "presentation": { "group": "経済", "order": 1 },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a1"
+    },
+    {
+      "name": "自律 A2: 買物係の3日経済",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": { "group": "経済", "order": 1 },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a2"
     },
     {
       "name": "経済 E0: 90日基準計測",

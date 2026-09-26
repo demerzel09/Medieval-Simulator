@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { economyE1V2 } from "../../packages/content/economy-e1-v2";
 import { capacityReport, contentsQuantity, siteOf, totalMass } from "../../packages/sim/physical";
-import { advanceLocalV2, localV2Summary, newLocalWorldV2, submitLocalV2, type LocalWorldV2 } from "../../packages/sim/local-economy-v2";
+import { advanceLocalV2, localV2Summary, newLocalWorldA2, newLocalWorldV2, submitLocalV2, type LocalWorldV2 } from "../../packages/sim/local-economy-v2";
 
 type Scenario = "baseline" | "carrier-absent" | "buyer-no-money" | "farmer-absent";
 type Rect = { x: number; y: number; width: number; height: number };
@@ -13,8 +13,8 @@ function siteRect(id: string): Rect {
   if (id.startsWith("house:")) return (map.houses as Record<string, Rect>)[id.slice(6)];
   return map.market;
 }
-function makeWorld(scenario: Scenario, minute: number) {
-  const w = newLocalWorldV2();
+function makeWorld(scenario: Scenario, minute: number, autonomousBuyers: boolean) {
+  const w = autonomousBuyers ? newLocalWorldA2() : newLocalWorldV2();
   if (scenario === "carrier-absent") submitLocalV2(w, "C", { kind: "ABSENT", personId: "C", day: 2 });
   if (scenario === "buyer-no-money") submitLocalV2(w, "B0", { kind: "TRANSFER_MONEY", from: "H0", to: "reserve", amount: 40 });
   if (scenario === "farmer-absent") submitLocalV2(w, "F6", { kind: "ABSENT", personId: "F6", day: 2 });
@@ -34,12 +34,12 @@ function position(w: LocalWorldV2, id: string) {
 }
 const clock = (minute: number) => `${Math.floor(minute / 1440) + 1}日目 ${String(Math.floor(minute % 1440 / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 
-export default function E1V2Debug() {
+export default function E1V2Debug({ autonomousBuyers = false }: { autonomousBuyers?: boolean }) {
   const [scenario, setScenario] = useState<Scenario>("baseline");
   const [minute, setMinute] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [focus, setFocus] = useState("F0");
-  const w = useMemo(() => makeWorld(scenario, minute), [scenario, minute]);
+  const w = useMemo(() => makeWorld(scenario, minute, autonomousBuyers), [scenario, minute, autonomousBuyers]);
   useEffect(() => {
     if (!playing) return;
     const timer = window.setInterval(() => setMinute((n) => Math.min(4320, n + 15)), 350);
@@ -59,7 +59,7 @@ export default function E1V2Debug() {
   const places = [{ id: "farm", name: "農場", rect: map.farm }, { id: "market", name: "市場", rect: map.market },
     ...Object.entries(map.houses).map(([id, rect]) => ({ id: `house:${id}`, name: `${id}の家`, rect }))];
   return <div className="e1-debug">
-    <header className="e1-top"><div><p className="eyebrow">LOCAL FOOD V2 · PHYSICAL TRUTH</p><h1>20人の集落 · 物体木デバッグ</h1></div><div><a href="/?e1=debug">旧E1を見る</a> · <a href="/">90日ゲームに戻る</a></div></header>
+    <header className="e1-top"><div><p className="eyebrow">{autonomousBuyers ? "LOCAL FOOD A2 · BUYER DECISIONS" : "LOCAL FOOD V2 · PHYSICAL TRUTH"}</p><h1>20人の集落 · {autonomousBuyers ? "買物係の自律デバッグ" : "物体木デバッグ"}</h1></div><div><a href="/?e1=debug">旧E1</a> · <a href="/?e1=v2">物体木版</a> · <a href="/?e1=a2">自律A2</a> · <a href="/">90日ゲーム</a></div></header>
     <div className="e1-controls">
       <label>シナリオ <select value={scenario} onChange={(e) => { setScenario(e.target.value as Scenario); setMinute(0); setPlaying(false); }}>
         {Object.entries(labels).map(([id, name]) => <option value={id} key={id}>{name}</option>)}
@@ -98,8 +98,9 @@ export default function E1V2Debug() {
       <div className="e1-inspector" aria-live="polite"><h2>選択したオブジェクト</h2>{selected ? <p><b>{selected.id}</b> · {selected.typeId}<br />物理親: {parent?.id ?? "なし"}<br />所在地: {site}<br />所有者: {selected.ownerId ?? "所有対象外"}<br />数量: {selected.quantity}<br />再帰重量: {mass}負荷点<br />内容重量: {capacity?.massUsed}{capacity?.massMax === undefined ? "" : `/${capacity.massMax}`}負荷点<br />食料: {contentsQuantity(w.physical, selected.id, "food")} · 現金: {contentsQuantity(w.physical, selected.id, "currency")}<br />{selected.id === "cart_1" ? `車両状態: ${w.cartCondition}/100（移動で摩耗）` : ""}<br />予約: {reservations.map((r) => `${r.id} ${r.quantity}`).join("、") || "なし"}<br />原因Event: {selected.causeEventId}</p> : <p>物体を選んでください。</p>}</div>
       <h2>同じ場所にある物体</h2><div>{nearby?.map((o) => <button className="e1-object-link" key={o.id} onClick={() => setFocus(o.id)}>{o.id} · {o.typeId} · {o.ownerId ?? "—"}</button>)}</div>
       {w.people[focus] && <><h2>{focus}の仕事と行動</h2><p>世帯: {w.people[focus].householdId} · 体力: {w.people[focus].energy} · 空腹: {w.people[focus].hunger}</p>
+        {w.buyerActors?.[focus] && <p>次の判断: {clock(w.buyerActors[focus].nextWakeAt)} · 知っている注文: {w.buyerActors[focus].orderId ?? "なし"}</p>}
         {w.tasks.filter((t) => t.personId === focus && t.start <= minute).slice(-8).map((t) => <p key={t.id} className="e1-row">{clock(t.start)} · {t.capability} · {t.status}</p>)}
-        {actorEvents.map((e) => <p key={e.id} className="e1-row"><b>{clock(e.minute)} · {e.kind}</b><br /><small>{e.id} ← {e.causes.join(", ") || "起点"}</small></p>)}</>}
+        {actorEvents.map((e) => <p key={e.id} className="e1-row"><b>{clock(e.minute)} · {e.kind}</b>{e.data.action ? ` · ${e.data.action}` : ""}{e.data.reason ? ` · ${e.data.reason}` : ""}<br /><small>{e.id} ← {e.causes.join(", ") || "起点"}</small></p>)}</>}
     </aside></main>
   </div>;
 }

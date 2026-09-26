@@ -1,4 +1,5 @@
 import { checkPhysical, physicalTransaction, siteOf, type PhysicalState } from "./physical";
+import type { ActorInput, ActorResponse, PersonalityModel } from "../ai/personality";
 
 export type A1Stimulus = {
   id: string; recipientId: string; kind: "work_offer" | "tool_available" | "attempt_rejected" | "work_completed" | "work_failed";
@@ -18,29 +19,28 @@ export type A1World = {
   processes: Record<string, A1Process>; pending: A1Stimulus[]; events: A1Event[]; commands: A1Command[];
 };
 
-export type A1ActorInput = {
-  actorId: string; at: number; energy: number; knownTaskIds: string[]; stimuli: A1Stimulus[];
-  ownProcess?: { taskId: string; remaining: number };
+type A1Context = {
+  energy: number; ownProcess?: { taskId: string; remaining: number };
   knownTasks: Pick<A1Task, "id" | "toolId" | "work">[];
 };
-export type A1ActorResponse = {
-  knownTaskIds: string[]; attempts: { kind: "start_work"; taskId: string }[];
-  wait: A1Actor["wait"];
-};
-export interface A1ActorModel { decide(input: A1ActorInput): A1ActorResponse }
+type A1SubjectiveState = { knownTaskIds: string[] };
+type A1Attempt = { kind: "start_work"; taskId: string };
+export type A1ActorInput = ActorInput<A1Context, A1SubjectiveState, A1Stimulus>;
+export type A1ActorResponse = ActorResponse<A1Attempt, A1SubjectiveState, A1Actor["wait"]>;
+export type A1ActorModel = PersonalityModel<A1ActorInput, A1ActorResponse>;
 
 /** The first personality implementation: a task is attempted if the actor has enough energy. */
 export const ordinaryA1Model: A1ActorModel = {
   decide(input) {
-    const known = new Set(input.knownTaskIds);
+    const known = new Set(input.subjectiveState.knownTaskIds);
     for (const stimulus of input.stimuli) {
       if (stimulus.kind === "work_offer" && stimulus.taskId) known.add(stimulus.taskId);
       if ((stimulus.kind === "work_completed" || stimulus.kind === "work_failed") && stimulus.taskId) known.delete(stimulus.taskId);
     }
-    const task = input.knownTasks.find((item) => known.has(item.id) && input.energy >= item.work);
-    if (input.ownProcess) return { knownTaskIds: [...known], attempts: [], wait: { forKinds: ["work_completed", "work_failed"] } };
-    if (task) return { knownTaskIds: [...known], attempts: [{ kind: "start_work", taskId: task.id }], wait: { until: input.at + 10, forKinds: ["tool_available", "work_offer", "work_completed", "work_failed"] } };
-    return { knownTaskIds: [...known], attempts: [], wait: { until: known.size ? input.at + 10 : undefined, forKinds: ["work_offer", "tool_available", "work_completed", "work_failed"] } };
+    const task = input.knownContext.knownTasks.find((item) => known.has(item.id) && input.knownContext.energy >= item.work);
+    if (input.knownContext.ownProcess) return { subjectiveUpdate: { knownTaskIds: [...known] }, attempts: [], wait: { forKinds: ["work_completed", "work_failed"] } };
+    if (task) return { subjectiveUpdate: { knownTaskIds: [...known] }, attempts: [{ kind: "start_work", taskId: task.id }], wait: { until: input.at + 10, forKinds: ["tool_available", "work_offer", "work_completed", "work_failed"] } };
+    return { subjectiveUpdate: { knownTaskIds: [...known] }, attempts: [], wait: { until: known.size ? input.at + 10 : undefined, forKinds: ["work_offer", "tool_available", "work_completed", "work_failed"] } };
   },
 };
 
@@ -117,12 +117,14 @@ function decideReady(w: A1World, model: A1ActorModel) {
     const process = Object.values(w.processes).find((item) => item.actorId === actor.id);
     const knownIds = [...new Set([...actor.knownTaskIds, ...stimuli.filter((item) => item.kind === "work_offer").map((item) => item.taskId).filter((item): item is string => !!item)])];
     const input: A1ActorInput = {
-      actorId: actor.id, at: w.minute, energy: actor.energy, knownTaskIds: actor.knownTaskIds, stimuli,
-      ownProcess: process ? { taskId: process.taskId, remaining: process.remaining } : undefined,
-      knownTasks: knownIds.map((taskId) => w.tasks[taskId]).filter((task): task is A1Task => !!task).map(({ id, toolId, work }) => ({ id, toolId, work })),
+      actorId: actor.id, at: w.minute, stimuli, subjectiveState: { knownTaskIds: actor.knownTaskIds },
+      knownContext: {
+        energy: actor.energy, ownProcess: process ? { taskId: process.taskId, remaining: process.remaining } : undefined,
+        knownTasks: knownIds.map((taskId) => w.tasks[taskId]).filter((task): task is A1Task => !!task).map(({ id, toolId, work }) => ({ id, toolId, work })),
+      },
     };
     const response = model.decide(input);
-    actor.knownTaskIds = response.knownTaskIds;
+    if (response.subjectiveUpdate) actor.knownTaskIds = response.subjectiveUpdate.knownTaskIds;
     actor.wait = response.wait;
     const causes = stimuli.flatMap((stimulus) => stimulus.causeEventIds);
     const decision = emit(w, "actor_decided", [actor.id], causes, { attempts: response.attempts.length });

@@ -66,3 +66,18 @@ test("physical E1 v2 debug shows parent, owner, capacity and causal work", async
   await expect(page.locator(".e1-stats span").filter({ hasText: "農場" })).toContainText("21");
   expect(errors).toEqual([]);
 });
+
+test("A2 map shows each buyer's decisions and physical purchase", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?e1=a2");
+  await expect(page.getByRole("heading", { name: "20人の集落 · 買物係の自律デバッグ" })).toBeVisible();
+  await page.locator(".e1-person").filter({ hasText: "B0" }).click();
+  await page.getByLabel("経過分").fill("300");
+  await expect(page.locator(".e1-detail")).toContainText("buyer_decided · post_order");
+  await expect(page.locator(".e1-detail")).toContainText("次の判断:");
+  await page.getByLabel("経過分").fill("930");
+  await expect(page.locator(".e1-detail")).toContainText("buyer_decided · settle_sale,return_home");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "協同事業" })).toContainText("40");
+  expect(errors).toEqual([]);
+});

@@ -57,7 +57,7 @@ describe("A1 actor-led work", () => {
   });
 
   it("does not let the scheduler do work when the personality declines", () => {
-    const passive: A1ActorModel = { decide(input) { return { knownTaskIds: [...input.knownTaskIds, ...input.stimuli.filter((s) => s.kind === "work_offer").map((s) => s.taskId!)], attempts: [], wait: { forKinds: ["work_offer"] } }; } };
+    const passive: A1ActorModel = { decide(input) { return { subjectiveUpdate: { knownTaskIds: [...input.subjectiveState.knownTaskIds, ...input.stimuli.filter((s) => s.kind === "work_offer").map((s) => s.taskId!)] }, attempts: [], wait: { forKinds: ["work_offer"] } }; } };
     const w = newA1World();
     offerA1(w, offer("job_a", "worker_a"), passive);
     advanceA1(w, 20, passive);
