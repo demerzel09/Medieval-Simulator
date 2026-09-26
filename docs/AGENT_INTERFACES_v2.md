@@ -1,6 +1,6 @@
 # 人格の認知・行動インターフェース v2（設計案）
 
-状態: 文書設計。現行ゲームへの実装・保存形式の移行は未着手。v1 は設計履歴であり、v2 と互換ではない。
+状態: 文書設計。現行ゲームへの実装・保存形式の移行は未着手。v1 は設計履歴であり、v2 と互換ではない。本人と世界を接続する外側の契約は[自律行動の外側のインターフェース](AUTONOMY_INTERFACE_CONTRACT.md)で定める。
 
 ## 何をインターフェースにするか
 
@@ -126,10 +126,11 @@ type InterpretedClaim = {
 
 type PerceptionResult = {
   personId: PersonId;
+  receivedStimuli: ReceivedStimulus[]; // 届いた内容を、解釈が空でも次の判断まで保持
   interpretations: InterpretedClaim[];
   situations: SituationFrame[]; // この人物が認識した場面。空でもよい
   subjectiveStateUpdate?: VersionedStateUpdate;
-  consumedStimulusIds: Id[];
+  acknowledgedStimulusIds: Id[]; // 受信処理済み。真実と認定した意味ではない
 };
 ```
 
@@ -154,8 +155,7 @@ type MotivationResult = {
 };
 type DeliberationInput = {
   personId: PersonId;
-  interpretations: InterpretedClaim[];
-  situations: SituationFrame[];
+  perception: PerceptionResult; // 未解釈の受信内容も含む
   motivations: MotivationResult;
   subjectiveState: SubjectiveStateRef;
   context: SituatedContext;
@@ -164,7 +164,8 @@ type DeliberationInput = {
   window: DecisionWindow;
 };
 type DecisionDraft = {
-  proposal: TypedIntention | TypedRoutineInvocation | TypedPlan | TypedActionAttempt | TypedDefer;
+  proposals: (TypedIntention | TypedRoutineInvocation | TypedPlan | TypedActionAttempt)[];
+  wait?: TypedDefer; // 提案0件なら必須。再起床条件を持つ
   subjectiveStateUpdate?: VersionedStateUpdate;
   evidenceRefs: Id[];
   diagnostics?: { schemaId: string; payload: JsonValue };
@@ -193,15 +194,15 @@ interface DeliberationPort {
 
 `KnownRoutineRepertoire` は本人が知る定義への参照で、全コンテンツを全員へ公開する意味ではない。人格の認識・動機・判断はいずれも参照できる。`TypedRoutineInvocation` は定義ID/版、対象、引数、根拠を持つ提案で、ランナーが型と利用権を検証してからインスタンスを作る。ランナー内部のTask進捗や別人物の秘密は人格入力に混ぜない。
 
-この追記はルーティンとの接点を示すもので、[仮接続調査](INTERFACE_DRY_RUN.md)で挙がった未解釈刺激の保持、複数提案、状態更新の原子性を解決したとは扱わない。これらは実装前に別途契約を修正する。
+認識できない刺激でも`receivedStimuli`は判断まで保持し、受信確認と事実認定を分ける。`proposals`は上限付きの順序ある試行群で、個別の可否を受け取る。物理的な複数作業を同時に実行してよい意味ではない。`wait`の起床契約、試行と結果の確定は[外側の契約](AUTONOMY_INTERFACE_CONTRACT.md)に置く。[仮接続調査](INTERFACE_DRY_RUN.md)の指摘を反映した設計修正であり、コードへの適用はまだない。
 
-これらの `Port` は「何を受けて何を返すか」の契約であり、実装クラスの数を指定しない。ひとつの実装が三つとも満たせる。各 `subjectiveStateUpdate` は人格 ID・基準改訂・原因参照を持つ共通の版付き変更として順に適用し、後続ブロックには更新後の本人の状態を渡す。再評価する場合も改訂と原因を残す。
+これらの `Port` は「何を受けて何を返すか」の契約であり、実装クラスの数を指定しない。ひとつの実装が三つとも満たせる。各 `subjectiveStateUpdate` は人格 ID・基準改訂・原因参照を持つ共通の版付き変更として判断中に順に組み立て、後続ブロックには更新後の本人の状態を渡す。永続化は草案の採用時にまとめて行い、途中の未採用結果を確定しない。再評価する場合も改訂と原因を残す。
 
 ## 人格、組合せ、再現性
 
-`PersonalityState` は人物 ID、人格 ID、改訂番号、文化・価値傾向、版付き主観状態を保存する。認識・動機づけ・判断の実装はこの**同じ人格**を構成する。各ブロックを別プロセスに置いても、共有重みを多数の人物に使っても、人物固有の経験・信用・意図は混ぜない。複数ブロックを一体で計算する実装でも、境界を横切るときは認識結果・動機結果・判断草案を同じ意味で記録できるようにする。内部診断の詳細形式は任意とする。
+`PersonalityState` は人物 ID、人格 ID、改訂番号、文化・価値傾向、版付き主観状態を保存する。認識・動機づけ・判断の実装はこの**同じ人格**を構成する。各ブロックを別プロセスに置いても、共有重みを多数の人物に使っても、人物固有の経験・信用・意図は混ぜない。複数ブロックを一体で計算する実装でも、届いた刺激・採用した提案・主観状態の変更は同じ意味で記録する。認識や動機の中間診断は実装が意味のある値を出せる場合のみ記録し、架空の解釈・スコアを強制しない。
 
-Gateway は人物・人格 ID、版、時刻、根拠参照、提案型、状態変更を検証し、採用した草案と人格更新を原子的に記録する。sim が世界の真実を使って行為試行を判定し、因果 Event を作る。伝令、面談、呼び出し、仕事、約束の履行、戦闘は担当人物の実際の行為を必要とする。デバッグ表示では全人物の「届いた刺激→解釈→動機→提案→実行 Event→後で知った結果」を ID でたどれるようにする。ただし秘密や誤認もデバッグ上で区別する。
+Gateway は人物・人格 ID、版、時刻、根拠参照、提案型、状態変更を検証し、**採用した草案とその時点の主観更新**を原子的に記録する。sim は各行為試行を別に判定し、原因でつながる Event を作る。拒否や後の失敗を「最初から聞かなかった」ことにせず、成功した記憶は本人へ結果が届いた後にのみ作る。伝令、面談、呼び出し、仕事、約束の履行、戦闘は担当人物の実際の行為を必要とする。デバッグ表示では全人物の「届いた刺激→解釈→動機→提案→実行 Event→後で知った結果」を ID でたどれるようにする。ただし秘密や誤認もデバッグ上で区別する。
 
 決定的な実装は seed、Command、保存済み人格状態、入力、実装版から再現する。非決定的または外部の実装は、採用済み各ブロックの出力・状態変更と DecisionResponse をログへ保存し、再生時に呼び直さない。実装変更には状態移行と版更新が必要である。
 
