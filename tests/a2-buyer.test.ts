@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { hash } from "../packages/sim/core";
 import { advanceLocalV2, loadLocalA2, loadLocalV2, localV2Summary, newLocalWorldA2, replayLocalA2, saveLocalA2, submitLocalV2 } from "../packages/sim/local-economy-v2";
 import type { BuyerModel } from "../packages/ai/local-buyer";
+import type { SellerModel } from "../packages/ai/local-seller";
 
 describe("A2 buyer-led E1 slice", () => {
   it("keeps the three-day physical food and cash loop with buyer decisions", () => {
@@ -17,6 +18,33 @@ describe("A2 buyer-led E1 slice", () => {
     expect(w.events.filter((e) => e.kind === "buyer_decided" && e.data.action === "post_order")).toHaveLength(12);
     expect(w.events.filter((e) => e.kind === "buyer_decided" && e.data.action === "depart_market")).toHaveLength(12);
     expect(w.events.filter((e) => e.kind === "buyer_decided" && e.data.action === "settle_sale,return_home")).toHaveLength(12);
+    expect(w.events.filter((e) => e.kind === "seller_decided" && e.data.action === "request_replenishment")).toHaveLength(3);
+    expect(w.events.filter((e) => e.kind === "seller_decided" && e.data.action === "start_market_sale")).toHaveLength(3);
+    expect(w.events.filter((e) => e.kind === "seller_decided" && e.data.action === "finish_market_sale,return_home")).toHaveLength(3);
+    for (const request of w.events.filter((e) => e.kind === "replenishment_requested"))
+      expect(w.events.find((e) => e.id === request.causes[0])?.kind).toBe("seller_decided");
+  });
+
+  it("depends on the seller's model for travel, stock requests, and sales", () => {
+    const passive: SellerModel = { decide(input) { return { attempts: [], wait: { at: input.knownContext.nextDayWorkAt } }; } };
+    const w = newLocalWorldA2();
+    advanceLocalV2(w, 1440, undefined, passive);
+    expect(w.orders).toHaveLength(4);
+    expect(w.shipments).toHaveLength(0);
+    expect(w.tasks.filter((task) => task.personId === "S" && task.capability === "market_sale")).toHaveLength(0);
+    expect(localV2Summary(w).settledOrders).toBe(0);
+    expect(w.events.some((event) => event.kind === "journey_started" && event.actors.includes("S"))).toBe(false);
+  });
+
+  it("reveals orders to the seller only after arrival at the market", () => {
+    const w = newLocalWorldA2();
+    advanceLocalV2(w, 300);
+    expect(w.orders).toHaveLength(4);
+    expect(w.sellerActor?.knownOrderIds).toEqual([]);
+    advanceLocalV2(w, 15);
+    expect(w.sellerActor?.knownOrderIds).toHaveLength(4);
+    const seen = w.events.find((event) => event.kind === "seller_decided" && event.minute === 315);
+    expect(seen?.causes.filter((id) => w.events.some((event) => event.id === id && event.kind === "purchase_requested"))).toHaveLength(4);
   });
 
   it("does not create orders when the buyer model declines to act", () => {
@@ -27,6 +55,7 @@ describe("A2 buyer-led E1 slice", () => {
     expect(localV2Summary(w).settledOrders).toBe(0);
     expect(localV2Summary(w).hungryPeople).toBe(20);
     expect(localV2Summary(w).cooperativeMoney).toBe(0);
+    expect(w.shipments).toHaveLength(0);
   });
 
   it("does not give a household food when its buyer has no cash", () => {
@@ -75,5 +104,7 @@ describe("A2 buyer-led E1 slice", () => {
     expect(hash(replayed)).toBe(hash(w));
     expect(() => loadLocalV2(saveLocalA2(w))).toThrow("incompatible");
     expect(() => loadLocalA2(JSON.stringify({ ...w, buyerActors: undefined }))).toThrow();
+    expect(() => loadLocalA2(JSON.stringify({ ...w, sellerActor: undefined }))).toThrow();
+    expect(() => loadLocalA2(JSON.stringify({ ...w, engineVersion: "0.5.0-a2" }))).toThrow("incompatible");
   });
 });

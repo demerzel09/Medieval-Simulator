@@ -1,5 +1,6 @@
 import { economyE1V2 } from "../content/economy-e1-v2";
 import { ordinaryBuyerModel, type BuyerInput, type BuyerModel, type BuyerAttempt } from "../ai/local-buyer";
+import { ordinarySellerModel, type SellerInput, type SellerModel } from "../ai/local-seller";
 import { hash } from "./core";
 import { capacityReport, checkPhysical, contentsQuantity, physicalTransaction, siteOf, type PhysicalObject, type PhysicalState } from "./physical";
 import { proposeFoodDelivery, type FoodDeliveryProposal } from "./transport-capability";
@@ -19,8 +20,9 @@ type LocalTaskV2 = Omit<LocalTask, "capability"> & { capability: LocalTask["capa
 type OrderV2 = { id: string; day: number; householdId: string; buyerId: string; quantity: number; status: "requested" | "sale_reserved" | "settled" | "expired"; requestEventId: string; reservationEventId?: string; allocations: { lotId: string; quantity: number; reservationId: string }[]; moneyReservationId?: string };
 type ShipmentV2 = { id: string; day: number; carrierId: string; status: "requested" | "assigned" | "in_transit" | "delivered" | "failed"; requestedQuantity: number; quantity: number; requestEventId: string; lastEventId: string; proposal?: FoodDeliveryProposal };
 type BuyerActorState = { day: number; nextWakeAt: number; orderId?: string; purchaseTaskId?: string; lastEventId?: string };
+type SellerActorState = { day: number; nextWakeAt: number; reviewedToday: boolean; knownOrderIds: string[]; requestEventId?: string; saleTaskId?: string; lastEventId?: string };
 export type LocalWorldV2 = {
-  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2"; engineVersion: "0.4.1-e1" | "0.5.0-a2";
+  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2"; engineVersion: "0.4.1-e1" | "0.5.1-a2";
   seed: number; contentHash: string; minute: number; nextId: number;
   physical: PhysicalState; people: Record<string, PersonV2>;
   capabilities: Record<string, { id: string; definitionId: string; version: number; bearerId: string }>;
@@ -32,6 +34,7 @@ export type LocalWorldV2 = {
   extraOrders: { householdId: string; day: number; amount: number; commandEventId: string }[];
   producedFood: number; consumedFood: number; lostFood: number; initialMoney: number;
   buyerActors?: Record<string, BuyerActorState>;
+  sellerActor?: SellerActorState;
 };
 
 function uid(w: LocalWorldV2, prefix: string) { return `${prefix}_${String(w.nextId++).padStart(6, "0")}`; }
@@ -96,8 +99,9 @@ export function newLocalWorldV2(seed = 240924): LocalWorldV2 {
 export function newLocalWorldA2(seed = 240924): LocalWorldV2 {
   const w = newLocalWorldV2(seed);
   w.economicMode = "local_food_a2";
-  w.engineVersion = "0.5.0-a2";
+  w.engineVersion = "0.5.1-a2";
   w.buyerActors = Object.fromEntries(Object.values(w.households).map((h) => [h.buyerId, { day: 1, nextWakeAt: tm.orders }]));
+  w.sellerActor = { day: 1, nextWakeAt: tm.orders, reviewedToday: false, knownOrderIds: [] };
   checkLocalV2(w); return w;
 }
 
@@ -352,7 +356,80 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
   }
 }
 
-function phase(w: LocalWorldV2, buyerModel: BuyerModel) {
+function runSellerActor(w: LocalWorldV2, model: SellerModel) {
+  const state = w.sellerActor;
+  if (!state || state.nextWakeAt > w.minute) return;
+  const day = dayOf(w.minute), base = baseOf(day), sellerId = c.roles.seller;
+  if (state.day !== day) {
+    state.day = day; state.reviewedToday = false; state.knownOrderIds = [];
+    state.requestEventId = undefined; state.saleTaskId = undefined;
+  }
+  const person = w.people[sellerId], location = at(w, sellerId);
+  // The board is read only on site, after the notice has had time to arrive.
+  const visibleOrders = location === "market" ? w.orders.filter((order) => order.day === day &&
+    w.events.find((event) => event.id === order.requestEventId)!.minute <= w.minute - 15) : [];
+  const newlySeenOrders = visibleOrders.filter((order) => !state.knownOrderIds.includes(order.id));
+  const arrivedStock = location === "market" ? w.shipments.find((shipment) => shipment.day === day && shipment.status === "delivered" &&
+    w.events.find((event) => event.id === shipment.lastEventId)?.minute === w.minute) : undefined;
+  const saleTask = state.saleTaskId ? w.tasks.find((task) => task.id === state.saleTaskId) : undefined;
+  const input: SellerInput = {
+    actorId: sellerId, at: w.minute, stimuli: [
+      ...newlySeenOrders.map((order) => ({ kind: "order_notice" as const, receivedAt: w.minute, causeEventIds: [order.requestEventId] })),
+      ...(arrivedStock ? [{ kind: "stock_arrival" as const, receivedAt: w.minute, causeEventIds: [arrivedStock.lastEventId] }] : []),
+    ],
+    subjectiveState: { knownOrderIds: state.knownOrderIds, requestEventId: state.requestEventId },
+    knownContext: {
+      day, location, homeId: home(person.householdId), journeyTo: person.journey?.toId,
+      available: !absent(w, sellerId, day), energy: person.energy,
+      visibleOrders: visibleOrders.map((order) => ({ id: order.id, quantity: order.quantity, requestEventId: order.requestEventId })),
+      marketFood: location === "market" ? amount(w, store("market"), "food") : undefined,
+      reviewedToday: state.reviewedToday,
+      saleTask: saleTask ? { id: saleTask.id, end: saleTask.end, status: saleTask.status === "refused" ? "refused" : saleTask.status === "completed" ? "completed" : "accepted" } : undefined,
+      workStartAt: base + tm.orders, requestAt: base + tm.assignment, saleAt: base + tm.unloadEnd,
+      closeAt: base + tm.marketEnd, nextDayWorkAt: baseOf(day + 1) + tm.orders, cartCapacity: c.cartCapacity,
+    },
+  };
+  const response = model.decide(input);
+  if (!Number.isSafeInteger(response.wait.at) || response.wait.at <= w.minute || response.attempts.length > 2)
+    throw Error("invalid seller response");
+  const previouslyKnown = new Set(state.knownOrderIds);
+  const known = new Set([...previouslyKnown, ...visibleOrders.map((order) => order.id)]);
+  if (response.subjectiveUpdate?.knownOrderIds.some((id) => !known.has(id))) throw Error("seller cannot know unseen order");
+  state.knownOrderIds = response.subjectiveUpdate?.knownOrderIds ?? [...known];
+  const decision = emit(w, "seller_decided", [sellerId], [
+    ...(state.lastEventId ? [state.lastEventId] : []),
+    ...(arrivedStock ? [arrivedStock.lastEventId] : []),
+    ...visibleOrders.filter((order) => !previouslyKnown.has(order.id) || response.attempts.some((attempt) => attempt.kind === "request_replenishment")).map((order) => order.requestEventId),
+  ], { action: response.attempts.map((attempt) => attempt.kind).join(",") || "wait", visibleOrders: visibleOrders.length, marketFood: input.knownContext.marketFood ?? -1 });
+  state.lastEventId = decision.id; state.nextWakeAt = response.wait.at;
+  if (w.minute === base + tm.assignment && location === "market") state.reviewedToday = true;
+  let returnCause = decision.id;
+  for (const attempt of response.attempts) {
+    if (attempt.kind === "go_market" && location === home(person.householdId) && !person.journey && !absent(w, sellerId, day)) {
+      if (travel(w, sellerId, "market", w.minute + 15, [decision.id])) state.lastEventId = w.people[sellerId].journey?.causeEventId;
+    } else if (attempt.kind === "request_replenishment" && location === "market" && w.minute === base + tm.assignment &&
+      !state.requestEventId && Number.isSafeInteger(attempt.quantity) && attempt.quantity > 0 && attempt.quantity <= c.cartCapacity && visibleOrders.length) {
+      const request = emit(w, "replenishment_requested", [sellerId], [decision.id, ...visibleOrders.map((order) => order.requestEventId)], { maxQuantity: attempt.quantity });
+      state.requestEventId = request.id; state.lastEventId = request.id;
+    } else if (attempt.kind === "start_market_sale" && location === "market" && w.minute === base + tm.unloadEnd && !state.saleTaskId) {
+      const shipment = w.shipments.find((s) => s.day === day && s.status === "delivered");
+      const task = offerTask(w, sellerId, "market_sale", w.minute, base + tm.marketEnd, [decision.id, ...(shipment ? [shipment.lastEventId] : [])]);
+      state.saleTaskId = task.id;
+      if (task.status === "accepted" && !workEffort(w, sellerId, "market_shift", c.labor.marketShiftEffort, [task.answerEventId]))
+        completeTask(w, task, "market_shift_failed", [], { reason: "exhausted" });
+      state.lastEventId = task.answerEventId;
+    } else if (attempt.kind === "finish_market_sale" && location === "market" && saleTask?.status === "accepted" && saleTask.end === w.minute) {
+      const completed = completeTask(w, saleTask, "market_shift_completed", [decision.id]);
+      state.lastEventId = completed.id; returnCause = completed.id;
+    } else if (attempt.kind === "return_home" && location === "market") {
+      if (travel(w, sellerId, home(person.householdId), w.minute + 15, [returnCause])) state.lastEventId = person.journey?.causeEventId;
+    } else {
+      emit(w, "seller_attempt_rejected", [sellerId], [decision.id], { action: attempt.kind });
+    }
+  }
+}
+
+function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel) {
   const day = dayOf(w.minute), base = baseOf(day), local = w.minute - base;
   for (const p of Object.values(w.people)) if (p.journey?.arrive === w.minute) arrive(w, p.id);
   if (local === 0 && w.minute > 0) for (const p of Object.values(w.people)) {
@@ -365,7 +442,7 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel) {
   if (day > 3) return;
   if (local === tm.orders) {
     if (!w.buyerActors) for (const h of Object.values(w.households)) offerTask(w, h.buyerId, "buy_food", w.minute, base + tm.notice);
-    if (!absent(w, c.roles.seller, day)) travel(w, c.roles.seller, "market", base + tm.notice);
+    if (!w.sellerActor && !absent(w, c.roles.seller, day)) travel(w, c.roles.seller, "market", base + tm.notice);
   }
   if (local === tm.notice) {
     if (!w.buyerActors) for (const h of Object.values(w.households)) {
@@ -375,13 +452,15 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel) {
       createOrder(w, h.id, day, h.memberIds.length * c.foodPerPerson, [e.id]);
     }
     for (const extra of w.extraOrders.filter((o) => o.day === day)) createOrder(w, extra.householdId, day, extra.amount, [extra.commandEventId]);
-    if (at(w, c.roles.seller) === "market") offerTask(w, c.roles.seller, "market_sale", w.minute, base + tm.assignment);
+    if (!w.sellerActor && at(w, c.roles.seller) === "market") offerTask(w, c.roles.seller, "market_sale", w.minute, base + tm.assignment);
   }
   if (local === tm.assignment) {
-    const sellerTask = taskAt(w, c.roles.seller, "market_sale", day);
-    const request = sellerTask ? completeTask(w, sellerTask, "replenishment_requested", w.orders.filter((o) => o.day === day).map((o) => o.requestEventId), { maxQuantity: c.cartCapacity }) : undefined;
+    runSellerActor(w, sellerModel);
+    const sellerTask = !w.sellerActor ? taskAt(w, c.roles.seller, "market_sale", day) : undefined;
+    const request = w.sellerActor ? w.events.find((e) => e.id === w.sellerActor!.requestEventId) :
+      sellerTask ? completeTask(w, sellerTask, "replenishment_requested", w.orders.filter((o) => o.day === day).map((o) => o.requestEventId), { maxQuantity: c.cartCapacity }) : undefined;
     if (request) {
-      const s: ShipmentV2 = { id: uid(w, "ship"), day, carrierId: c.roles.carrier, status: "requested", requestedQuantity: c.cartCapacity, quantity: 0, requestEventId: request.id, lastEventId: request.id };
+      const s: ShipmentV2 = { id: uid(w, "ship"), day, carrierId: c.roles.carrier, status: "requested", requestedQuantity: Number(request.data.maxQuantity) || c.cartCapacity, quantity: 0, requestEventId: request.id, lastEventId: request.id };
       w.shipments.push(s);
       const task = offerTask(w, s.carrierId, "carry_food", base + tm.cartDepart, base + tm.unloadEnd, [request.id]);
       if (task.status === "refused") {
@@ -526,7 +605,7 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel) {
     const empty = w.shipments.find((s) => s.day === day && s.status === "failed" && w.events.find((e) => e.id === s.lastEventId)?.data.reason === "no_stock" && at(w, s.carrierId) === "market");
     if (empty) { const task = taskAt(w, empty.carrierId, "carry_food", day); if (task) completeTask(w, task, "carry_empty_return", [empty.lastEventId]); }
     if (s || empty) travel(w, c.roles.carrier, home(w.people[c.roles.carrier].householdId), w.minute + 15, [s?.lastEventId ?? empty!.lastEventId]);
-    if (at(w, c.roles.seller) === "market") {
+    if (!w.sellerActor && at(w, c.roles.seller) === "market") {
       const task = offerTask(w, c.roles.seller, "market_sale", w.minute, base + tm.marketEnd, s && s.status === "delivered" ? [s.lastEventId] : []);
       if (task.status === "accepted" && !workEffort(w, c.roles.seller, "market_shift", c.labor.marketShiftEffort, [task.answerEventId]))
         completeTask(w, task, "market_shift_failed", [], { reason: "exhausted" });
@@ -561,10 +640,14 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel) {
       }
     }
   }
+  if (local !== tm.assignment && local !== tm.marketEnd) runSellerActor(w, sellerModel);
   runBuyerActors(w, buyerModel);
   if (local === tm.marketEnd) {
-    const task = w.tasks.find((t) => t.personId === c.roles.seller && t.capability === "market_sale" && t.end === w.minute && t.status === "accepted");
-    if (task) { const e = completeTask(w, task, "market_shift_completed"); travel(w, c.roles.seller, home(w.people[c.roles.seller].householdId), w.minute + 15, [e.id]); }
+    if (w.sellerActor) runSellerActor(w, sellerModel);
+    else {
+      const task = w.tasks.find((t) => t.personId === c.roles.seller && t.capability === "market_sale" && t.end === w.minute && t.status === "accepted");
+      if (task) { const e = completeTask(w, task, "market_shift_completed"); travel(w, c.roles.seller, home(w.people[c.roles.seller].householdId), w.minute + 15, [e.id]); }
+    }
     for (const order of w.orders.filter((o) => o.day === day && (o.status === "requested" || o.status === "sale_reserved"))) cancelPurchaseV2(w, order.id);
   }
   if (local === tm.meal) for (const p of Object.values(w.people)) offerTask(w, p.id, "eat_food", w.minute, w.minute + 60);
@@ -582,9 +665,9 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel) {
   if (local === 1320) for (const p of Object.values(w.people)) offerTask(w, p.id, "rest", w.minute, base + 1440);
 }
 
-export function advanceLocalV2(w: LocalWorldV2, minutes: number, buyerModel: BuyerModel = ordinaryBuyerModel) {
+export function advanceLocalV2(w: LocalWorldV2, minutes: number, buyerModel: BuyerModel = ordinaryBuyerModel, sellerModel: SellerModel = ordinarySellerModel) {
   if (!Number.isSafeInteger(minutes) || minutes < 0 || w.minute + minutes > 4320) throw Error("invalid E1 v2 advance");
-  for (let i = 0; i < minutes; i++) { w.minute++; phase(w, buyerModel); }
+  for (let i = 0; i < minutes; i++) { w.minute++; phase(w, buyerModel, sellerModel); }
   checkLocalV2(w); return w;
 }
 export function submitLocalV2(w: LocalWorldV2, actorId: string, action: LocalAction, id = `command_${w.commands.length + 1}`) {
@@ -632,7 +715,7 @@ export function saveLocalA2(w: LocalWorldV2) {
 }
 export function loadLocalA2(serialized: string): LocalWorldV2 {
   const w = JSON.parse(serialized) as LocalWorldV2;
-  if (w.economicMode !== "local_food_a2" || w.engineVersion !== "0.5.0-a2" || w.contentHash !== hash(c)) throw Error("incompatible A2 save");
+  if (w.economicMode !== "local_food_a2" || w.engineVersion !== "0.5.1-a2" || w.contentHash !== hash(c)) throw Error("incompatible A2 save");
   checkLocalV2(w); return w;
 }
 export function replayLocalV2(seed: number, commands: LocalCommand[], until: number) {
@@ -652,8 +735,8 @@ export function replayLocalA2(seed: number, commands: LocalCommand[], until: num
   advanceLocalV2(w, until - w.minute); return w;
 }
 export function checkLocalV2(w: LocalWorldV2) {
-  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined) ||
-      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.0-a2" && w.buyerActors !== undefined)) || w.contentHash !== hash(c) ||
+  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined && w.sellerActor === undefined) ||
+      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.1-a2" && w.buyerActors !== undefined && w.sellerActor !== undefined)) || w.contentHash !== hash(c) ||
     !Number.isSafeInteger(w.minute) || w.minute < 0 || w.minute > 4320 ||
     !Number.isSafeInteger(w.cartCondition) || w.cartCondition < 0 || w.cartCondition > 100) throw Error("invalid E1 v2 world");
   checkPhysical(w.physical);
@@ -728,6 +811,15 @@ export function checkLocalV2(w: LocalWorldV2) {
         actor.purchaseTaskId && !w.tasks.some((t) => t.id === actor.purchaseTaskId && t.personId === h.buyerId) ||
         actor.lastEventId && !eventIds.has(actor.lastEventId)) throw Error("A2 buyer state");
     }
+  }
+  if (w.sellerActor) {
+    const actor = w.sellerActor;
+    if (!Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > 3 || !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute ||
+      typeof actor.reviewedToday !== "boolean" || !Array.isArray(actor.knownOrderIds) ||
+      actor.knownOrderIds.some((id) => !w.orders.some((order) => order.id === id && order.day === actor.day)) ||
+      actor.requestEventId && !w.events.some((event) => event.id === actor.requestEventId && event.kind === "replenishment_requested" && event.actors.includes(c.roles.seller)) ||
+      actor.saleTaskId && !w.tasks.some((task) => task.id === actor.saleTaskId && task.personId === c.roles.seller && task.capability === "market_sale") ||
+      actor.lastEventId && !eventIds.has(actor.lastEventId)) throw Error("A2 seller state");
   }
 }
 
