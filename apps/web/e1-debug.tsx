@@ -93,8 +93,8 @@ export default function E1Debug() {
   return (
     <div className="e1-debug">
       <header className="e1-top">
-        <div><p className="eyebrow">LOCAL FOOD VILLAGE · DEVELOPMENT VIEW</p><h1>20人の集落 · 空間デバッグ</h1></div>
-        <a href="/">90日ゲームに戻る</a>
+        <div><p className="eyebrow">LOCAL FOOD V1 · LEGACY DEBUG</p><h1>20人の集落 · 空間デバッグ</h1></div>
+        <div><a href="/?e1=v2">物体木版を見る</a> · <a href="/">90日ゲームに戻る</a></div>
       </header>
       <div className="e1-controls">
         <label>シナリオ <select value={scenario} onChange={(e) => { setScenario(e.target.value as Scenario); setMinute(0); setPlaying(false); }}>

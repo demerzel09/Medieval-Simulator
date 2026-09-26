@@ -183,6 +183,15 @@
       "capability": "eat_food"
     }
   ],
+  "labor": {
+    "farmShiftEffort": 8,
+    "loadEffortPerFiveFood": 1,
+    "unloadEffortPerFiveFood": 1,
+    "marketShiftEffort": 4,
+    "purchaseEffort": 1,
+    "overnightRecovery": 50,
+    "cartWearPerKm": 1
+  },
   "physicalTypes": {
     "world": {
       "id": "world",

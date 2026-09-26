@@ -14,15 +14,17 @@ const pouch = (id: string) => `pouch_${id}`;
 const bag = (id: string) => `bag_${id}`;
 const store = (id: string) => `store_${id}`;
 type PersonV2 = { id: string; householdId: string; role: string; hunger: number; energy: number; journey?: { transitId: string; fromId: string; toId: string; depart: number; arrive: number; mode: "walk" | "cart"; effortCost: number; distanceKm: number; causeEventId: string } };
+type LocalTaskV2 = Omit<LocalTask, "capability"> & { capability: LocalTask["capability"] | "rest" };
 type OrderV2 = { id: string; day: number; householdId: string; buyerId: string; quantity: number; status: "requested" | "sale_reserved" | "settled" | "expired"; requestEventId: string; reservationEventId?: string; allocations: { lotId: string; quantity: number; reservationId: string }[]; moneyReservationId?: string };
 type ShipmentV2 = { id: string; day: number; carrierId: string; status: "requested" | "assigned" | "in_transit" | "delivered" | "failed"; requestedQuantity: number; quantity: number; requestEventId: string; lastEventId: string; proposal?: FoodDeliveryProposal };
 export type LocalWorldV2 = {
-  schemaVersion: 3; economicMode: "local_food_v2"; engineVersion: "0.4.0-e1";
+  schemaVersion: 3; economicMode: "local_food_v2"; engineVersion: "0.4.1-e1";
   seed: number; contentHash: string; minute: number; nextId: number;
   physical: PhysicalState; people: Record<string, PersonV2>;
   capabilities: Record<string, { id: string; definitionId: string; version: number; bearerId: string }>;
   households: Record<string, { id: string; memberIds: string[]; buyerId: string }>;
-  tasks: LocalTask[]; orders: OrderV2[]; shipments: ShipmentV2[];
+  tasks: LocalTaskV2[]; orders: OrderV2[]; shipments: ShipmentV2[];
+  cartCondition: number;
   events: LocalEvent[]; commands: LocalCommand[];
   absences: { personId: string; day: number }[];
   extraOrders: { householdId: string; day: number; amount: number; commandEventId: string }[];
@@ -77,32 +79,41 @@ export function newLocalWorldV2(seed = 240924): LocalWorldV2 {
     addObject(objects, bag(h.buyer), "bag", h.buyer, h.id);
   }
   const w: LocalWorldV2 = {
-    schemaVersion: 3, economicMode: "local_food_v2", engineVersion: "0.4.0-e1", seed,
+    schemaVersion: 3, economicMode: "local_food_v2", engineVersion: "0.4.1-e1", seed,
     contentHash: hash(c), minute: 0, nextId: 1,
     physical: { types: structuredClone(c.physicalTypes), objects, reservations: [] }, people, households,
     capabilities: { carry_C: { id: "carry_C", definitionId: "transport.food.v1", version: 1, bearerId: c.roles.carrier } },
-    tasks: [], orders: [], shipments: [], events: [], commands: [], absences: [], extraOrders: [],
+    tasks: [], orders: [], shipments: [], cartCondition: 100, events: [], commands: [], absences: [], extraOrders: [],
     producedFood: 0, consumedFood: 0, lostFood: 0, initialMoney: c.initialHouseholdMoney * c.households.length,
   };
   checkLocalV2(w); return w;
 }
 
-function offerTask(w: LocalWorldV2, personId: string, capability: LocalTask["capability"], start: number, end: number, causes: string[] = []) {
-  const routine = c.routines.find((r) => r.capability === capability)!;
+function offerTask(w: LocalWorldV2, personId: string, capability: LocalTaskV2["capability"], start: number, end: number, causes: string[] = []) {
+  const routine = capability === "rest" ? { id: "life.rest", version: 1 } : c.routines.find((r) => r.capability === capability)!;
   const offer = emit(w, "task_offered", [personId], causes, { routineId: routine.id, capability, start, end });
   const overlap = w.tasks.some((task) => task.personId === personId && task.status !== "refused" && start < task.end && task.start < end);
-  const unavailable = capability !== "eat_food" && absent(w, personId, dayOf(start));
+  const unavailable = capability !== "eat_food" && capability !== "rest" && absent(w, personId, dayOf(start));
   const status = unavailable || overlap ? "refused" : "accepted";
   const answer = emit(w, status === "accepted" ? "task_accepted" : "task_refused", [personId], [offer.id], { reason: unavailable ? "absent" : overlap ? "busy" : "ordinary_role" });
-  const task: LocalTask = { id: uid(w, "task"), personId, routineId: routine.id, routineVersion: routine.version, capability, start, end, status, offerEventId: offer.id, answerEventId: answer.id };
+  const task: LocalTaskV2 = { id: uid(w, "task"), personId, routineId: routine.id, routineVersion: routine.version, capability, start, end, status, offerEventId: offer.id, answerEventId: answer.id };
   w.tasks.push(task); return task;
 }
-function taskAt(w: LocalWorldV2, personId: string, capability: LocalTask["capability"], day: number) {
+function taskAt(w: LocalWorldV2, personId: string, capability: LocalTaskV2["capability"], day: number) {
   return w.tasks.find((task) => task.personId === personId && task.capability === capability && dayOf(task.start) === day && task.status === "accepted");
 }
-function completeTask(w: LocalWorldV2, task: LocalTask, kind: string, causes: string[] = [], data: LocalEvent["data"] = {}) {
+function completeTask(w: LocalWorldV2, task: LocalTaskV2, kind: string, causes: string[] = [], data: LocalEvent["data"] = {}) {
   const e = emit(w, kind, [task.personId], [task.answerEventId, ...causes], data);
   task.status = "completed"; task.resultEventId = e.id; return e;
+}
+function workEffort(w: LocalWorldV2, personId: string, work: string, effort: number, causes: string[]) {
+  const person = w.people[personId], before = person.energy;
+  if (before < effort) {
+    emit(w, "work_blocked", [personId], causes, { work, effort, energy: before });
+    return undefined;
+  }
+  person.energy -= effort;
+  return emit(w, "work_effort_paid", [personId], causes, { work, effort, energyBefore: before, energyAfter: person.energy });
 }
 function travel(w: LocalWorldV2, personId: string, toId: string, arrive: number, causes: string[] = [], cart = false) {
   const p = w.people[personId], fromId = at(w, personId);
@@ -113,7 +124,9 @@ function travel(w: LocalWorldV2, personId: string, toId: string, arrive: number,
   const distanceKm = fromId === "farm" || toId === "farm" ? c.roadKm : c.limits.townKm;
   const effortCost = cart ? Math.ceil(distanceKm * (c.limits.cartEffortPerKm + Math.ceil(foodLoad / 5) * c.limits.cartExtraEffortPerFiveFoodKm)) :
     Math.ceil(distanceKm * (c.limits.walkEffortPerKm + foodLoad + Math.ceil(cashLoad / 10)));
+  const wear = cart ? Math.ceil(distanceKm * c.labor.cartWearPerKm) : 0;
   const reason = cart && at(w, "cart_1") !== fromId ? "cart_not_here" : p.energy < effortCost ? "exhausted" :
+    cart && w.cartCondition < wear ? "cart_unfit" :
     foodLoad > (cart ? c.cartCapacity : c.limits.personFood) ? "food_capacity" : cashLoad > c.limits.personCash ? "cash_capacity" : "";
   if (reason) { emit(w, "journey_blocked", [personId], causes, { to: toId, reason, foodLoad, cashLoad, effortCost, energy: p.energy }); return false; }
   const transitId = uid(w, "transit");
@@ -123,6 +136,11 @@ function travel(w: LocalWorldV2, personId: string, toId: string, arrive: number,
   if (!result.ok) { emit(w, "journey_blocked", [personId], causes, { to: toId, reason: result.reason, foodLoad, cashLoad, effortCost, energy: p.energy }); return false; }
   p.energy -= effortCost;
   const e = emit(w, "journey_started", [personId], causes, { from: fromId, to: toId, arrive, mode: cart ? "cart" : "walk", distanceKm, effortCost, foodLoad, cashLoad });
+  if (cart) {
+    const before = w.cartCondition;
+    w.cartCondition -= wear;
+    emit(w, "vehicle_worn", [personId], [e.id], { vehicleId: "cart_1", wear, conditionBefore: before, conditionAfter: w.cartCondition });
+  }
   p.journey = { transitId, fromId, toId, depart: w.minute, arrive, mode: cart ? "cart" : "walk", effortCost, distanceKm, causeEventId: e.id };
   return true;
 }
@@ -215,6 +233,7 @@ export function cancelPurchaseV2(w: LocalWorldV2, orderId: string): boolean {
 export function settlePurchaseV2(w: LocalWorldV2, orderId: string): boolean {
   const order = w.orders.find((o) => o.id === orderId);
   if (!order || order.status !== "sale_reserved" || !order.moneyReservationId || at(w, order.buyerId) !== "market" || at(w, c.roles.seller) !== "market" ||
+    w.people[order.buyerId].energy < c.labor.purchaseEffort ||
     !w.tasks.some((t) => t.personId === order.buyerId && t.capability === "buy_food" && t.status === "accepted" && t.end === w.minute)) return false;
   const cost = order.quantity * c.price, coin = lots(w, pouch(order.buyerId), "currency", order.householdId)[0];
   if (!coin || amount(w, "till_cooperative", "currency") + cost > c.limits.marketTillCash) return false;
@@ -234,8 +253,9 @@ export function settlePurchaseV2(w: LocalWorldV2, orderId: string): boolean {
     t.changeOwner(coinId, "cooperative"); t.move(coinId, "till_cooperative");
   }, claims);
   if (!result.ok) return false;
+  const labor = workEffort(w, order.buyerId, "purchase_food", c.labor.purchaseEffort, [order.reservationEventId!])!;
   const payment = emit(w, "cash_moved", [order.buyerId, c.roles.seller], [order.reservationEventId!], { from: pouch(order.buyerId), to: "till_cooperative", amount: cost });
-  const e = emit(w, "sale_settled", [order.buyerId, c.roles.seller], [order.reservationEventId!, payment.id, ...sourceEvents], { orderId, householdId: order.householdId, quantity: order.quantity, cost });
+  const e = emit(w, "sale_settled", [order.buyerId, c.roles.seller], [order.reservationEventId!, labor.id, payment.id, ...sourceEvents], { orderId, householdId: order.householdId, quantity: order.quantity, cost });
   for (const id of boughtIds) w.physical.objects[id].causeEventId = e.id;
   order.status = "settled"; order.allocations = []; order.moneyReservationId = undefined; return true;
 }
@@ -243,6 +263,13 @@ export function settlePurchaseV2(w: LocalWorldV2, orderId: string): boolean {
 function phase(w: LocalWorldV2) {
   const day = dayOf(w.minute), base = baseOf(day), local = w.minute - base;
   for (const p of Object.values(w.people)) if (p.journey?.arrive === w.minute) arrive(w, p.id);
+  if (local === 0 && w.minute > 0) for (const p of Object.values(w.people)) {
+    const task = w.tasks.find((t) => t.personId === p.id && t.capability === "rest" && t.end === w.minute && t.status === "accepted");
+    if (!task) continue;
+    const before = p.energy, atHome = at(w, p.id) === home(p.householdId) && !p.journey;
+    if (atHome) p.energy = Math.min(c.limits.personEnergy, before + c.labor.overnightRecovery);
+    completeTask(w, task, atHome ? "rest_completed" : "rest_missed", [], { energyBefore: before, energyAfter: p.energy, recovered: p.energy - before });
+  }
   if (day > 3) return;
   if (local === tm.orders) {
     for (const h of Object.values(w.households)) offerTask(w, h.buyerId, "buy_food", w.minute, base + tm.notice);
@@ -301,7 +328,13 @@ function phase(w: LocalWorldV2) {
   if (local === tm.farmEnd) for (const p of Object.values(w.people).filter((p) => p.role === "farmer")) {
     const task = taskAt(w, p.id, "work_shift", day);
     if (!task || at(w, p.id) !== "farm") continue;
-    const e = emit(w, "food_produced", [p.id], [task.answerEventId], { quantity: c.farmOutputPerShift });
+    const labor = workEffort(w, p.id, "farm_shift", c.labor.farmShiftEffort, [task.answerEventId]);
+    if (!labor) {
+      completeTask(w, task, "farm_shift_failed", [], { reason: "exhausted" });
+      travel(w, p.id, home(p.householdId), base + tm.loadEnd, [task.resultEventId!]);
+      continue;
+    }
+    const e = emit(w, "food_produced", [p.id], [task.answerEventId, labor.id], { quantity: c.farmOutputPerShift });
     const lotId = uid(w, "lot");
     const result = tx(w, p.id, ["cooperative"], (t) => t.add({ id: lotId, typeId: "food", parentId: store("farm"), quantity: c.farmOutputPerShift, ownerId: "cooperative", causeEventId: e.id }));
     if (!result.ok) throw Error(`production failed: ${result.reason}`);
@@ -331,7 +364,10 @@ function phase(w: LocalWorldV2) {
           { shipmentId: s.id, quantity, capabilityId: s.proposal.capabilityId }).id;
         const source = lots(w, store("farm"), "food", "cooperative");
         const effort = s.proposal.expectedEffort;
-        const reason = quantity && carrier.energy < effort ? "exhausted" : at(w, "cart_1") !== "farm" ? "cart_not_here" : "";
+        const loadEffort = Math.ceil(quantity / 5) * c.labor.loadEffortPerFiveFood;
+        const wear = Math.ceil(c.roadKm * c.labor.cartWearPerKm);
+        const reason = quantity && carrier.energy < effort + loadEffort ? "exhausted" : at(w, "cart_1") !== "farm" ? "cart_not_here" :
+          w.cartCondition < wear ? "cart_unfit" : "";
         if (reason) emit(w, "journey_blocked", [carrier.id], [s.lastEventId], { to: "market", reason, foodLoad: quantity, cashLoad: 0, effortCost: effort, energy: carrier.energy });
         if (reason || !quantity) {
           s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: reason || "no_stock" }).id;
@@ -356,10 +392,14 @@ function phase(w: LocalWorldV2) {
           if (!result.ok) {
             s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: result.reason }).id;
           } else {
+            const labor = workEffort(w, carrier.id, "load_food", loadEffort, [s.lastEventId])!;
             carrier.energy -= effort; s.quantity = quantity; s.status = "in_transit";
-            const loaded = emit(w, "shipment_loaded", [carrier.id], [s.lastEventId, ...source.map((l) => l.causeEventId)], { shipmentId: s.id, quantity });
+            const loaded = emit(w, "shipment_loaded", [carrier.id], [s.lastEventId, labor.id, ...source.map((l) => l.causeEventId)], { shipmentId: s.id, quantity, laborEffort: loadEffort });
             s.lastEventId = loaded.id;
             const e = emit(w, "journey_started", [carrier.id], [loaded.id], { from: "farm", to: "market", arrive: base + tm.cartMarketArrive, mode: "cart", distanceKm: c.roadKm, effortCost: effort, foodLoad: quantity, cashLoad: 0 });
+            const conditionBefore = w.cartCondition;
+            w.cartCondition -= wear;
+            emit(w, "vehicle_worn", [carrier.id], [e.id], { vehicleId: "cart_1", wear, conditionBefore, conditionAfter: w.cartCondition });
             carrier.journey = { transitId, fromId: "farm", toId: "market", depart: w.minute, arrive: base + tm.cartMarketArrive, mode: "cart", effortCost: effort, distanceKm: c.roadKm, causeEventId: e.id };
             for (const id of loadedIds) w.physical.objects[id].causeEventId = loaded.id;
           }
@@ -371,19 +411,34 @@ function phase(w: LocalWorldV2) {
     const s = w.shipments.find((s) => s.day === day && s.status === "in_transit");
     if (s) {
       const cargo = lots(w, "cart_1", "food", "cooperative");
-      const result = tx(w, s.carrierId, ["cooperative"], (t) => { for (const lot of cargo) t.move(lot.id, store("market")); });
-      if (!result.ok) throw Error(`unload failed: ${result.reason}`);
-      s.status = "delivered";
-      const delivered = emit(w, "shipment_delivered", [s.carrierId, c.roles.seller], [s.lastEventId], { shipmentId: s.id, quantity: s.quantity });
-      s.lastEventId = delivered.id;
-      for (const lot of cargo) w.physical.objects[lot.id].causeEventId = delivered.id;
-      const task = taskAt(w, s.carrierId, "carry_food", day)!;
-      completeTask(w, task, "carry_completed", [delivered.id], { quantity: s.quantity });
+      const unloadEffort = Math.ceil(s.quantity / 5) * c.labor.unloadEffortPerFiveFood;
+      if (w.people[s.carrierId].energy < unloadEffort) {
+        const blocked = workEffort(w, s.carrierId, "unload_food", unloadEffort, [s.lastEventId]);
+        if (blocked) throw Error("unload effort preflight mismatch");
+        s.status = "failed";
+        s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [s.lastEventId], { shipmentId: s.id, reason: "unload_exhausted" }).id;
+        const task = taskAt(w, s.carrierId, "carry_food", day);
+        if (task) completeTask(w, task, "carry_failed", [s.lastEventId], { reason: "unload_exhausted" });
+      } else {
+        const result = tx(w, s.carrierId, ["cooperative"], (t) => { for (const lot of cargo) t.move(lot.id, store("market")); });
+        if (!result.ok) throw Error(`unload failed: ${result.reason}`);
+        const labor = workEffort(w, s.carrierId, "unload_food", unloadEffort, [s.lastEventId])!;
+        s.status = "delivered";
+        const delivered = emit(w, "shipment_delivered", [s.carrierId, c.roles.seller], [s.lastEventId, labor.id], { shipmentId: s.id, quantity: s.quantity, laborEffort: unloadEffort });
+        s.lastEventId = delivered.id;
+        for (const lot of cargo) w.physical.objects[lot.id].causeEventId = delivered.id;
+        const task = taskAt(w, s.carrierId, "carry_food", day)!;
+        completeTask(w, task, "carry_completed", [delivered.id], { quantity: s.quantity });
+      }
     }
     const empty = w.shipments.find((s) => s.day === day && s.status === "failed" && w.events.find((e) => e.id === s.lastEventId)?.data.reason === "no_stock" && at(w, s.carrierId) === "market");
     if (empty) { const task = taskAt(w, empty.carrierId, "carry_food", day); if (task) completeTask(w, task, "carry_empty_return", [empty.lastEventId]); }
     if (s || empty) travel(w, c.roles.carrier, home(w.people[c.roles.carrier].householdId), w.minute + 15, [s?.lastEventId ?? empty!.lastEventId]);
-    if (at(w, c.roles.seller) === "market") offerTask(w, c.roles.seller, "market_sale", w.minute, base + tm.marketEnd, s ? [s.lastEventId] : []);
+    if (at(w, c.roles.seller) === "market") {
+      const task = offerTask(w, c.roles.seller, "market_sale", w.minute, base + tm.marketEnd, s && s.status === "delivered" ? [s.lastEventId] : []);
+      if (task.status === "accepted" && !workEffort(w, c.roles.seller, "market_shift", c.labor.marketShiftEffort, [task.answerEventId]))
+        completeTask(w, task, "market_shift_failed", [], { reason: "exhausted" });
+    }
   }
   // Buyers walk to market in successive 15-minute slots.
   if (local >= tm.unloadEnd - 15 && local < tm.marketEnd - 15 && (local - (tm.unloadEnd - 15)) % 15 === 0) {
@@ -431,6 +486,7 @@ function phase(w: LocalWorldV2) {
     } else p.hunger++;
     completeTask(w, task, lot ? "meal_eaten" : "meal_missed", lot ? [lot.causeEventId] : [], { householdId: p.householdId, hunger: p.hunger });
   }
+  if (local === 1320) for (const p of Object.values(w.people)) offerTask(w, p.id, "rest", w.minute, base + 1440);
 }
 
 export function advanceLocalV2(w: LocalWorldV2, minutes: number) {
@@ -474,7 +530,7 @@ export function submitLocalV2(w: LocalWorldV2, actorId: string, action: LocalAct
 export function saveLocalV2(w: LocalWorldV2) { checkLocalV2(w); return JSON.stringify(w); }
 export function loadLocalV2(serialized: string): LocalWorldV2 {
   const w = JSON.parse(serialized) as LocalWorldV2;
-  if (w.schemaVersion !== 3 || w.economicMode !== "local_food_v2" || w.engineVersion !== "0.4.0-e1" || w.contentHash !== hash(c)) throw Error("incompatible E1 v2 save");
+  if (w.schemaVersion !== 3 || w.economicMode !== "local_food_v2" || w.engineVersion !== "0.4.1-e1" || w.contentHash !== hash(c)) throw Error("incompatible E1 v2 save");
   checkLocalV2(w); return w;
 }
 export function replayLocalV2(seed: number, commands: LocalCommand[], until: number) {
@@ -486,8 +542,9 @@ export function replayLocalV2(seed: number, commands: LocalCommand[], until: num
   advanceLocalV2(w, until - w.minute); return w;
 }
 export function checkLocalV2(w: LocalWorldV2) {
-  if (w.schemaVersion !== 3 || w.economicMode !== "local_food_v2" || w.engineVersion !== "0.4.0-e1" || w.contentHash !== hash(c) ||
-    !Number.isSafeInteger(w.minute) || w.minute < 0 || w.minute > 4320) throw Error("invalid E1 v2 world");
+  if (w.schemaVersion !== 3 || w.economicMode !== "local_food_v2" || w.engineVersion !== "0.4.1-e1" || w.contentHash !== hash(c) ||
+    !Number.isSafeInteger(w.minute) || w.minute < 0 || w.minute > 4320 ||
+    !Number.isSafeInteger(w.cartCondition) || w.cartCondition < 0 || w.cartCondition > 100) throw Error("invalid E1 v2 world");
   checkPhysical(w.physical);
   if (hash(w.physical.types) !== hash(c.physicalTypes) || w.capabilities.carry_C?.bearerId !== c.roles.carrier ||
     w.capabilities.carry_C.definitionId !== "transport.food.v1" || w.capabilities.carry_C.version !== 1) throw Error("E1 v2 capability or type mismatch");

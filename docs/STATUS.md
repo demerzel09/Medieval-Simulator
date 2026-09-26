@@ -50,6 +50,8 @@ A〜Cに共通する現行の設計案は [AGENT_INTERFACES_v2.md](AGENT_INTERFA
 
 [3日経済の物体・能力移行監査](E1_OBJECT_CAPABILITY_READINESS.md)に沿って、L0の物体木・原子的操作・二台馬車対照と、L1の独立`local_food_v2`を実装した。新版は20人の生産/配送/売買/食事を`PhysicalState`を資産と所在地の唯一の正本として処理し、Cの能力提案/再提案、人物Task、原因Event、版付きコンテンツ、保存再開、CLIと`/?e1=v2`のデバッグ表示を持つ。旧`local_food_v1`のコード・セーブ・画面は維持。L1は依然として固定時刻相の小世界で、共通ルーティンランナー、人格v2、本編接続、長期賃金循環、性能計測は未実装。
 
+[仕事・体力・車両状態](WORK_ENERGY_DESIGN.md)を新版へ追加。従来の積荷付き移動費20体力は実際に払われていたが、荷積み/荷下ろしは無料だった。21食の積載・荷下ろしは各5体力、農作業・市場勤務・購入にも仕事費を設定し、夜間は家にいる本人のrest Taskだけ回復する。荷車は体力ではなく走行摩耗する状態を持つ。一般的な睡眠欲求、栄養と回復の連動、馬の状態、車両修理は未実装。旧E1と90日世界は変更なし。
+
 E0計測器 `npm run economy:baseline` を追加し、無策3seed＋外交/軍事各1seedの90日、計450日を記録。日別・世帯別の詳細は `artifacts/economy-e0.json.gz`、比較用集計は `artifacts/economy-e0-summary.json`。基準seed・無策では日31〜90に食料66,060生産/55,135消費、90日目に共同口座へ食料23,351・装備8,657が残った。装備消費0。空腹の延べ4,915人日は軍務Activityで、民間Activityの空腹は0。90日目の日末復員後の身分だけで読むと誤分類する。これは現行経済の観測結果で、新経済の受入達成ではない。
 
 - M0: 100人30日、seed/Command再実行、保存再開、入力検証、因果Event、資産不変条件。
@@ -59,7 +61,7 @@ E0計測器 `npm run economy:baseline` を追加し、無策3seed＋外交/軍�
 
 ## 検証状況
 
-2026-09-26のL1検証：`npm run typecheck`、`npm run content:validate`、`npm run build`成功。`npm test`は8ファイル54/54成功、ブラウザは新旧E1と90日ゲームを含め6/6成功。`npm run economy:e1:v2 -- baseline`は60食生産/消費、配送21/21/18、12件販売、120通貨移転で、worldHashは`c3bfa378`。`carrier-absent`/`buyer-no-money`/`farmer-absent`の3対照も実行した。新版で輸送中/売買予約中の保存再開とseed+Command再実行が一致。旧版・新版の性能比較、3日を超える経済、E2の所得循環は未測定・未受入。
+2026-09-26のL1/仕事体力変更後の検証：`npm run typecheck`、`npm run content:validate`、`npm run build`成功。`npm test`は8ファイル56/56成功、ブラウザは新旧E1と90日ゲームを含め6/6成功。`npm run economy:e1:v2 -- baseline`は60食生産/消費、配送21/21/18、12件販売、120通貨移転で、`0.4.1-e1`のworldHashは`cd7dcbc6`。`carrier-absent`/`buyer-no-money`/`farmer-absent`の3対照も前回実行し、変更後の反事実は単体試験で再検証した。新版で輸送中/売買予約中の保存再開とseed+Command再実行が一致。ブラウザ試験の初回1件は「荷車」の積載/状態という二表示に曖昧に一致して失敗し、積載表示の識別子を固定して再実行6/6成功。旧版・新版の性能比較、3日を超える経済、E2の所得循環は未測定・未受入。
 
 2026-09-26のL0検証：`npm run typecheck`成功、`npm test` 7ファイル47/47成功（L0の新規5件を含む）、`npm run content:validate`成功、`npm run build`成功。現行`npm run economy:e1 -- baseline`は従来のworldHash `3d0eb42c`、60食生産/消費、配送21/21/18、12件販売、120通貨のまま成功。L0は独立fixtureであり、E1の新版結果ではない。L0の性能、ブラウザ、E1新版の保存再開は未計測・未実装。
 

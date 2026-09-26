@@ -74,7 +74,7 @@ export default function E1V2Debug() {
     </div>
     <div className="e1-stats"><span>生産 <b>{summary.producedFood}</b> 食</span><span>消費 <b>{summary.consumedFood}</b> 食</span>
       <span>農場 <b>{summary.farmFood}</b> 食</span><span>市場 <b>{summary.marketFood}</b> 食</span>
-      <span>荷車 <b>{contentsQuantity(w.physical, "cart_1", "food")}/21</b> 食</span><span>協同事業 <b>{summary.cooperativeMoney}</b> 通貨</span></div>
+      <span data-testid="cart-load">荷車 <b>{contentsQuantity(w.physical, "cart_1", "food")}/21</b> 食</span><span>荷車の状態 <b>{w.cartCondition}/100</b></span><span>協同事業 <b>{summary.cooperativeMoney}</b> 通貨</span></div>
     <main className="e1-layout"><section className="e1-map-panel"><p>場所・人物・荷車・保管具をクリックすると、物理親と所有者、再帰負荷、容量、予約、行動を確認できます。</p>
       <svg className="e1-map" viewBox={`0 0 ${map.width} ${map.height}`} role="img" aria-label="20人の物体木集落地図">
         <rect width={map.width} height={map.height} fill="#1d3028" />
@@ -91,11 +91,11 @@ export default function E1V2Debug() {
         </g>; })}
         {(() => { const xy = w.people.C.journey?.mode === "cart" ? position(w, "C") : point(siteRect(siteOf(w.physical, "cart_1"))); return <g role="button" aria-label="荷車 cart_1" className="e1-cart" transform={`translate(${xy.x + 32},${xy.y - 24})`} onClick={() => setFocus("cart_1")}>
           <rect x={-14} y={-14} width={30} height={26} rx={3} fill="#9bb8bc" stroke="#17332f" strokeWidth={2} /><text x={-9} y={5} className="e1-cart-symbol">車</text>
-          <title>荷車 cart_1 · {contentsQuantity(w.physical, "cart_1", "food")}/21食</title>
+          <title>荷車 cart_1 · {contentsQuantity(w.physical, "cart_1", "food")}/21食 · 状態{w.cartCondition}/100</title>
         </g>; })()}
       </svg>
     </section><aside className="e1-detail">
-      <div className="e1-inspector" aria-live="polite"><h2>選択したオブジェクト</h2>{selected ? <p><b>{selected.id}</b> · {selected.typeId}<br />物理親: {parent?.id ?? "なし"}<br />所在地: {site}<br />所有者: {selected.ownerId ?? "所有対象外"}<br />数量: {selected.quantity}<br />再帰重量: {mass}負荷点<br />内容重量: {capacity?.massUsed}{capacity?.massMax === undefined ? "" : `/${capacity.massMax}`}負荷点<br />食料: {contentsQuantity(w.physical, selected.id, "food")} · 現金: {contentsQuantity(w.physical, selected.id, "currency")}<br />予約: {reservations.map((r) => `${r.id} ${r.quantity}`).join("、") || "なし"}<br />原因Event: {selected.causeEventId}</p> : <p>物体を選んでください。</p>}</div>
+      <div className="e1-inspector" aria-live="polite"><h2>選択したオブジェクト</h2>{selected ? <p><b>{selected.id}</b> · {selected.typeId}<br />物理親: {parent?.id ?? "なし"}<br />所在地: {site}<br />所有者: {selected.ownerId ?? "所有対象外"}<br />数量: {selected.quantity}<br />再帰重量: {mass}負荷点<br />内容重量: {capacity?.massUsed}{capacity?.massMax === undefined ? "" : `/${capacity.massMax}`}負荷点<br />食料: {contentsQuantity(w.physical, selected.id, "food")} · 現金: {contentsQuantity(w.physical, selected.id, "currency")}<br />{selected.id === "cart_1" ? `車両状態: ${w.cartCondition}/100（移動で摩耗）` : ""}<br />予約: {reservations.map((r) => `${r.id} ${r.quantity}`).join("、") || "なし"}<br />原因Event: {selected.causeEventId}</p> : <p>物体を選んでください。</p>}</div>
       <h2>同じ場所にある物体</h2><div>{nearby?.map((o) => <button className="e1-object-link" key={o.id} onClick={() => setFocus(o.id)}>{o.id} · {o.typeId} · {o.ownerId ?? "—"}</button>)}</div>
       {w.people[focus] && <><h2>{focus}の仕事と行動</h2><p>世帯: {w.people[focus].householdId} · 体力: {w.people[focus].energy} · 空腹: {w.people[focus].hunger}</p>
         {w.tasks.filter((t) => t.personId === focus && t.start <= minute).slice(-8).map((t) => <p key={t.id} className="e1-row">{clock(t.start)} · {t.capability} · {t.status}</p>)}

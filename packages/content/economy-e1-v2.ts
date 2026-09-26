@@ -12,7 +12,10 @@ const physicalType = z.object({
 });
 const required = ["world", "site", "person", "bag", "foodStoreFarm", "foodStoreMarket", "foodStoreHouse", "chest", "pouch", "till", "cart", "food", "currency"];
 export function validateEconomyE1V2(input: unknown = fixture) {
-  const record = z.object({ schemaVersion: z.literal(2), physicalTypes: z.record(physicalType) }).passthrough().parse(input);
+  const record = z.object({ schemaVersion: z.literal(2), physicalTypes: z.record(physicalType), labor: z.object({
+    farmShiftEffort: nat, loadEffortPerFiveFood: nat, unloadEffortPerFiveFood: nat,
+    marketShiftEffort: nat, purchaseEffort: nat, overnightRecovery: nat, cartWearPerKm: nat,
+  }) }).passthrough().parse(input);
   const base = validateEconomyE1({ ...record, schemaVersion: 1 });
   const types = record.physicalTypes as Record<string, PhysicalType>;
   const tags = new Set(Object.values(types).flatMap((type) => type.tags));
@@ -27,6 +30,13 @@ export function validateEconomyE1V2(input: unknown = fixture) {
     types.pouch.container?.maxContentsMass !== base.limits.personCash ||
     types.chest.container?.maxContentsMass !== base.limits.houseChestCash ||
     types.till.container?.maxContentsMass !== base.limits.marketTillCash) throw Error("E1 v2 physical limits mismatch");
+  const labor = record.labor;
+  const fullTrip = 2 * base.roadKm * base.limits.cartEffortPerKm +
+    base.roadKm * Math.ceil(base.cartCapacity / 5) * base.limits.cartExtraEffortPerFiveFoodKm +
+    2 * Math.ceil(base.limits.townKm * base.limits.walkEffortPerKm) +
+    Math.ceil(base.cartCapacity / 5) * (labor.loadEffortPerFiveFood + labor.unloadEffortPerFiveFood);
+  if (labor.overnightRecovery > base.limits.personEnergy || fullTrip > base.limits.personEnergy ||
+    fullTrip > labor.overnightRecovery || 2 * base.roadKm * labor.cartWearPerKm * 3 > 100) throw Error("E1 v2 work/rest cycle infeasible");
   return input as typeof fixture;
 }
 export const economyE1V2 = validateEconomyE1V2();

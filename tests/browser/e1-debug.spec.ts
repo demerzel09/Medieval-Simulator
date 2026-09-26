@@ -50,11 +50,15 @@ test("physical E1 v2 debug shows parent, owner, capacity and causal work", async
   await page.getByRole("button", { name: "荷車 cart_1" }).click();
   await expect(page.locator(".e1-inspector")).toContainText("物理親: market");
   await expect(page.locator(".e1-inspector")).toContainText("所有者: cooperative");
+  await expect(page.locator(".e1-inspector")).toContainText("車両状態: 100/100");
   await page.getByLabel("経過分").fill("751");
-  await expect(page.locator(".e1-stats span").filter({ hasText: "荷車" })).toContainText("21/21");
+  await expect(page.getByTestId("cart-load")).toContainText("21/21");
   await expect(page.locator(".e1-inspector")).toContainText("物理親: transit_");
+  await expect(page.locator(".e1-inspector")).toContainText("車両状態: 96/100");
   await page.locator(".e1-person").filter({ hasText: "C" }).click();
   await expect(page.locator(".e1-detail")).toContainText("delivery_replanned");
+  await expect(page.locator(".e1-detail")).toContainText("体力: 64");
+  await expect(page.locator(".e1-detail")).toContainText("work_effort_paid");
   await page.getByLabel("経過分").fill("930");
   await expect(page.locator(".e1-stats span").filter({ hasText: "協同事業" })).toContainText("40");
   await page.getByLabel("シナリオ").selectOption("carrier-absent");

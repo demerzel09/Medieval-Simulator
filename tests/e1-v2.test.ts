@@ -22,6 +22,8 @@ describe("L1 physical E1 economy", () => {
     }
     expect(w.shipments.map((s) => s.quantity)).toEqual([21, 21, 18]);
     expect(w.events.filter((e) => e.kind === "meal_eaten")).toHaveLength(60);
+    expect(w.events.filter((e) => e.kind === "rest_completed")).toHaveLength(60);
+    expect(w.cartCondition).toBe(88);
     expect(w.events.filter((e) => e.kind === "delivery_proposed")).toHaveLength(3);
     expect(w.events.filter((e) => e.kind === "delivery_replanned")).toHaveLength(3);
     expect(w.tasks.filter((t) => t.capability === "carry_food" && t.status === "completed")).toHaveLength(3);
@@ -82,6 +84,7 @@ describe("L1 physical E1 economy", () => {
     expect(hash(replayed)).toBe(hash(w));
     expect(() => loadLocalV2(saved.replace('"contentHash":"', '"contentHash":"tampered'))).toThrow();
     expect(() => loadLocalV2(JSON.stringify({ ...resumed, schemaVersion: 2 }))).toThrow("incompatible");
+    expect(() => loadLocalV2(JSON.stringify({ ...resumed, engineVersion: "0.4.0-e1" }))).toThrow("incompatible");
     const broken = structuredClone(resumed);
     broken.physical.objects.cart_1.parentId = "missing";
     expect(() => checkLocalV2(broken)).toThrow();
@@ -144,5 +147,48 @@ describe("L1 physical E1 economy", () => {
     expect(tired.shipments[0].status).toBe("failed");
     expect(contentsQuantity(tired.physical, "store_farm", "food")).toBe(21);
     expect(contentsQuantity(tired.physical, "cart_1", "food")).toBe(0);
+  });
+
+  it("charges loading, travel and unloading separately, wears the cart, then restores energy by a completed rest task", () => {
+    const w = newLocalWorldV2();
+    advanceLocalV2(w, 749);
+    expect(w.people.C.energy).toBe(89);
+    expect(w.cartCondition).toBe(98);
+    advanceLocalV2(w, 1);
+    expect(w.people.C.energy).toBe(64); // 5 to load 21 food, then 20 to drive it homeward
+    expect(w.cartCondition).toBe(96);
+    expect(w.events.find((e) => e.kind === "work_effort_paid" && e.data.work === "load_food")?.data).toMatchObject({ effort: 5, energyBefore: 89, energyAfter: 84 });
+    advanceLocalV2(w, 90);
+    expect(w.people.C.energy).toBe(58); // 5 to unload, 1 to walk home
+    expect(w.events.find((e) => e.kind === "work_effort_paid" && e.data.work === "unload_food")?.data).toMatchObject({ effort: 5, energyBefore: 64, energyAfter: 59 });
+    expect(w.events.filter((e) => e.kind === "vehicle_worn" && e.actors.includes("C"))).toHaveLength(2);
+    advanceLocalV2(w, 600);
+    expect(w.people.C.energy).toBe(100);
+    expect(w.events.some((e) => e.kind === "rest_completed" && e.actors.includes("C") && e.data.energyBefore === 58)).toBe(true);
+    expect(w.tasks.some((t) => t.personId === "C" && t.capability === "rest" && t.status === "completed")).toBe(true);
+  });
+
+  it("does not unload or produce when the worker lacks effort, and does not recover away from home", () => {
+    const unloading = newLocalWorldV2();
+    advanceLocalV2(unloading, 751);
+    unloading.people.C.energy = 0;
+    advanceLocalV2(unloading, 840 - 751);
+    expect(unloading.shipments[0].status).toBe("failed");
+    expect(contentsQuantity(unloading.physical, "cart_1", "food")).toBe(21);
+    expect(contentsQuantity(unloading.physical, "store_market", "food")).toBe(0);
+    expect(unloading.events.some((e) => e.kind === "work_blocked" && e.data.work === "unload_food")).toBe(true);
+    const brokenCart = newLocalWorldV2(); brokenCart.cartCondition = 1;
+    advanceLocalV2(brokenCart, 360);
+    expect(brokenCart.shipments[0].status).toBe("failed");
+    expect(brokenCart.events.some((e) => e.kind === "journey_blocked" && e.data.reason === "cart_unfit")).toBe(true);
+    expect(brokenCart.cartCondition).toBe(1);
+    const farmer = newLocalWorldV2(); farmer.people.F0.energy = 7;
+    advanceLocalV2(farmer, 720);
+    expect(farmer.producedFood).toBe(18);
+    expect(farmer.events.some((e) => e.kind === "work_blocked" && e.actors.includes("F0") && e.data.work === "farm_shift")).toBe(true);
+    farmer.people.F0.energy = 40;
+    advanceLocalV2(farmer, 1440 - 720);
+    expect(farmer.people.F0.energy).toBe(40);
+    expect(farmer.events.some((e) => e.kind === "rest_missed" && e.actors.includes("F0"))).toBe(true);
   });
 });
