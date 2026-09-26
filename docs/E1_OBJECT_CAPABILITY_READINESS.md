@@ -1,6 +1,6 @@
 # 3日経済を物体・能力モデルへ移す実装前監査
 
-状態: 2026-09-26の設計・コード照合。以下は**新実装の契約案と仮決定**であり、現行E1は従来の`FoodLot`/`CashContainer`/固定時刻相で動く。新モデルのコード、保存変換、受入テスト、性能測定は未着手。[物体モデル](PHYSICAL_OBJECT_MODEL.md)、[能力エージェント](CAPABILITY_AGENTS_DESIGN.md)、[E1契約](ECONOMY_E1_CONTRACT.md)を対象にする。
+状態: 2026-09-26の設計・コード照合。以下は**L1移行用の契約と仮決定**であり、現行E1は従来の`FoodLot`/`CashContainer`/固定時刻相で動く。L0の物体木・運送能力の独立コードと試験は実装済み。E1への接続、新保存形式、3日受入テスト、性能測定は未着手。[物体モデル](PHYSICAL_OBJECT_MODEL.md)、[能力エージェント](CAPABILITY_AGENTS_DESIGN.md)、[E1契約](ECONOMY_E1_CONTRACT.md)を対象にする。
 
 ## 結論と3日fixtureの境界
 

@@ -1,6 +1,6 @@
 # 物体・包含・所有権の共通モデル
 
-状態: 2026-09-26の実装前設計。[平時と戦時の共通物流](COMMON_LOGISTICS_DESIGN.md)の`AssetLot + Holder.anchor`案を、入れ子の物体モデルへ改訂する。コード、保存形式、E1/M2の動作は未変更。
+状態: 2026-09-26にL0の物体木・容量・予約・原子的操作を`packages/sim/physical.ts`へ実装し、独立試験で検証した。[平時と戦時の共通物流](COMMON_LOGISTICS_DESIGN.md)の`AssetLot + Holder.anchor`案を、入れ子の物体モデルへ改訂した設計である。E1/M2の保存形式・動作は未変更。Event発行と旧経済からの移行はL1以降。
 
 ## 一つの物理的な親、別の社会的な関係
 

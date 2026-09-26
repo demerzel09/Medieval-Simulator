@@ -80,7 +80,7 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 動機・行動・社会的約束の共通化に関する[設計調査](docs/RESEARCH_MOTIVATION_ACTION.md)を踏まえ、A〜Cで共有する[人格の認知・行動インターフェースv2](docs/AGENT_INTERFACES_v2.md)を検討しています。文化と本人が知る状況による認識、動機づけ、判断から、[データ駆動のルーティン](docs/DATA_DRIVEN_ROUTINES.md)による複数人の仕事と実行までを設計しています。ルール・NN・LLM・人間は各ブロックの実装方法です。これは設計段階で、現行のゲームコードへの移行は未着手です。
 
-次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。E0の現行経済計測に続き、E1の独立20人集落で、実在の農民・運搬人・売り手・買物係による食料流通を実装しました。[平時と戦時の共通物流設計](docs/COMMON_LOGISTICS_DESIGN.md)、[物体・包含モデル](docs/PHYSICAL_OBJECT_MODEL.md)、[能力エージェント](docs/CAPABILITY_AGENTS_DESIGN.md)に、将来の兵站へ接続する境界、入れ子の物体、複数馬車の運送技能を整理しています。[3日経済の物体・能力移行監査](docs/E1_OBJECT_CAPABILITY_READINESS.md)には、次の実装に必要な型・容量・時刻・原子的移転・保存版を仮決定しました。現行90日ゲームの国別共同市場はまだこの新経済へ移行していません。
+次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。E0の現行経済計測に続き、E1の独立20人集落で、実在の農民・運搬人・売り手・買物係による食料流通を実装しました。[平時と戦時の共通物流設計](docs/COMMON_LOGISTICS_DESIGN.md)、[物体・包含モデル](docs/PHYSICAL_OBJECT_MODEL.md)、[能力エージェント](docs/CAPABILITY_AGENTS_DESIGN.md)に、将来の兵站へ接続する境界、入れ子の物体、複数馬車の運送技能を整理しています。[3日経済の物体・能力移行監査](docs/E1_OBJECT_CAPABILITY_READINESS.md)に基づき、L0の物体操作と二台馬車の計画/検査を独立fixtureで実装しました。`npm test -- --run tests/physical.test.ts`で検証できます。現行E1と90日ゲームへの接続は次のL1以降で、国別共同市場もまだこの新経済へ移行していません。
 
 [実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)に、E1前に確定する在庫・取引・時間・伝達・経済Task・旧処理との切替、E2前に数表で検証する家計と事業の資金循環をまとめました。[E0の現行経済90日計測](docs/ECONOMY_E0_BASELINE.md)は実施済みで、日別・世帯別の詳細と要約を保存しています。
 
@@ -88,7 +88,7 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 ## 次の作業
 
-1. E1の残課題である共通ルーティン展開と、本人へ届いた情報からの判断を実装し、既存90日ゲームとの接続方法を決める。
+1. L1で物体木をE1の正本にし、現行20人の3日結果・因果Event・新形式の保存再開を通す。その後、共通ルーティン展開と本人へ届いた情報からの判断を実装し、既存90日ゲームとの接続方法を決める。
 2. E2の実働・所得と資金循環、E3の木材/装備と公職・軍への接続へ進み、既存90日ゲームの回帰も確認する。
 3. [人格インターフェースv2](docs/AGENT_INTERFACES_v2.md)の契約テストを準備し、経済Taskと書記・伝令・面談へ共通の実行境界を適用する。
 4. [人間試遊の記録票](docs/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。試遊結果と[STATUS.md](docs/STATUS.md)の未実装事項を見直し、M3の正式受入後にM4を検討する。
