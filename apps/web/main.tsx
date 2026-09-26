@@ -6,6 +6,7 @@ import "@fontsource/noto-sans-jp/400.css";
 import "@fontsource/noto-sans-jp/700.css";
 import { persist, restore } from "./storage";
 import "./style.css";
+const E1Debug = React.lazy(() => import("./e1-debug"));
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
 });
@@ -319,6 +320,7 @@ function App() {
         >
           統治を始める
         </button>
+        <a className="e1-entry" href="/?e1=debug">20人集落の空間デバッグを見る</a>
         <button
           onClick={async () => {
             const save = await restore();
@@ -714,6 +716,7 @@ function App() {
           {devMode && tab === "開発" && (
             <section className="debug-panel">
               <h2>全員の行動 · 開発用</h2>
+              <p><a href="/?e1=debug">E1集落の家・人物・食料を地図で追う</a></p>
               <p>
                 世界の真実を表示します。通常の君主画面では未確認の情報は表示されません。
               </p>
@@ -1129,4 +1132,7 @@ function App() {
     </>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  new URLSearchParams(window.location.search).get("e1") === "debug" ?
+    <React.Suspense fallback={<p>集落を読み込んでいます…</p>}><E1Debug /></React.Suspense> : <App />,
+);

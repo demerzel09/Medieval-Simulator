@@ -10,6 +10,19 @@
   "walkKmh": 4,
   "cartKmh": 2,
   "initialHouseholdMoney": 40,
+  "map": {
+    "width": 960,
+    "height": 520,
+    "town": { "x": 390, "y": 35, "width": 525, "height": 445 },
+    "farm": { "x": 40, "y": 120, "width": 250, "height": 280 },
+    "market": { "x": 615, "y": 190, "width": 225, "height": 125 },
+    "houses": {
+      "H0": { "x": 420, "y": 65, "width": 150, "height": 100 },
+      "H1": { "x": 730, "y": 65, "width": 150, "height": 100 },
+      "H2": { "x": 420, "y": 355, "width": 150, "height": 100 },
+      "H3": { "x": 730, "y": 355, "width": 150, "height": 100 }
+    }
+  },
   "times": {
     "orders": 300,
     "notice": 315,

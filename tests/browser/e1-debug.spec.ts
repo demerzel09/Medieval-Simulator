@@ -1,0 +1,31 @@
+import { test, expect } from "@playwright/test";
+
+test("spatial E1 debug shows households, journeys, cargo and food brought home", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?e1=debug");
+  await expect(page.getByRole("heading", { name: "20人の集落 · 空間デバッグ" })).toBeVisible();
+  await expect(page.locator(".e1-site")).toHaveCount(6);
+  await expect(page.locator(".e1-person")).toHaveCount(20);
+  await expect(page.locator(".e1-detail")).toContainText("F0、F1、B0、D0、D1");
+  const farmer = page.locator(".e1-person").filter({ hasText: "F0" }).locator("circle");
+  const homeX = Number(await farmer.getAttribute("cx"));
+  await page.getByLabel("経過分").fill("345");
+  const roadX = Number(await farmer.getAttribute("cx"));
+  expect(roadX).toBeLessThan(homeX);
+  expect(roadX).toBeGreaterThan(165);
+  await page.getByLabel("経過分").fill("751");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "荷車" })).toContainText("21");
+  await page.getByLabel("経過分").fill("930");
+  await expect(page.getByText("置かれた食料: 5食")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: "artifacts/e1-spatial-debug.png", fullPage: true });
+  await page.getByLabel("経過分").fill("1140");
+  await expect(page.getByText("置かれた食料: 0食")).toBeVisible();
+  await page.getByLabel("シナリオ").selectOption("carrier-absent");
+  await page.getByLabel("経過分").fill("2880");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "農場" })).toContainText("21");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});

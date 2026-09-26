@@ -3,6 +3,7 @@ import fixture from "./economy-e1.json";
 
 const nat = z.number().int().nonnegative();
 const positive = z.number().int().positive();
+const rect = z.object({ x: nat, y: nat, width: positive, height: positive });
 export const economyE1Schema = z.object({
   schemaVersion: z.literal(1),
   scenarioId: z.literal("village_food_loop"),
@@ -15,6 +16,10 @@ export const economyE1Schema = z.object({
   walkKmh: positive,
   cartKmh: positive,
   initialHouseholdMoney: nat,
+  map: z.object({
+    width: positive, height: positive, town: rect, farm: rect, market: rect,
+    houses: z.record(rect),
+  }),
   times: z.object({
     orders: nat,
     notice: nat,
@@ -55,6 +60,18 @@ export type EconomyE1Content = z.infer<typeof economyE1Schema>;
 export function validateEconomyE1(input: unknown = fixture): EconomyE1Content {
   const c = economyE1Schema.parse(input);
   const ids = c.households.flatMap((h) => [...h.farmers, h.buyer, ...h.other]);
+  const inside = (r: z.infer<typeof rect>, outer: z.infer<typeof rect>) =>
+    r.x >= outer.x && r.y >= outer.y && r.x + r.width <= outer.x + outer.width && r.y + r.height <= outer.y + outer.height;
+  const intersects = (a: z.infer<typeof rect>, b: z.infer<typeof rect>) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  const whole = { x: 0, y: 0, width: c.map.width, height: c.map.height };
+  const buildings = [c.map.market, ...Object.values(c.map.houses)];
+  if (!inside(c.map.town, whole) || !inside(c.map.farm, whole) || !inside(c.map.market, c.map.town) ||
+      intersects(c.map.farm, c.map.town) ||
+      buildings.some((a, i) => buildings.some((b, j) => i < j && intersects(a, b))) ||
+      Object.keys(c.map.houses).length !== c.households.length ||
+      c.households.some((h) => !c.map.houses[h.id] || !inside(c.map.houses[h.id], c.map.town)))
+    throw Error("invalid E1 spatial layout");
   if (ids.length !== 20 || new Set(ids).size !== 20 ||
       c.households.some((h) => h.farmers.length + h.other.length !== 4))
     throw Error("E1 households must contain 20 unique people in groups of five");

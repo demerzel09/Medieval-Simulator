@@ -18,6 +18,22 @@
       "presentation": { "group": "ゲーム", "order": 1 }
     },
     {
+      "name": "経済 E1: 空間デバッグ画面",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?e1=debug",
+        "action": "debugWithChrome"
+      },
+      "presentation": { "group": "経済", "order": 0 }
+    },
+    {
       "name": "90日: 外交",
       "type": "node",
       "request": "launch",

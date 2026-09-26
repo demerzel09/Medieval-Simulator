@@ -1,7 +1,8 @@
 import { economyE1 } from "../content/economy-e1";
 import { hash } from "./core";
 
-type Place = "farm" | "market" | `cargo:${string}`;
+export type Place = "farm" | "market" | `house:${string}` | `cargo:${string}` | `carried:${string}`;
+export type Journey = { from: Place; to: Place; depart: number; arrive: number; causeEventId: string };
 type Capability = (typeof economyE1.routines)[number]["capability"];
 type OrderStatus = "requested" | "sale_reserved" | "settled" | "expired";
 type ShipmentStatus = "requested" | "assigned" | "loaded" | "in_transit" | "delivered" | "failed";
@@ -38,7 +39,7 @@ export type LocalShipment = {
 export type LocalWorld = {
   schemaVersion: 2; economicMode: "local_food_v1"; engineVersion: "0.3.0-e1";
   seed: number; contentHash: string; minute: number; nextId: number;
-  people: Record<string, { id: string; householdId: string; role: string; location: Place; hunger: number }>;
+  people: Record<string, { id: string; householdId: string; role: string; location: Place; journey?: Journey; hunger: number }>;
   households: Record<string, { id: string; memberIds: string[]; buyerId: string }>;
   wallets: Record<string, number>; initialMoney: number;
   lots: FoodLot[]; producedFood: number; consumedFood: number; lostFood: number;
@@ -69,6 +70,26 @@ const routineFor = (capability: Capability) => {
   if (!routine) throw Error(`missing routine ${capability}`);
   return routine;
 };
+const home = (householdId: string): Place => `house:${householdId}`;
+function startJourney(w: LocalWorld, personId: string, to: Place, arrive: number, causes: string[] = []) {
+  const person = w.people[personId];
+  if (person.journey || arrive <= w.minute || person.location === to) throw Error("invalid E1 journey start");
+  const e = emit(w, "journey_started", [personId], causes, { from: person.location, to, arrive });
+  person.journey = { from: person.location, to, depart: w.minute, arrive, causeEventId: e.id };
+}
+function finishJourney(w: LocalWorld, personId: string) {
+  const person = w.people[personId], j = person.journey;
+  if (!j || j.arrive !== w.minute) throw Error("invalid E1 journey arrival");
+  person.location = j.to;
+  person.journey = undefined;
+  const e = emit(w, "journey_arrived", [personId], [j.causeEventId], { place: j.to });
+  if (j.to === home(person.householdId))
+    for (const lot of w.lots.filter((lot) => lot.place === `carried:${personId}`)) {
+      lot.place = j.to;
+      lot.causeEventId = emit(w, "food_brought_home", [personId], [e.id, lot.causeEventId], { lotId: lot.id, quantity: lot.quantity }).id;
+    }
+  return e;
+}
 
 export function newLocalWorld(seed = 240924): LocalWorld {
   if (!Number.isSafeInteger(seed)) throw Error("invalid seed");
@@ -83,7 +104,7 @@ export function newLocalWorld(seed = 240924): LocalWorld {
         id, householdId: h.id,
         role: h.farmers.includes(id) ? "farmer" : id === h.buyer ? "buyer" :
           id === economyE1.roles.seller ? "seller" : id === economyE1.roles.carrier ? "carrier" : "dependent",
-        location: "market", hunger: 0,
+        location: home(h.id), hunger: 0,
       };
   }
   const w: LocalWorld = {
@@ -181,7 +202,7 @@ export function settlePurchase(w: LocalWorld, orderId: string) {
   const e = emit(w, "sale_settled", [order.buyerId, economyE1.roles.seller], [order.reservationEventId!, ...sourceEvents], {
     orderId, householdId: order.householdId, quantity: order.quantity, cost: hold.amount,
   });
-  w.lots.push({ id: uid(w, "lot"), ownerId: order.householdId, place: "market", quantity: order.quantity, reserved: 0, causeEventId: e.id });
+  w.lots.push({ id: uid(w, "lot"), ownerId: order.householdId, place: `carried:${order.buyerId}`, quantity: order.quantity, reserved: 0, causeEventId: e.id });
   order.status = "settled"; order.settlementEventId = e.id;
   order.holdId = undefined; order.allocations = [];
   checkLocal(w);
@@ -197,10 +218,13 @@ function createOrder(w: LocalWorld, householdId: string, day: number, quantity: 
 }
 function phase(w: LocalWorld) {
   const day = dayOf(w.minute), base = dayStart(day), local = w.minute - base;
+  for (const p of Object.values(w.people)) if (p.journey?.arrive === w.minute) finishJourney(w, p.id);
   if (day > 3) return;
   if (local === t.orders) {
     for (const h of Object.values(w.households))
       offerTask(w, h.buyerId, "buy_food", w.minute, base + t.notice);
+    if (!absent(w, economyE1.roles.seller, day))
+      startJourney(w, economyE1.roles.seller, "market", base + t.notice);
   }
   if (local === t.notice) {
     for (const h of Object.values(w.households)) {
@@ -226,22 +250,22 @@ function phase(w: LocalWorld) {
       } else {
         shipment.status = "assigned";
         shipment.lastEventId = task.answerEventId;
+        startJourney(w, shipment.carrierId, "market", base + t.cartDepart, [task.answerEventId]);
       }
     }
     const farmers = Object.values(w.people).filter((p) => p.role === "farmer").sort((a,b) => a.id.localeCompare(b.id));
-    for (const p of farmers.slice(0, economyE1.farmersOnShift[day - 1]))
-      offerTask(w, p.id, "work_shift", w.minute, base + t.loadEnd, request ? [request.id] : []);
+    for (const p of farmers.slice(0, economyE1.farmersOnShift[day - 1])) {
+      const task = offerTask(w, p.id, "work_shift", w.minute, base + t.loadEnd, request ? [request.id] : []);
+      if (task.status === "accepted") startJourney(w, p.id, "farm", base + t.farmArrive, [task.answerEventId]);
+    }
   }
-  if (local === t.farmArrive)
-    for (const p of Object.values(w.people).filter((p) => p.role === "farmer"))
-      if (taskAt(w, p.id, "work_shift", day)) {
-        p.location = "farm";
-        emit(w, "arrived_farm", [p.id], [taskAt(w, p.id, "work_shift", day)!.answerEventId]);
-      }
+  if (local === t.cartDepart) {
+    const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
+    if (s) startJourney(w, s.carrierId, "farm", base + t.cartFarmArrive, [s.lastEventId]);
+  }
   if (local === t.cartFarmArrive) {
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
     if (s) {
-      w.people[s.carrierId].location = "farm";
       const managerAvailable = !absent(w, economyE1.roles.farmManager, day);
       s.lastEventId = emit(w, managerAvailable ? "request_delivered_farm" : "request_missed_farm", managerAvailable ? [s.carrierId, economyE1.roles.farmManager] : [s.carrierId], [s.lastEventId], { shipmentId: s.id }).id;
     }
@@ -253,11 +277,12 @@ function phase(w: LocalWorld) {
       const e = emit(w, "food_produced", [p.id], [task.answerEventId], { quantity: economyE1.farmOutputPerShift });
       w.lots.push({ id: uid(w, "lot"), ownerId: "cooperative", place: "farm", quantity: economyE1.farmOutputPerShift, reserved: 0, causeEventId: e.id });
       w.producedFood += economyE1.farmOutputPerShift;
+      startJourney(w, p.id, home(p.householdId), base + t.loadEnd, [e.id]);
     }
   if (local === t.loadEnd) {
     for (const p of Object.values(w.people).filter((p) => p.role === "farmer")) {
       const task = taskAt(w, p.id, "work_shift", day);
-      if (task) { completeTask(w, task, "farm_shift_completed", [], { quantity: economyE1.farmOutputPerShift }); p.location = "market"; }
+      if (task) completeTask(w, task, "farm_shift_completed", [], { quantity: economyE1.farmOutputPerShift });
     }
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
     if (s) {
@@ -280,26 +305,35 @@ function phase(w: LocalWorld) {
         s.status = "in_transit";
         s.lastEventId = emit(w, "shipment_loaded", [s.carrierId], [s.lastEventId, ...s.lotIds.map((id) => w.lots.find((l) => l.id === id)!.causeEventId)], { shipmentId: s.id, quantity: s.quantity }).id;
       }
+      startJourney(w, s.carrierId, "market", base + t.cartMarketArrive, [s.lastEventId]);
     }
   }
   if (local === t.unloadEnd) {
     const s = w.shipments.find((s) => s.day === day && s.status === "in_transit");
     if (s) {
       for (const id of s.lotIds) w.lots.find((l) => l.id === id)!.place = "market";
-      w.people[s.carrierId].location = "market";
       s.status = "delivered";
       s.lastEventId = emit(w, "shipment_delivered", [s.carrierId, economyE1.roles.seller], [s.lastEventId], { shipmentId: s.id, quantity: s.quantity }).id;
       for (const id of s.lotIds) w.lots.find((l) => l.id === id)!.causeEventId = s.lastEventId;
       const task = taskAt(w, s.carrierId, "carry_food", day)!;
       completeTask(w, task, "carry_completed", [s.lastEventId], { quantity: s.quantity });
     }
-    const empty = w.shipments.find((s) => s.day === day && s.status === "failed" && w.people[s.carrierId].location === "farm");
+    const empty = w.shipments.find((s) => s.day === day && s.status === "failed" && w.people[s.carrierId].location === "market");
     if (empty) {
-      w.people[empty.carrierId].location = "market";
       const task = taskAt(w, empty.carrierId, "carry_food", day);
       if (task) completeTask(w, task, "carry_empty_return", [empty.lastEventId]);
     }
+    if (s || empty) {
+      const carrier = w.people[economyE1.roles.carrier];
+      startJourney(w, carrier.id, home(carrier.householdId), w.minute + 15, [s?.lastEventId ?? empty!.lastEventId]);
+    }
     offerTask(w, economyE1.roles.seller, "market_sale", w.minute, base + t.marketEnd, s ? [s.lastEventId] : []);
+  }
+  if (local >= t.unloadEnd - 15 && local < t.marketEnd - 15 && (local - (t.unloadEnd - 15)) % 15 === 0) {
+    const index = (local - (t.unloadEnd - 15)) / 15;
+    const h = Object.values(w.households).sort((a,b) => a.id.localeCompare(b.id))[index];
+    if (h && w.orders.some((o) => o.day === day && o.householdId === h.id && o.status === "requested"))
+      startJourney(w, h.buyerId, "market", w.minute + 15);
   }
   if (local >= t.unloadEnd && local < t.marketEnd && (local - t.unloadEnd) % 15 === 0) {
     const index = (local - t.unloadEnd) / 15;
@@ -321,12 +355,16 @@ function phase(w: LocalWorld) {
       if (task) {
         const settled = order?.status === "sale_reserved" && settlePurchase(w, order.id);
         completeTask(w, task, settled ? "purchase_completed" : "purchase_failed", order ? [order.requestEventId] : [], { householdId: h.id });
+        startJourney(w, h.buyerId, home(h.id), w.minute + 15, [task.resultEventId!]);
       }
     }
   }
   if (local === t.marketEnd) {
     const sellerTask = w.tasks.find((task) => task.personId === economyE1.roles.seller && task.capability === "market_sale" && task.end === w.minute && task.status === "accepted");
-    if (sellerTask) completeTask(w, sellerTask, "market_shift_completed");
+    if (sellerTask) {
+      const e = completeTask(w, sellerTask, "market_shift_completed");
+      startJourney(w, economyE1.roles.seller, home(w.people[economyE1.roles.seller].householdId), w.minute + 15, [e.id]);
+    }
     for (const o of w.orders.filter((o) => o.day === day && (o.status === "requested" || o.status === "sale_reserved"))) cancelPurchase(w, o.id);
   }
   if (local === t.meal)
@@ -335,7 +373,7 @@ function phase(w: LocalWorld) {
     for (const p of Object.values(w.people)) {
       const task = taskAt(w, p.id, "eat_food", day);
       if (!task) continue;
-      const lot = w.lots.find((l) => l.ownerId === p.householdId && l.place === "market" && l.quantity > l.reserved);
+      const lot = w.lots.find((l) => l.ownerId === p.householdId && l.place === home(p.householdId) && l.quantity > l.reserved);
       if (lot) { lot.quantity--; w.consumedFood++; p.hunger = Math.max(0,p.hunger-1); }
       else p.hunger++;
       completeTask(w, task, lot ? "meal_eaten" : "meal_missed", lot ? [lot.causeEventId] : [], { householdId: p.householdId, hunger: p.hunger });
@@ -393,8 +431,12 @@ export function checkLocal(w: LocalWorld) {
   const ids = new Set<string>();
   for (const lot of w.lots) {
     if (ids.has(lot.id) || !Number.isSafeInteger(lot.quantity) || lot.quantity < 0 || !Number.isSafeInteger(lot.reserved) || lot.reserved < 0 || lot.reserved > lot.quantity || !(lot.ownerId === "cooperative" || w.households[lot.ownerId]) ||
-        (lot.place !== "farm" && lot.place !== "market" && !w.shipments.some((s) => lot.place === `cargo:${s.id}` && s.lotIds.includes(lot.id))) ||
-        (lot.place === "farm" && lot.ownerId !== "cooperative")) throw Error("invalid E1 lot");
+        (lot.place !== "farm" && lot.place !== "market" &&
+          !w.shipments.some((s) => lot.place === `cargo:${s.id}` && s.lotIds.includes(lot.id)) &&
+          !(w.households[lot.ownerId] && lot.place === home(lot.ownerId)) &&
+          !Object.values(w.people).some((p) => lot.place === `carried:${p.id}` && p.householdId === lot.ownerId)) ||
+        (lot.place === "farm" && lot.ownerId !== "cooperative") ||
+        (lot.place.startsWith("house:") && lot.place !== home(lot.ownerId))) throw Error("invalid E1 lot");
     ids.add(lot.id);
   }
   if (w.lots.reduce((n,l)=>n+l.quantity,0) !== w.producedFood - w.consumedFood - w.lostFood) throw Error("E1 food conservation");
@@ -404,6 +446,12 @@ export function checkLocal(w: LocalWorld) {
     events.add(e.id);
   }
   for (const lot of w.lots) if (!events.has(lot.causeEventId)) throw Error("E1 lot without cause");
+  for (const p of Object.values(w.people)) {
+    if (!w.households[p.householdId]?.memberIds.includes(p.id) ||
+        (p.location !== "farm" && p.location !== "market" && p.location !== home(p.householdId))) throw Error("invalid E1 person place");
+    if (p.journey && (p.journey.from !== p.location || p.journey.depart > w.minute ||
+        p.journey.arrive <= w.minute || !events.has(p.journey.causeEventId))) throw Error("invalid E1 journey");
+  }
   for (const task of w.tasks) {
     if (!w.people[task.personId] || task.start >= task.end || !events.has(task.offerEventId) || !events.has(task.answerEventId)) throw Error("invalid E1 task");
     if (task.status === "completed" && !task.resultEventId) throw Error("missing task result");
