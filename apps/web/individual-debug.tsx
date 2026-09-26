@@ -36,8 +36,9 @@ export default function IndividualDebug({ initialView }: { initialView: View }) 
     <div className="e1-stats">
       {view === "life" ? <><span>採集 <b>{(w as ReturnType<typeof newLifeWorld>).harvested}</b></span><span>食事 <b>{(w as ReturnType<typeof newLifeWorld>).eaten}</b></span>
         <span>資源残量 <b>{(w as ReturnType<typeof newLifeWorld>).resources.berries.available}</b></span></> :
-        <><span>店頭価格 <b>{market!.price}</b></span><span>Sの現金 <b>{market!.sellerCash}</b></span><span>Sの実現損益 <b>{market!.sellerProfit}</b></span>
-          <span>販売数 <b>{market!.sold}</b></span><span>在庫 <b>{market!.stock}</b></span></>}
+        <><span>店頭価格 <b>{market!.price}</b></span><span>Sの現金 <b>{market!.sellerCash}</b></span>
+          <span>Sの留保額 <b>{market!.sellerReserve}</b></span><span>Sの実現損益 <b>{market!.sellerProfit}</b></span>
+          <span>販売数 <b>{market!.sold}</b></span><span>在庫 <b>{market!.stock}</b></span><span>腐敗 <b>{market!.spoiled}</b></span></>}
     </div>
     <main className="e1-layout"><section className="e1-map-panel"><p>場所・人物・資源を選ぶと、物体の所有者、携行量、本人の行動Eventを確認できます。場所は取引を実行しません。</p>
       <svg className="e1-map" viewBox="0 0 720 400" role="img" aria-label="個人経済の場所と人物">

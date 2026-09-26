@@ -20,9 +20,15 @@ test("individual market map shows S-owned site and local price response", async 
   await page.getByRole("button", { name: "Sの市場 market" }).click();
   await expect(page.locator(".e1-detail")).toContainText("所有者: S");
   await expect(page.locator(".e1-stats")).toContainText("店頭価格 4");
+  await expect(page.locator(".e1-stats")).toContainText("Sの留保額 4");
+  await page.getByRole("button", { name: "人物 F" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("harvest_contract_accepted");
+  await expect(page.locator(".e1-detail")).toContainText("foraged");
   await page.getByRole("button", { name: "＋1日" }).click();
   await expect(page.locator(".e1-stats")).toContainText("店頭価格 5");
   await page.getByRole("button", { name: "人物 C" }).click();
   await expect(page.locator(".e1-detail")).toContainText("carrier_paid");
+  for (let day = 2; day < 7; day++) await page.getByRole("button", { name: "＋1日" }).click();
+  await expect(page.locator(".e1-stats")).toContainText("腐敗 5");
   expect(errors).toEqual([]);
 });
