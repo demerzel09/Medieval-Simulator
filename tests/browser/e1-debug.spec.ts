@@ -81,3 +81,21 @@ test("A2 map shows each buyer's decisions and physical purchase", async ({ page 
   await expect(page.locator(".e1-stats span").filter({ hasText: "協同事業" })).toContainText("40");
   expect(errors).toEqual([]);
 });
+
+test("A1 workbench shows tool handoff, progress, and both workers", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?a1=debug");
+  await expect(page.getByRole("heading", { name: "二人と一つの道具 · 自律行動デバッグ" })).toBeVisible();
+  await expect(page.getByTestId("a1-claim")).toHaveText("worker_a");
+  await page.getByRole("button", { name: "働き手B worker_b" }).locator("circle").click();
+  await expect(page.locator(".e1-inspector")).toContainText("待機中");
+  await page.getByLabel("A1経過分").fill("3");
+  await expect(page.getByTestId("a1-claim")).toHaveText("worker_b");
+  await expect(page.locator(".e1-inspector")).toContainText("作業中");
+  await page.getByLabel("A1経過分").fill("6");
+  await expect(page.getByTestId("a1-claim")).toHaveText("なし");
+  await expect(page.locator(".e1-inspector")).toContainText("体力: 7");
+  await expect(page.locator(".e1-stats")).toContainText("完了 2/2");
+  expect(errors).toEqual([]);
+});
