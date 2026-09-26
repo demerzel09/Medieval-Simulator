@@ -80,7 +80,7 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 動機・行動・社会的約束の共通化に関する[設計調査](docs/RESEARCH_MOTIVATION_ACTION.md)を踏まえ、A〜Cで共有する[人格の認知・行動インターフェースv2](docs/AGENT_INTERFACES_v2.md)を検討しています。文化と本人が知る状況による認識、動機づけ、判断から、[データ駆動のルーティン](docs/DATA_DRIVEN_ROUTINES.md)による複数人の仕事と実行までを設計しています。ルール・NN・LLM・人間は各ブロックの実装方法です。これは設計段階で、現行のゲームコードへの移行は未着手です。
 
-次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。E0の現行経済計測に続き、E1の独立20人集落で、実在の農民・運搬人・売り手・買物係による食料流通を実装しました。[平時と戦時の共通物流設計](docs/COMMON_LOGISTICS_DESIGN.md)と[物体・包含モデル](docs/PHYSICAL_OBJECT_MODEL.md)に、将来の兵站へ接続する境界、財布→人などの入れ子、現行軍補給との差を整理しています。現行90日ゲームの国別共同市場はまだこの新経済へ移行していません。
+次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。E0の現行経済計測に続き、E1の独立20人集落で、実在の農民・運搬人・売り手・買物係による食料流通を実装しました。[平時と戦時の共通物流設計](docs/COMMON_LOGISTICS_DESIGN.md)、[物体・包含モデル](docs/PHYSICAL_OBJECT_MODEL.md)、[能力エージェント](docs/CAPABILITY_AGENTS_DESIGN.md)に、将来の兵站へ接続する境界、入れ子の物体、複数馬車の運送技能を整理しています。現行90日ゲームの国別共同市場はまだこの新経済へ移行していません。
 
 [実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)に、E1前に確定する在庫・取引・時間・伝達・経済Task・旧処理との切替、E2前に数表で検証する家計と事業の資金循環をまとめました。[E0の現行経済90日計測](docs/ECONOMY_E0_BASELINE.md)は実施済みで、日別・世帯別の詳細と要約を保存しています。
 

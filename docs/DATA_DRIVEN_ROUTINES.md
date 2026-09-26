@@ -35,9 +35,12 @@ flowchart LR
 | 役割・職業 (`Role`/`Occupation`) | 君主、書記、護衛、農民 | 資格、職務の既定ルーティン、通常の引受規則。人物IDとは別の共有定義 |
 | 文化・組織 (`Repertoire`) | 宮廷の礼法、地域の互助、市の商慣行 | 知られた場面・ルーティンの参照、優先傾向、例外。人物の学習・従属状態とは別 |
 | シナリオ | 峠の通行権、人口配置、初期役職 | 採用するコンテンツ束の版、初期資源、勝敗条件、seed |
-| 効果プリミティブ (`Capability`) | `deliver`, `travel`, `work_shift`, `transfer`, `meet` | simが実装する引数・権限・費用・結果Event。データは参照だけする |
+| 行為プリミティブ (`ActionPrimitive`) | `deliver`, `travel`, `work_shift`, `transfer`, `meet` | simが実装する引数・権限・費用・結果Event。データは参照だけする |
+| 担い手の能力 (`CapabilityInstance`) | 書記の文書技能、運び屋の配車技能、馬車の荷台能力 | 人や物の能力ID/版と状態。専門的な提案は[能力エージェント](CAPABILITY_AGENTS_DESIGN.md)が行う |
 
 `Routine` は場面と意図から起動しても、定期的な仕事から起動してもよい。家臣への招待状は「公式訪問」の子Taskから「文書作成」「配送」のルーティンを呼び出せる。出力は人物IDのあるTask/ActionAttemptであり、各人が自分の判断・職務規則から引受・拒否・中断できる。慣行を読み込んだだけで護衛が瞬間的に同行したことにはならない。
+
+初期稿の`Capability`はsimが実行する効果を指していたが、技能エージェントと物の供用能力を導入すると意味が衝突する。新しい設計例ではStepの`requiresCapability`と`action`を分ける。E1実装の`routines[].capability`は現行データとして残り、この文書だけで既存コンテンツの意味を変更しない。
 
 共通ランナーは適用可能な定義を探して進捗を管理する。どれを採るかは本人の人格判断またはその人物が従う既定の習慣による。ランナーが全員へ同じ文化行動を強制しない。文化・組織の定義は共有し、個人がそれを知っているか、従うか、例外を選ぶかは人物の状態と判断に残す。
 
@@ -57,11 +60,11 @@ flowchart LR
     { "slot": "guard", "select": "available_guard", "required": true, "count": 2 }
   ],
   "steps": [
-    { "id": "prepare", "assignee": "scribe", "capability": "prepare_message" },
-    { "id": "deliver", "assignee": "courier", "capability": "deliver_message", "after": ["prepare"] },
-    { "id": "assemble", "assignee": "guard", "capability": "assemble_escort", "after": ["prepare"] },
-    { "id": "travel", "assignee": "visitor", "capability": "travel_with_escort", "after": ["deliver", "assemble"] },
-    { "id": "meet", "assignee": "visitor", "capability": "hold_audience", "after": ["travel"] }
+    { "id": "prepare", "assignee": "scribe", "requiresCapability": "court_writing", "action": "prepare_message" },
+    { "id": "deliver", "assignee": "courier", "requiresCapability": "courier_delivery", "action": "deliver_message", "after": ["prepare"] },
+    { "id": "assemble", "assignee": "guard", "requiresCapability": "escort", "action": "assemble_escort", "after": ["prepare"] },
+    { "id": "travel", "assignee": "visitor", "requiresCapability": "road_travel", "action": "travel_with_escort", "after": ["deliver", "assemble"] },
+    { "id": "meet", "assignee": "visitor", "requiresCapability": "audience", "action": "hold_audience", "after": ["travel"] }
   ],
   "onUnavailable": ["find_substitute", "ask_visitor_to_delay_or_go_alone"]
 }
