@@ -56,7 +56,7 @@ flowchart LR
 
 ## 現行コードとの対応と移行順
 
-E1の`FoodLot`、`CashContainer`、`FoodCart`、`Journey`、`LocalTask`、Eventはこの契約の小さな実証である。今は食料専用の`Place`と数量上限、固定の時刻相、単一運搬人であり、共通の物体包含/輸送Taskインターフェースにはまだなっていない。現金もE1世界だけの正本で、旧世界の`accounts.money`と共有していない。
+E1の`FoodLot`、`CashContainer`、`FoodCart`、`Journey`、`LocalTask`、Eventはこの契約の小さな実証である。今は食料専用の`Place`と数量上限、固定の時刻相、単一運搬人であり、共通の物体包含/輸送Taskインターフェースにはまだなっていない。現金もE1世界だけの正本で、旧世界の`accounts.money`と共有していない。L0/L1へ進める具体的な物体型・初期配置・版と3日受入値は[物体・能力移行監査](E1_OBJECT_CAPABILITY_READINESS.md)に定める。
 
 旧M2の`DISPATCH_SUPPLY`は国別`accounts.food`を輸送口座へ移し、経路距離から`arriveAt`を置く。`Shipment`には担当人物、荷車、容量、途中の位置、積降ろしTask、費用がない。到着時に部隊がいなければ食料を国庫口座へ直ちに戻す。旧徴兵時も国別口座から部隊口座へ食料を直接移す。これらは現在のゲームが遊べるための簡略化であり、本契約の物理補給ではない。旧世界の`accounts`と新ロットを同じ食料の二つの正本として同居させない。
 

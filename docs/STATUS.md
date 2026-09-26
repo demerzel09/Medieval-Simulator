@@ -48,6 +48,8 @@ A〜Cに共通する現行の設計案は [AGENT_INTERFACES_v2.md](AGENT_INTERFA
 
 [実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)のE1前7項目を[食料の実物流通契約](ECONOMY_E1_CONTRACT.md)として仮決定した。在庫と通貨の正本、輸送/購入の別状態機械、時区間、到達情報、人物別Task、旧本編との世界単位の排他、20人の人員・道路・時刻を定めた。独立fixtureのsim、コンテンツ読込、3日受入テストは実装済み。上記の汎用契約は未実装。E2は4世帯の資金循環と実働/生産量を数表にする必要がある。
 
+[3日経済の物体・能力移行監査](E1_OBJECT_CAPABILITY_READINESS.md)で、新モデルを実装するための物体カタログ、負荷・容量、Cの能力提案時刻、原子的な移転、版/保存/受入を仮決定した。これは現行E1の完了条件を改訂したものではなく、次のL0→L1移行用の契約である。現行の`FoodLot`/`CashContainer`/固定時刻相、旧E1セーブは変更していない。新モデルのコード、コンテンツ、テスト、性能測定は未実施。まず独立L0で包含木・所有権・二台馬車の能力対照を実装し、その後L1で3日fixtureを新形式へ移す。
+
 E0計測器 `npm run economy:baseline` を追加し、無策3seed＋外交/軍事各1seedの90日、計450日を記録。日別・世帯別の詳細は `artifacts/economy-e0.json.gz`、比較用集計は `artifacts/economy-e0-summary.json`。基準seed・無策では日31〜90に食料66,060生産/55,135消費、90日目に共同口座へ食料23,351・装備8,657が残った。装備消費0。空腹の延べ4,915人日は軍務Activityで、民間Activityの空腹は0。90日目の日末復員後の身分だけで読むと誤分類する。これは現行経済の観測結果で、新経済の受入達成ではない。
 
 - M0: 100人30日、seed/Command再実行、保存再開、入力検証、因果Event、資産不変条件。
@@ -56,6 +58,8 @@ E0計測器 `npm run economy:baseline` を追加し、無策3seed＋外交/軍�
 - M3: 90日勝敗、軍事/外交の両経路、通常AI、人物/約束/会戦/因果報告/終了UI、現地面談、チュートリアル、Worker、IndexedDBとJSONセーブ。人間試遊は未実施。
 
 ## 検証状況
+
+2026-09-26の物体・能力移行監査は文書変更のみ。変更したMarkdownの相対リンク検査と`git diff --check`は成功。新しいsimテスト、3日実行、ブラウザ検証、性能計測は今回実施していない。以下のE1実行結果は移行前の現行コードによるもの。
 
 E1の検証（2026-09-26）：`npm run typecheck`成功、`npm test` 6ファイル42/42成功、`npm run economy:e1 -- baseline`成功。容量・現金・体力追加後の基準3日のworldHashは`3d0eb42c`（現行コード・コンテンツ）。`npm run build`と`npm run content:validate`も成功。ブラウザはE1画面を含め5/5成功。E1の性能測定は未実施。後続のコード変更時は再実行して結果を更新する。
 
@@ -103,6 +107,6 @@ E0で新たに確認（2026-09-25）：`npm run typecheck`成功、`npm test` 5�
 1. DESIGN/DECISIONS/本ファイルを読み、`npm ci`、`npm run typecheck`、`npm test`。
 2. `npm run dev` で遊び、`artifacts/sample-day3.json` / `sample-war-day4.json` をJSON入力から読み込む。
 3. 人間試遊は `docs/PLAYTEST.md` を使用して実施し、実際の結果を記入。
-4. [E1契約](ECONOMY_E1_CONTRACT.md)の実装差分を読み、`npm run economy:e1 -- baseline`と三つの対照ケースを実行する。次にE2の4世帯/事業の賃金・仕入・資金循環を数表で確定し、同じ人物Taskと実在庫で検証する。
+4. [E1契約](ECONOMY_E1_CONTRACT.md)の実装差分と[物体・能力移行監査](E1_OBJECT_CAPABILITY_READINESS.md)を読み、`npm run economy:e1 -- baseline`と三つの対照ケースを実行する。次はL0の共通操作・二台馬車対照、続いてL1のE1内部移行を実装する。E2の4世帯/事業の賃金・仕入・資金循環はその後に数表で確定する。
 5. 動機・行動の共通化は [v2インターフェース](AGENT_INTERFACES_v2.md) の認識・動機・判断の対照例と受入テストを準備し、経済Taskにも同じ境界を適用する。各段で既存90日ゲームの受入条件を保つ。
 6. E2→E3で個別雇用主の所得循環と木材/装備・公職/軍を接続する。人間試遊の未完了を別に追跡し、結果を踏まえてM4を検討する。
