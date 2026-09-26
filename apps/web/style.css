@@ -555,6 +555,7 @@ footer {
 .e1-detail { max-height: calc(100vh - 230px); overflow-y: auto; }
 .e1-row { padding: 7px 0; border-bottom: 1px solid #3c4a3f; margin: 0; }
 .e1-row small { overflow-wrap: anywhere; }
+.e1-action-log { max-height: 380px; overflow-y: auto; border-top: 1px solid #425143; }
 .e1-legend { margin: 8px 0 0; color: #aab5a6; font-size: 12px; }
 @media (max-width: 850px) {
   .e1-layout { grid-template-columns: 1fr; padding: 10px; }
