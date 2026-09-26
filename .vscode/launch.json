@@ -80,6 +80,14 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run sim -- --scenario pass_and_harvest --seed 240924 --days 90 --path idle"
     },
     {
+      "name": "自律 A1: 二人と一つの道具",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": { "group": "経済", "order": 1 },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a1"
+    },
+    {
       "name": "経済 E0: 90日基準計測",
       "type": "node-terminal",
       "request": "launch",

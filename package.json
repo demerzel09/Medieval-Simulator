@@ -13,6 +13,7 @@
     "economy:baseline": "tsx packages/tools/economy-baseline.ts",
     "economy:e1": "tsx packages/tools/economy-e1.ts",
     "economy:e1:v2": "tsx packages/tools/economy-e1-v2.ts",
+    "autonomy:a1": "tsx packages/tools/autonomy-a1.ts",
     "content:validate": "tsx packages/tools/validate.ts",
     "test:browser": "playwright test",
     "fixtures": "tsx packages/tools/combat-report.ts"
