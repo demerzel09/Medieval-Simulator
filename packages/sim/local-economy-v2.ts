@@ -2,6 +2,7 @@ import { economyE1V2 } from "../content/economy-e1-v2";
 import { ordinaryBuyerModel, type BuyerInput, type BuyerModel, type BuyerAttempt } from "../ai/local-buyer";
 import { ordinarySellerModel, type SellerInput, type SellerModel } from "../ai/local-seller";
 import { ordinaryFarmerModel, type FarmerInput, type FarmerModel } from "../ai/local-farmer";
+import { ordinaryCarrierModel, type CarrierInput, type CarrierModel } from "../ai/local-carrier";
 import { hash } from "./core";
 import { capacityReport, checkPhysical, contentsQuantity, physicalTransaction, siteOf, type PhysicalObject, type PhysicalState } from "./physical";
 import { proposeFoodDelivery, type FoodDeliveryProposal } from "./transport-capability";
@@ -23,8 +24,9 @@ type ShipmentV2 = { id: string; day: number; carrierId: string; status: "request
 type BuyerActorState = { day: number; nextWakeAt: number; orderId?: string; purchaseTaskId?: string; lastEventId?: string };
 type SellerActorState = { day: number; nextWakeAt: number; reviewedToday: boolean; knownOrderIds: string[]; requestEventId?: string; saleTaskId?: string; lastEventId?: string };
 type FarmerActorState = { day: number; nextWakeAt: number; shiftTaskId?: string; harvestedToday: boolean; lastEventId?: string };
+type CarrierActorState = { day: number; nextWakeAt: number; shipmentId?: string; taskId?: string; lastEventId?: string };
 export type LocalWorldV2 = {
-  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2"; engineVersion: "0.4.1-e1" | "0.5.2-a2";
+  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2"; engineVersion: "0.4.1-e1" | "0.5.3-a2";
   seed: number; contentHash: string; minute: number; nextId: number;
   physical: PhysicalState; people: Record<string, PersonV2>;
   capabilities: Record<string, { id: string; definitionId: string; version: number; bearerId: string }>;
@@ -38,6 +40,7 @@ export type LocalWorldV2 = {
   buyerActors?: Record<string, BuyerActorState>;
   sellerActor?: SellerActorState;
   farmerActors?: Record<string, FarmerActorState>;
+  carrierActor?: CarrierActorState;
 };
 
 function uid(w: LocalWorldV2, prefix: string) { return `${prefix}_${String(w.nextId++).padStart(6, "0")}`; }
@@ -102,11 +105,12 @@ export function newLocalWorldV2(seed = 240924): LocalWorldV2 {
 export function newLocalWorldA2(seed = 240924): LocalWorldV2 {
   const w = newLocalWorldV2(seed);
   w.economicMode = "local_food_a2";
-  w.engineVersion = "0.5.2-a2";
+  w.engineVersion = "0.5.3-a2";
   w.buyerActors = Object.fromEntries(Object.values(w.households).map((h) => [h.buyerId, { day: 1, nextWakeAt: tm.orders }]));
   w.sellerActor = { day: 1, nextWakeAt: tm.orders, reviewedToday: false, knownOrderIds: [] };
   w.farmerActors = Object.fromEntries(Object.values(w.people).filter((p) => p.role === "farmer").map((p) =>
     [p.id, { day: 1, nextWakeAt: tm.assignment, harvestedToday: false }]));
+  w.carrierActor = { day: 1, nextWakeAt: tm.assignment };
   checkLocalV2(w); return w;
 }
 
@@ -506,7 +510,202 @@ function runFarmerActors(w: LocalWorldV2, model: FarmerModel) {
   }
 }
 
-function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel, farmerModel: FarmerModel) {
+function unloadCarrierShipment(w: LocalWorldV2, s: ShipmentV2, day: number, decisionEventId?: string) {
+  const cargo = lots(w, "cart_1", "food", "cooperative");
+  const unloadEffort = Math.ceil(s.quantity / 5) * c.labor.unloadEffortPerFiveFood;
+  if (w.people[s.carrierId].energy < unloadEffort) {
+    const blocked = workEffort(w, s.carrierId, "unload_food", unloadEffort, [s.lastEventId]);
+    if (blocked) throw Error("unload effort preflight mismatch");
+    s.status = "failed";
+    s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [s.lastEventId], { shipmentId: s.id, reason: "unload_exhausted" }).id;
+    const task = taskAt(w, s.carrierId, "carry_food", day);
+    if (task) completeTask(w, task, "carry_failed", [s.lastEventId], { reason: "unload_exhausted" });
+  } else {
+    const result = tx(w, s.carrierId, ["cooperative"], (t) => { for (const lot of cargo) t.move(lot.id, store("market")); });
+    if (!result.ok) throw Error(`unload failed: ${result.reason}`);
+    const labor = workEffort(w, s.carrierId, "unload_food", unloadEffort, [s.lastEventId])!;
+    s.status = "delivered";
+    const delivered = emit(w, "shipment_delivered", [s.carrierId, c.roles.seller], [s.lastEventId, labor.id, ...(decisionEventId ? [decisionEventId] : [])], { shipmentId: s.id, quantity: s.quantity, laborEffort: unloadEffort });
+    s.lastEventId = delivered.id;
+    for (const lot of cargo) w.physical.objects[lot.id].causeEventId = delivered.id;
+    const task = taskAt(w, s.carrierId, "carry_food", day)!;
+    completeTask(w, task, "carry_completed", [delivered.id], { quantity: s.quantity });
+  }
+}
+
+function loadCarrierShipment(w: LocalWorldV2, s: ShipmentV2, base: number, requestedQuantity?: number, decisionEventId?: string) {
+  const day = dayOf(w.minute);
+  const carrier = w.people[s.carrierId];
+  if (at(w, carrier.id) !== "farm") {
+    s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: "carrier_not_at_farm" }).id;
+  } else {
+    // The accepted carrier's rule capability proposes a load from observed farm stock.
+    s.proposal = proposeFoodDelivery({ taskId: taskAt(w, carrier.id, "carry_food", day)!.id, personId: carrier.id,
+      capabilityId: "carry_C", cartId: "cart_1", requestedQuantity: requestedQuantity ?? s.requestedQuantity,
+      cartCapacity: c.cartCapacity - amount(w, "cart_1", "food"), observedStock: amount(w, store("farm"), "food"),
+      roadKm: c.roadKm, cartEffortPerKm: c.limits.cartEffortPerKm,
+      extraEffortPerFiveFoodKm: c.limits.cartExtraEffortPerFiveFoodKm,
+      expectedFinishAt: base + tm.unloadEnd, evidenceEventIds: [s.lastEventId, ...(decisionEventId ? [decisionEventId] : [])] });
+    const quantity = s.proposal.quantity;
+    s.lastEventId = emit(w, "delivery_replanned", [carrier.id], s.proposal.evidenceEventIds,
+      { shipmentId: s.id, quantity, capabilityId: s.proposal.capabilityId }).id;
+    const source = lots(w, store("farm"), "food", "cooperative");
+    const effort = s.proposal.expectedEffort;
+    const loadEffort = Math.ceil(quantity / 5) * c.labor.loadEffortPerFiveFood;
+    const wear = Math.ceil(c.roadKm * c.labor.cartWearPerKm);
+    const reason = quantity && carrier.energy < effort + loadEffort ? "exhausted" : at(w, "cart_1") !== "farm" ? "cart_not_here" :
+      w.cartCondition < wear ? "cart_unfit" : "";
+    if (reason) emit(w, "journey_blocked", [carrier.id], [s.lastEventId], { to: "market", reason, foodLoad: quantity, cashLoad: 0, effortCost: effort, energy: carrier.energy });
+    if (reason || !quantity) {
+      s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: reason || "no_stock" }).id;
+      if (!quantity && !reason) travel(w, carrier.id, "market", base + tm.cartMarketArrive, [s.lastEventId], true);
+      const task = taskAt(w, carrier.id, "carry_food", day);
+      if (task && reason) completeTask(w, task, "carry_failed", [s.lastEventId], { reason });
+    } else {
+      const transitId = uid(w, "transit"), loadedIds: string[] = [];
+      const result = tx(w, carrier.id, ["cooperative"], (t) => {
+        let remaining = quantity;
+        for (const lot of source) {
+          const n = Math.min(remaining, lot.quantity);
+          if (!n) continue;
+          const id = n === lot.quantity ? lot.id : uid(w, "lot");
+          if (id !== lot.id) t.split(lot.id, id, n, s.lastEventId);
+          t.move(id, "cart_1"); loadedIds.push(id); remaining -= n;
+          if (!remaining) break;
+        }
+        if (remaining) throw Error("insufficient observed food");
+        t.depart({ id: transitId, typeId: "site", parentId: "world", quantity: 1, causeEventId: s.lastEventId }, [carrier.id, "cart_1"]);
+      });
+      if (!result.ok) {
+        s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: result.reason }).id;
+      } else {
+        const labor = workEffort(w, carrier.id, "load_food", loadEffort, [s.lastEventId])!;
+        carrier.energy -= effort; s.quantity = quantity; s.status = "in_transit";
+        const loaded = emit(w, "shipment_loaded", [carrier.id], [s.lastEventId, labor.id, ...source.map((l) => l.causeEventId)], { shipmentId: s.id, quantity, laborEffort: loadEffort });
+        s.lastEventId = loaded.id;
+        const e = emit(w, "journey_started", [carrier.id], [loaded.id], { from: "farm", to: "market", arrive: base + tm.cartMarketArrive, mode: "cart", distanceKm: c.roadKm, effortCost: effort, foodLoad: quantity, cashLoad: 0 });
+        const conditionBefore = w.cartCondition;
+        w.cartCondition -= wear;
+        emit(w, "vehicle_worn", [carrier.id], [e.id], { vehicleId: "cart_1", wear, conditionBefore, conditionAfter: w.cartCondition });
+        carrier.journey = { transitId, fromId: "farm", toId: "market", depart: w.minute, arrive: base + tm.cartMarketArrive, mode: "cart", effortCost: effort, distanceKm: c.roadKm, causeEventId: e.id };
+        for (const id of loadedIds) w.physical.objects[id].causeEventId = loaded.id;
+      }
+    }
+  }
+}
+
+function runCarrierActor(w: LocalWorldV2, model: CarrierModel) {
+  const state = w.carrierActor;
+  if (!state || state.nextWakeAt > w.minute) return;
+  const day = dayOf(w.minute), base = baseOf(day), carrierId = c.roles.carrier;
+  if (state.day !== day) { state.day = day; state.shipmentId = undefined; state.taskId = undefined; }
+  const person = w.people[carrierId], location = at(w, carrierId);
+  const visibleRequest = location === "market" ? w.shipments.find((shipment) => shipment.day === day && shipment.status === "requested" &&
+    w.events.find((event) => event.id === shipment.requestEventId)!.minute <= w.minute - 15) : undefined;
+  const shipment = state.shipmentId ? w.shipments.find((s) => s.id === state.shipmentId) : undefined;
+  const task = state.taskId ? w.tasks.find((t) => t.id === state.taskId) : undefined;
+  const arrival = shipment && w.events.filter((event) => event.kind === "journey_arrived" && event.actors.includes(carrierId) &&
+    event.minute >= base && event.data.place === location).at(-1);
+  const observedStockCauses = location === "farm" && w.minute >= base + tm.loadEnd ?
+    [...new Set(lots(w, store("farm"), "food", "cooperative").map((lot) => lot.causeEventId).filter((id) => id !== "initial"))] : [];
+  const input: CarrierInput = {
+    actorId: carrierId, at: w.minute, stimuli: [
+      ...(visibleRequest ? [{ kind: "request_seen" as const, receivedAt: w.minute, causeEventIds: [visibleRequest.requestEventId] }] : []),
+      ...(arrival ? [{ kind: "arrival" as const, receivedAt: arrival.minute, causeEventIds: [arrival.id] }] : []),
+      ...(observedStockCauses.length ? [{ kind: "stock_seen" as const, receivedAt: w.minute, causeEventIds: observedStockCauses }] : []),
+    ],
+    subjectiveState: { shipmentId: state.shipmentId, taskId: state.taskId },
+    knownContext: {
+      day, location, homeId: home(person.householdId), journeyTo: person.journey?.toId,
+      available: !absent(w, carrierId, day), energy: person.energy,
+      visibleRequest: visibleRequest ? { shipmentId: visibleRequest.id, requestEventId: visibleRequest.requestEventId, quantity: visibleRequest.requestedQuantity } : undefined,
+      shipment: shipment ? { id: shipment.id, status: shipment.status, quantity: shipment.status === "assigned" ? shipment.requestedQuantity : shipment.quantity } : undefined,
+      task: task ? { id: task.id, status: task.status === "refused" ? "refused" : task.status === "completed" ? "completed" : "accepted" } : undefined,
+      farmFood: location === "farm" ? amount(w, store("farm"), "food") : undefined,
+      cartSpace: location === "farm" && at(w, "cart_1") === "farm" ? c.cartCapacity - amount(w, "cart_1", "food") : undefined,
+      cartHere: at(w, "cart_1") === location,
+      workStartAt: base + tm.assignment, departAt: base + tm.cartDepart,
+      farmArriveAt: base + tm.cartFarmArrive, loadAt: base + tm.loadEnd,
+      marketArriveAt: base + tm.cartMarketArrive, unloadAt: base + tm.unloadEnd,
+      nextDayWorkAt: baseOf(day + 1) + tm.assignment,
+    },
+  };
+  const response = model.decide(input);
+  if (!Number.isSafeInteger(response.wait.at) || response.wait.at <= w.minute || response.attempts.length > 2)
+    throw Error("invalid carrier response");
+  if (response.subjectiveUpdate && (response.subjectiveUpdate.shipmentId !== state.shipmentId || response.subjectiveUpdate.taskId !== state.taskId))
+    throw Error("carrier cannot rewrite delivery result");
+  const decision = emit(w, "carrier_decided", [carrierId], [
+    ...(state.lastEventId ? [state.lastEventId] : []),
+    ...(visibleRequest ? [visibleRequest.requestEventId] : []),
+    ...(arrival ? [arrival.id] : []),
+    ...observedStockCauses,
+  ], { action: response.attempts.map((attempt) => attempt.kind).join(",") || "wait",
+    farmFood: input.knownContext.farmFood ?? -1, cartSpace: input.knownContext.cartSpace ?? -1 });
+  state.lastEventId = decision.id; state.nextWakeAt = response.wait.at;
+  let returnCause = decision.id;
+  for (const attempt of response.attempts) {
+    if (attempt.kind === "go_market" && location === home(person.householdId) && !person.journey &&
+      input.knownContext.available && w.minute === base + tm.assignment) {
+      if (travel(w, carrierId, "market", w.minute + 15, [decision.id])) state.lastEventId = w.people[carrierId].journey?.causeEventId;
+    } else if (attempt.kind === "accept_delivery" && location === "market" && visibleRequest?.id === attempt.shipmentId &&
+      !state.shipmentId && w.minute < base + tm.cartDepart) {
+      const delivery = offerTask(w, carrierId, "carry_food", base + tm.cartDepart, base + tm.unloadEnd, [decision.id, visibleRequest.requestEventId]);
+      state.shipmentId = visibleRequest.id; state.taskId = delivery.id;
+      if (delivery.status === "accepted") {
+        visibleRequest.status = "assigned";
+        visibleRequest.proposal = proposeFoodDelivery({ taskId: delivery.id, personId: carrierId, capabilityId: "carry_C", cartId: "cart_1",
+          requestedQuantity: visibleRequest.requestedQuantity, cartCapacity: c.cartCapacity, roadKm: c.roadKm,
+          cartEffortPerKm: c.limits.cartEffortPerKm, extraEffortPerFiveFoodKm: c.limits.cartExtraEffortPerFiveFoodKm,
+          expectedFinishAt: base + tm.unloadEnd, evidenceEventIds: [decision.id, visibleRequest.requestEventId, delivery.answerEventId] });
+        visibleRequest.lastEventId = emit(w, "delivery_proposed", [carrierId], visibleRequest.proposal.evidenceEventIds,
+          { shipmentId: visibleRequest.id, quantity: visibleRequest.proposal.quantity, capabilityId: visibleRequest.proposal.capabilityId }).id;
+      } else {
+        visibleRequest.status = "failed";
+        visibleRequest.lastEventId = emit(w, "shipment_failed", [carrierId], [decision.id, delivery.answerEventId],
+          { shipmentId: visibleRequest.id, reason: "carrier_unavailable" }).id;
+      }
+      state.lastEventId = visibleRequest.lastEventId;
+    } else if (attempt.kind === "depart_farm" && location === "market" && shipment?.status === "assigned" &&
+      task?.status === "accepted" && w.minute === base + tm.cartDepart) {
+      if (!travel(w, carrierId, "farm", base + tm.cartFarmArrive, [decision.id, shipment.lastEventId], true)) {
+        shipment.status = "failed";
+        shipment.lastEventId = emit(w, "shipment_failed", [carrierId], [decision.id, shipment.lastEventId],
+          { shipmentId: shipment.id, reason: "travel_cost" }).id;
+        completeTask(w, task, "carry_failed", [shipment.lastEventId], { reason: "travel_cost" });
+      }
+      state.lastEventId = person.journey?.causeEventId ?? shipment.lastEventId;
+    } else if (attempt.kind === "deliver_request" && location === "farm" && shipment?.status === "assigned" &&
+      w.minute === base + tm.cartFarmArrive) {
+      shipment.lastEventId = emit(w, absent(w, c.roles.farmManager, day) ? "request_missed_farm" : "request_delivered_farm",
+        absent(w, c.roles.farmManager, day) ? [carrierId] : [carrierId, c.roles.farmManager],
+        [decision.id, shipment.lastEventId], { shipmentId: shipment.id }).id;
+      state.lastEventId = shipment.lastEventId;
+    } else if (attempt.kind === "load_and_depart" && location === "farm" && shipment?.status === "assigned" &&
+      task?.status === "accepted" && w.minute === base + tm.loadEnd && Number.isSafeInteger(attempt.quantity) &&
+      attempt.quantity >= 0 && attempt.quantity <= Math.min(shipment.requestedQuantity, amount(w, store("farm"), "food"),
+        c.cartCapacity - amount(w, "cart_1", "food"))) {
+      loadCarrierShipment(w, shipment, base, attempt.quantity, decision.id);
+      state.lastEventId = person.journey?.causeEventId ?? shipment.lastEventId;
+    } else if (attempt.kind === "unload" && location === "market" && at(w, "cart_1") === "market" && shipment?.status === "in_transit" &&
+      task?.status === "accepted" && w.minute === base + tm.unloadEnd) {
+      unloadCarrierShipment(w, shipment, day, decision.id);
+      state.lastEventId = shipment.lastEventId; returnCause = shipment.lastEventId;
+    } else if (attempt.kind === "finish_empty" && location === "market" && shipment?.status === "failed" &&
+      task?.status === "accepted" && w.minute >= base + tm.unloadEnd &&
+      w.events.find((event) => event.id === shipment.lastEventId)?.data.reason === "no_stock") {
+      const finished = completeTask(w, task, "carry_empty_return", [decision.id, shipment.lastEventId]);
+      state.lastEventId = finished.id; returnCause = finished.id;
+    } else if (attempt.kind === "return_home" && ["market", "farm"].includes(location) && !person.journey) {
+      if (travel(w, carrierId, home(person.householdId), w.minute + (location === "farm" ? 30 : 15), [returnCause]))
+        state.lastEventId = w.people[carrierId].journey?.causeEventId;
+    } else {
+      emit(w, "carrier_attempt_rejected", [carrierId], [decision.id], { action: attempt.kind });
+    }
+  }
+}
+
+function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel, farmerModel: FarmerModel, carrierModel: CarrierModel) {
   const day = dayOf(w.minute), base = baseOf(day), local = w.minute - base;
   for (const p of Object.values(w.people)) if (p.journey?.arrive === w.minute) arrive(w, p.id);
   if (local === 0 && w.minute > 0) for (const p of Object.values(w.people)) {
@@ -539,21 +738,24 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
     if (request) {
       const s: ShipmentV2 = { id: uid(w, "ship"), day, carrierId: c.roles.carrier, status: "requested", requestedQuantity: Number(request.data.maxQuantity) || c.cartCapacity, quantity: 0, requestEventId: request.id, lastEventId: request.id };
       w.shipments.push(s);
-      const task = offerTask(w, s.carrierId, "carry_food", base + tm.cartDepart, base + tm.unloadEnd, [request.id]);
-      if (task.status === "refused") {
-        s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [request.id, task.answerEventId], { shipmentId: s.id, reason: "carrier_unavailable" }).id;
-      } else {
-        s.status = "assigned"; s.lastEventId = task.answerEventId;
-        s.proposal = proposeFoodDelivery({ taskId: task.id, personId: s.carrierId, capabilityId: "carry_C", cartId: "cart_1",
-          requestedQuantity: s.requestedQuantity, cartCapacity: c.cartCapacity, roadKm: c.roadKm,
-          cartEffortPerKm: c.limits.cartEffortPerKm, extraEffortPerFiveFoodKm: c.limits.cartExtraEffortPerFiveFoodKm,
-          expectedFinishAt: base + tm.unloadEnd, evidenceEventIds: [request.id, task.answerEventId] });
-        s.lastEventId = emit(w, "delivery_proposed", [s.carrierId], s.proposal.evidenceEventIds, { shipmentId: s.id, quantity: s.proposal.quantity, capabilityId: s.proposal.capabilityId }).id;
-        if (!travel(w, s.carrierId, "market", base + tm.cartDepart, [task.answerEventId])) {
-          s.status = "failed"; s.lastEventId = completeTask(w, task, "carry_failed", [request.id], { reason: "travel_cost" }).id;
+      if (!w.carrierActor) {
+        const task = offerTask(w, s.carrierId, "carry_food", base + tm.cartDepart, base + tm.unloadEnd, [request.id]);
+        if (task.status === "refused") {
+          s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [request.id, task.answerEventId], { shipmentId: s.id, reason: "carrier_unavailable" }).id;
+        } else {
+          s.status = "assigned"; s.lastEventId = task.answerEventId;
+          s.proposal = proposeFoodDelivery({ taskId: task.id, personId: s.carrierId, capabilityId: "carry_C", cartId: "cart_1",
+            requestedQuantity: s.requestedQuantity, cartCapacity: c.cartCapacity, roadKm: c.roadKm,
+            cartEffortPerKm: c.limits.cartEffortPerKm, extraEffortPerFiveFoodKm: c.limits.cartExtraEffortPerFiveFoodKm,
+            expectedFinishAt: base + tm.unloadEnd, evidenceEventIds: [request.id, task.answerEventId] });
+          s.lastEventId = emit(w, "delivery_proposed", [s.carrierId], s.proposal.evidenceEventIds, { shipmentId: s.id, quantity: s.proposal.quantity, capabilityId: s.proposal.capabilityId }).id;
+          if (!travel(w, s.carrierId, "market", base + tm.cartDepart, [task.answerEventId])) {
+            s.status = "failed"; s.lastEventId = completeTask(w, task, "carry_failed", [request.id], { reason: "travel_cost" }).id;
+          }
         }
       }
     }
+    if (w.carrierActor) runCarrierActor(w, carrierModel);
     if (w.farmerActors) runFarmerActors(w, farmerModel);
     else {
       const farmers = Object.values(w.people).filter((p) => p.role === "farmer").sort((a, b) => a.id.localeCompare(b.id));
@@ -563,7 +765,15 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
       }
     }
   }
-  if (local === tm.cartDepart) {
+  if (local === tm.cartDepart && w.carrierActor) {
+    const pending = w.shipments.find((s) => s.day === day && s.status === "requested");
+    if (pending) {
+      pending.status = "failed";
+      pending.lastEventId = emit(w, "shipment_failed", [pending.carrierId], [pending.requestEventId],
+        { shipmentId: pending.id, reason: "carrier_not_assigned" }).id;
+    }
+  }
+  if (local === tm.cartDepart && !w.carrierActor) {
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
     if (s && !travel(w, s.carrierId, "farm", base + tm.cartFarmArrive, [s.lastEventId], true)) {
       s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [s.lastEventId], { shipmentId: s.id, reason: "travel_cost" }).id;
@@ -571,7 +781,7 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
       if (task) completeTask(w, task, "carry_failed", [s.lastEventId], { reason: "travel_cost" });
     }
   }
-  if (local === tm.cartFarmArrive) {
+  if (local === tm.cartFarmArrive && !w.carrierActor) {
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
     if (s) s.lastEventId = emit(w, absent(w, c.roles.farmManager, day) ? "request_missed_farm" : "request_delivered_farm",
       absent(w, c.roles.farmManager, day) ? [s.carrierId] : [s.carrierId, c.roles.farmManager], [s.lastEventId], { shipmentId: s.id }).id;
@@ -600,93 +810,26 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
       if (task) completeTask(w, task, "farm_shift_completed", [], { quantity: c.farmOutputPerShift });
     }
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
-    if (s) {
-      const carrier = w.people[s.carrierId];
-      if (at(w, carrier.id) !== "farm") {
-        s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: "carrier_not_at_farm" }).id;
-      } else {
-        // The accepted carrier's rule capability proposes a load from observed farm stock.
-        s.proposal = proposeFoodDelivery({ taskId: taskAt(w, carrier.id, "carry_food", day)!.id, personId: carrier.id,
-          capabilityId: "carry_C", cartId: "cart_1", requestedQuantity: s.requestedQuantity,
-          cartCapacity: c.cartCapacity - amount(w, "cart_1", "food"), observedStock: amount(w, store("farm"), "food"),
-          roadKm: c.roadKm, cartEffortPerKm: c.limits.cartEffortPerKm,
-          extraEffortPerFiveFoodKm: c.limits.cartExtraEffortPerFiveFoodKm,
-          expectedFinishAt: base + tm.unloadEnd, evidenceEventIds: [s.lastEventId] });
-        const quantity = s.proposal.quantity;
-        s.lastEventId = emit(w, "delivery_replanned", [carrier.id], s.proposal.evidenceEventIds,
-          { shipmentId: s.id, quantity, capabilityId: s.proposal.capabilityId }).id;
-        const source = lots(w, store("farm"), "food", "cooperative");
-        const effort = s.proposal.expectedEffort;
-        const loadEffort = Math.ceil(quantity / 5) * c.labor.loadEffortPerFiveFood;
-        const wear = Math.ceil(c.roadKm * c.labor.cartWearPerKm);
-        const reason = quantity && carrier.energy < effort + loadEffort ? "exhausted" : at(w, "cart_1") !== "farm" ? "cart_not_here" :
-          w.cartCondition < wear ? "cart_unfit" : "";
-        if (reason) emit(w, "journey_blocked", [carrier.id], [s.lastEventId], { to: "market", reason, foodLoad: quantity, cashLoad: 0, effortCost: effort, energy: carrier.energy });
-        if (reason || !quantity) {
-          s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: reason || "no_stock" }).id;
-          if (!quantity && !reason) travel(w, carrier.id, "market", base + tm.cartMarketArrive, [s.lastEventId], true);
-          const task = taskAt(w, carrier.id, "carry_food", day);
-          if (task && reason) completeTask(w, task, "carry_failed", [s.lastEventId], { reason });
-        } else {
-          const transitId = uid(w, "transit"), loadedIds: string[] = [];
-          const result = tx(w, carrier.id, ["cooperative"], (t) => {
-            let remaining = quantity;
-            for (const lot of source) {
-              const n = Math.min(remaining, lot.quantity);
-              if (!n) continue;
-              const id = n === lot.quantity ? lot.id : uid(w, "lot");
-              if (id !== lot.id) t.split(lot.id, id, n, s.lastEventId);
-              t.move(id, "cart_1"); loadedIds.push(id); remaining -= n;
-              if (!remaining) break;
-            }
-            if (remaining) throw Error("insufficient observed food");
-            t.depart({ id: transitId, typeId: "site", parentId: "world", quantity: 1, causeEventId: s.lastEventId }, [carrier.id, "cart_1"]);
-          });
-          if (!result.ok) {
-            s.status = "failed"; s.lastEventId = emit(w, "shipment_failed", [carrier.id], [s.lastEventId], { shipmentId: s.id, reason: result.reason }).id;
-          } else {
-            const labor = workEffort(w, carrier.id, "load_food", loadEffort, [s.lastEventId])!;
-            carrier.energy -= effort; s.quantity = quantity; s.status = "in_transit";
-            const loaded = emit(w, "shipment_loaded", [carrier.id], [s.lastEventId, labor.id, ...source.map((l) => l.causeEventId)], { shipmentId: s.id, quantity, laborEffort: loadEffort });
-            s.lastEventId = loaded.id;
-            const e = emit(w, "journey_started", [carrier.id], [loaded.id], { from: "farm", to: "market", arrive: base + tm.cartMarketArrive, mode: "cart", distanceKm: c.roadKm, effortCost: effort, foodLoad: quantity, cashLoad: 0 });
-            const conditionBefore = w.cartCondition;
-            w.cartCondition -= wear;
-            emit(w, "vehicle_worn", [carrier.id], [e.id], { vehicleId: "cart_1", wear, conditionBefore, conditionAfter: w.cartCondition });
-            carrier.journey = { transitId, fromId: "farm", toId: "market", depart: w.minute, arrive: base + tm.cartMarketArrive, mode: "cart", effortCost: effort, distanceKm: c.roadKm, causeEventId: e.id };
-            for (const id of loadedIds) w.physical.objects[id].causeEventId = loaded.id;
-          }
-        }
-      }
-    }
+    if (s && !w.carrierActor) loadCarrierShipment(w, s, base);
+    if (w.carrierActor) runCarrierActor(w, carrierModel);
   }
   if (local === tm.unloadEnd) {
     const s = w.shipments.find((s) => s.day === day && s.status === "in_transit");
-    if (s) {
-      const cargo = lots(w, "cart_1", "food", "cooperative");
-      const unloadEffort = Math.ceil(s.quantity / 5) * c.labor.unloadEffortPerFiveFood;
-      if (w.people[s.carrierId].energy < unloadEffort) {
-        const blocked = workEffort(w, s.carrierId, "unload_food", unloadEffort, [s.lastEventId]);
-        if (blocked) throw Error("unload effort preflight mismatch");
-        s.status = "failed";
-        s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [s.lastEventId], { shipmentId: s.id, reason: "unload_exhausted" }).id;
-        const task = taskAt(w, s.carrierId, "carry_food", day);
-        if (task) completeTask(w, task, "carry_failed", [s.lastEventId], { reason: "unload_exhausted" });
-      } else {
-        const result = tx(w, s.carrierId, ["cooperative"], (t) => { for (const lot of cargo) t.move(lot.id, store("market")); });
-        if (!result.ok) throw Error(`unload failed: ${result.reason}`);
-        const labor = workEffort(w, s.carrierId, "unload_food", unloadEffort, [s.lastEventId])!;
-        s.status = "delivered";
-        const delivered = emit(w, "shipment_delivered", [s.carrierId, c.roles.seller], [s.lastEventId, labor.id], { shipmentId: s.id, quantity: s.quantity, laborEffort: unloadEffort });
-        s.lastEventId = delivered.id;
-        for (const lot of cargo) w.physical.objects[lot.id].causeEventId = delivered.id;
-        const task = taskAt(w, s.carrierId, "carry_food", day)!;
-        completeTask(w, task, "carry_completed", [delivered.id], { quantity: s.quantity });
+    if (s && !w.carrierActor) unloadCarrierShipment(w, s, day);
+    if (w.carrierActor) {
+      runCarrierActor(w, carrierModel);
+      const overdue = w.shipments.find((shipment) => shipment.day === day && ["assigned", "in_transit"].includes(shipment.status));
+      if (overdue) {
+        overdue.status = "failed";
+        overdue.lastEventId = emit(w, "shipment_failed", [overdue.carrierId], [overdue.lastEventId],
+          { shipmentId: overdue.id, reason: "delivery_deadline_missed" }).id;
+        const task = taskAt(w, overdue.carrierId, "carry_food", day);
+        if (task) completeTask(w, task, "carry_failed", [overdue.lastEventId], { reason: "delivery_deadline_missed" });
       }
     }
     const empty = w.shipments.find((s) => s.day === day && s.status === "failed" && w.events.find((e) => e.id === s.lastEventId)?.data.reason === "no_stock" && at(w, s.carrierId) === "market");
-    if (empty) { const task = taskAt(w, empty.carrierId, "carry_food", day); if (task) completeTask(w, task, "carry_empty_return", [empty.lastEventId]); }
-    if (s || empty) travel(w, c.roles.carrier, home(w.people[c.roles.carrier].householdId), w.minute + 15, [s?.lastEventId ?? empty!.lastEventId]);
+    if (!w.carrierActor && empty) { const task = taskAt(w, empty.carrierId, "carry_food", day); if (task) completeTask(w, task, "carry_empty_return", [empty.lastEventId]); }
+    if (!w.carrierActor && (s || empty)) travel(w, c.roles.carrier, home(w.people[c.roles.carrier].householdId), w.minute + 15, [s?.lastEventId ?? empty!.lastEventId]);
     if (!w.sellerActor && at(w, c.roles.seller) === "market") {
       const task = offerTask(w, c.roles.seller, "market_sale", w.minute, base + tm.marketEnd, s && s.status === "delivered" ? [s.lastEventId] : []);
       if (task.status === "accepted" && !workEffort(w, c.roles.seller, "market_shift", c.labor.marketShiftEffort, [task.answerEventId]))
@@ -722,6 +865,7 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
       }
     }
   }
+  if (w.carrierActor && local !== tm.assignment && local !== tm.loadEnd && local !== tm.unloadEnd) runCarrierActor(w, carrierModel);
   if (local !== tm.assignment && local !== tm.marketEnd) runSellerActor(w, sellerModel);
   runBuyerActors(w, buyerModel);
   if (local === tm.marketEnd) {
@@ -748,9 +892,10 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
 }
 
 export function advanceLocalV2(w: LocalWorldV2, minutes: number, buyerModel: BuyerModel = ordinaryBuyerModel,
-  sellerModel: SellerModel = ordinarySellerModel, farmerModel: FarmerModel = ordinaryFarmerModel) {
+  sellerModel: SellerModel = ordinarySellerModel, farmerModel: FarmerModel = ordinaryFarmerModel,
+  carrierModel: CarrierModel = ordinaryCarrierModel) {
   if (!Number.isSafeInteger(minutes) || minutes < 0 || w.minute + minutes > 4320) throw Error("invalid E1 v2 advance");
-  for (let i = 0; i < minutes; i++) { w.minute++; phase(w, buyerModel, sellerModel, farmerModel); }
+  for (let i = 0; i < minutes; i++) { w.minute++; phase(w, buyerModel, sellerModel, farmerModel, carrierModel); }
   checkLocalV2(w); return w;
 }
 export function submitLocalV2(w: LocalWorldV2, actorId: string, action: LocalAction, id = `command_${w.commands.length + 1}`) {
@@ -798,7 +943,7 @@ export function saveLocalA2(w: LocalWorldV2) {
 }
 export function loadLocalA2(serialized: string): LocalWorldV2 {
   const w = JSON.parse(serialized) as LocalWorldV2;
-  if (w.economicMode !== "local_food_a2" || w.engineVersion !== "0.5.2-a2" || w.contentHash !== hash(c)) throw Error("incompatible A2 save");
+  if (w.economicMode !== "local_food_a2" || w.engineVersion !== "0.5.3-a2" || w.contentHash !== hash(c)) throw Error("incompatible A2 save");
   checkLocalV2(w); return w;
 }
 export function replayLocalV2(seed: number, commands: LocalCommand[], until: number) {
@@ -818,8 +963,8 @@ export function replayLocalA2(seed: number, commands: LocalCommand[], until: num
   advanceLocalV2(w, until - w.minute); return w;
 }
 export function checkLocalV2(w: LocalWorldV2) {
-  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined && w.sellerActor === undefined && w.farmerActors === undefined) ||
-      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.2-a2" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined)) || w.contentHash !== hash(c) ||
+  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined && w.sellerActor === undefined && w.farmerActors === undefined && w.carrierActor === undefined) ||
+      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.3-a2" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined)) || w.contentHash !== hash(c) ||
     !Number.isSafeInteger(w.minute) || w.minute < 0 || w.minute > 4320 ||
     !Number.isSafeInteger(w.cartCondition) || w.cartCondition < 0 || w.cartCondition > 100) throw Error("invalid E1 v2 world");
   checkPhysical(w.physical);
@@ -915,6 +1060,14 @@ export function checkLocalV2(w: LocalWorldV2) {
         actor.shiftTaskId && !w.tasks.some((task) => task.id === actor.shiftTaskId && task.personId === id && task.capability === "work_shift") ||
         actor.lastEventId && !eventIds.has(actor.lastEventId)) throw Error("A2 farmer state");
     }
+  }
+  if (w.carrierActor) {
+    const actor = w.carrierActor;
+    if (!Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > 3 ||
+      !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute ||
+      actor.shipmentId && !w.shipments.some((shipment) => shipment.id === actor.shipmentId && shipment.carrierId === c.roles.carrier) ||
+      actor.taskId && !w.tasks.some((task) => task.id === actor.taskId && task.personId === c.roles.carrier && task.capability === "carry_food") ||
+      actor.lastEventId && !eventIds.has(actor.lastEventId)) throw Error("A2 carrier state");
   }
 }
 

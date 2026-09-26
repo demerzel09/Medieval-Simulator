@@ -47,7 +47,7 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
     },
     {
-      "name": "自律 A2: 買物係・売り手・農民の空間デバッグ画面",
+      "name": "自律 A2: 20人経済の空間デバッグ画面",
       "type": "node-terminal",
       "request": "launch",
       "cwd": "${workspaceFolder}",
@@ -114,7 +114,7 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a1"
     },
     {
-      "name": "自律 A2: 買物係・売り手・農民の3日経済",
+      "name": "自律 A2: 20人経済の3日計測",
       "type": "node-terminal",
       "request": "launch",
       "cwd": "${workspaceFolder}",
