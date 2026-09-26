@@ -57,6 +57,39 @@ type Movement = {
 
 重さは`unitMass × quantity + 直下の子の総重量`を再帰集計する。`unitMass`は版付きの非負整数の抽象負荷点でよい。財布の中の現金は財布の重量に加算され、その財布を持つ人と、人を乗せた荷車の負荷にも入る。**同じ物体を二度加算しない。** `maxContentsMass`は中身の総負荷、`maxQuantityByTag`は財布の現金20や袋の食料5などの数量上限であり、物体型ごとに必要な制約だけ宣言する。タグ別数量はその物体の全子孫から集計する。積み入れ時は直接の親から根まで、影響を受ける全祖先の上限を検査する。人物/車両の持ち運び可能量も同じ規則で検査する。現行E1食料5・現金20・荷車21の上限を移す際は、財布自体の重さと現金重量を含めて基準fixtureが成立する係数を決める。
 
+集計は同じ子インデックスを使う純粋関数として定義できる。以下は**設計用の擬似コード**であり、現行コードに存在するAPIではない。
+
+```ts
+function totalMass(id: Id): number {
+  const object = get(id);
+  return typeOf(object).unitMass * object.quantity
+    + childrenOf(id).reduce((sum, child) => sum + totalMass(child.id), 0);
+}
+function contentsMass(id: Id): number {
+  return childrenOf(id).reduce((sum, child) => sum + totalMass(child.id), 0);
+}
+function contentsQuantity(id: Id, tag: Tag): number {
+  return childrenOf(id).reduce((sum, child) =>
+    sum + (typeOf(child).tags.includes(tag) ? child.quantity : 0)
+        + contentsQuantity(child.id, tag), 0);
+}
+function capacityReport(id: Id) {
+  const limits = typeOf(get(id)).container;
+  return {
+    massUsed: contentsMass(id), massMax: limits?.maxContentsMass,
+    directChildrenUsed: childrenOf(id).length,
+    directChildrenMax: limits?.maxDirectChildren,
+    tagUsed: Object.fromEntries(Object.keys(limits?.maxQuantityByTag ?? {})
+      .map(tag => [tag, contentsQuantity(id, tag)])),
+    tagMax: limits?.maxQuantityByTag ?? {},
+  };
+}
+```
+
+容器の**空き容量を単純に足しても、外側の運搬能力にはならない**。財布2個に現金が各10入る余地があっても、その人の残り運搬負荷が5なら20を持ち込めない。物体を移す前に、仮の親子関係で移動元と移動先の全祖先について`capacityReport`を再計算し、受入タグ、重量、タグ別数量、直接の子数を検査してから原子的に確定する。同じ人物の袋A→袋Bの移動では人物全体の重量が増えないので、「新しい親へ足す」だけの差分計算では誤判定する。UIに出す空き量は各容器の値と、その物を実際に追加できる量を区別する。
+
+親子関係の検証では、親の存在、親の一意性、世界根への到達、循環なしを確認する。読み込み時に子インデックスを構築し、上の再帰関数は検証済みの木だけに適用する。集計キャッシュを使う場合も正本は`parentId`と型定義であり、移動後は元と先の祖先を無効化して再計算する。保存/再生ではキャッシュを信頼しない。
+
 包含グラフは世界を根とする非循環木で、各物体に親は一つだけ。数量を積む型は子を持てず、容器や人物などの個体型は数量1とする。子を子孫へ入れる操作、親が存在しない状態、人を財布へ入れる状態、容量超過を拒否する。人が死亡しても携行品を消さず、遺体/所持品の扱いを明示したEventで移す。ある場所から別の場所へ物を動かすには、行為者が実際にアクセス可能で、同所性・予約・必要な時間/費用を満たすことをsimが検査する。「親になれる」ことだけで遠隔移動や窃盗を許可しない。
 
 ## E1からの具体的な移行
@@ -80,6 +113,8 @@ type Movement = {
 | 状態/試行 | 必要な結果 |
 | --- | --- |
 | 財布に現金10、財布はAの携行品。Aが家→市場を移動 | 現金ロットの`parentId`は財布のまま。市場での所在は親をたどって得られ、現金を複製しない |
+| 財布2個に各10の空き、人の残り負荷5 | 容器の空き20を人の運搬可能量と報告しない。合計負荷が5を超える追加を拒否 |
+| 同じ人が持つ袋Aから袋Bへ食料1を移す | A/Bそれぞれの上限を検査するが、人の総積載は増えない |
 | Aは他人所有の財布を預かる | 財布と中の金の所有者を勝手にAへ変更しない。受渡し権限を別に検査する |
 | 容量4の袋へ食料5を入れようとする | 積載を拒否し、食料は元の保管先に残る |
 | 財布を自分自身または子孫へ入れる／人を財布へ入れる | 循環と型不一致を拒否。世界状態は不変 |
