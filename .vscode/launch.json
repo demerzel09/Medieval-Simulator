@@ -1,0 +1,186 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ゲーム: ブラウザで起動",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s",
+        "action": "debugWithChrome"
+      },
+      "presentation": { "group": "ゲーム", "order": 1 }
+    },
+    {
+      "name": "90日: 外交",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "sim", "--", "--scenario", "pass_and_harvest", "--seed", "240924", "--days", "90", "--path", "diplomacy"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "ゲーム", "order": 2 }
+    },
+    {
+      "name": "90日: 軍事",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "sim", "--", "--scenario", "pass_and_harvest", "--seed", "240924", "--days", "90", "--path", "military"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "ゲーム", "order": 3 }
+    },
+    {
+      "name": "90日: 無策",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "sim", "--", "--scenario", "pass_and_harvest", "--seed", "240924", "--days", "90", "--path", "idle"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "ゲーム", "order": 4 }
+    },
+    {
+      "name": "経済 E0: 90日基準計測",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "economy:baseline"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "経済", "order": 1 }
+    },
+    {
+      "name": "経済 E1: 基準3日",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "economy:e1", "--", "baseline"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "経済", "order": 2 }
+    },
+    {
+      "name": "経済 E1: 運搬人欠勤",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "economy:e1", "--", "carrier-absent"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "経済", "order": 3 }
+    },
+    {
+      "name": "経済 E1: 買物係の資金不足",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "economy:e1", "--", "buyer-no-money"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "経済", "order": 4 }
+    },
+    {
+      "name": "経済 E1: 農民欠勤",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "economy:e1", "--", "farmer-absent"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "経済", "order": 5 }
+    },
+    {
+      "name": "検証: 型検査",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "typecheck"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "検証", "order": 1 }
+    },
+    {
+      "name": "検証: 単体・シナリオテスト",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["test"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "検証", "order": 2 }
+    },
+    {
+      "name": "検証: 本番ビルド",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "build"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "検証", "order": 3 }
+    },
+    {
+      "name": "検証: コンテンツ検査",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "content:validate"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "検証", "order": 4 }
+    },
+    {
+      "name": "検証: 会戦fixture",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "fixtures"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "検証", "order": 5 }
+    },
+    {
+      "name": "検証: ブラウザテスト",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "test:browser"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "検証", "order": 6 }
+    },
+    {
+      "name": "性能: 1000人ベンチマーク",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${env:HOME}/.local/node/bin/npm",
+      "runtimeArgs": ["run", "bench", "--", "--profile", "world-1000", "--days", "100", "--warmup-days", "10"],
+      "cwd": "${workspaceFolder}",
+      "env": { "PATH": "${env:HOME}/.local/node/bin:${env:PATH}" },
+      "console": "integratedTerminal",
+      "presentation": { "group": "性能", "order": 1 }
+    }
+  ]
+}
