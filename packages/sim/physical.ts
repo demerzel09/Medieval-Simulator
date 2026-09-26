@@ -140,6 +140,17 @@ export class PhysicalTransaction {
     this.s.objects[newId] = { ...o, id: newId, quantity, causeEventId };
     checkPhysical(this.s);
   }
+  merge(sourceId: string, targetId: string): void {
+    const source = object(this.s, sourceId), target = object(this.s, targetId);
+    if (sourceId === targetId || !authorized(source, this.auth) || !authorized(target, this.auth) ||
+      source.typeId !== target.typeId || source.ownerId !== target.ownerId || source.parentId !== target.parentId ||
+      !typeOf(this.s, source).stackable || siteOf(this.s, this.auth.actorId) !== siteOf(this.s, sourceId) ||
+      this.s.reservations.some((r) => r.objectId === sourceId || r.objectId === targetId) ||
+      !Number.isSafeInteger(source.quantity + target.quantity)) fail("physical merge denied");
+    target.quantity += source.quantity;
+    delete this.s.objects[sourceId];
+    checkPhysical(this.s);
+  }
   reserve(id: string, reservationId: string, quantity: number, claimantId: string): void {
     const o = object(this.s, id);
     if (!authorized(o, this.auth)) fail("physical authority denied");

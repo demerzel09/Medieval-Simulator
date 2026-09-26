@@ -74,7 +74,8 @@ export default function E1V2Debug({ autonomousBuyers = false, incomeExperiment =
     </div>
     <div className="e1-stats"><span>生産 <b>{summary.producedFood}</b> 食</span><span>消費 <b>{summary.consumedFood}</b> 食</span>
       <span>農場 <b>{summary.farmFood}</b> 食</span><span>市場 <b>{summary.marketFood}</b> 食</span>
-      <span data-testid="cart-load">荷車 <b>{contentsQuantity(w.physical, "cart_1", "food")}/21</b> 食</span><span>荷車の状態 <b>{w.cartCondition}/100</b></span><span>協同事業 <b>{summary.cooperativeMoney}</b> 通貨</span></div>
+      <span data-testid="cart-load">荷車 <b>{contentsQuantity(w.physical, "cart_1", "food")}/21</b> 食</span><span>荷車の状態 <b>{w.cartCondition}/100</b></span><span>協同事業 <b>{summary.cooperativeMoney}</b> 通貨</span>
+      {w.wageClaims && <span>未払所得 <b>{[...w.wageClaims, ...(w.distributionClaims ?? [])].filter((claim) => !claim.paidEventId).reduce((n, claim) => n + claim.amount, 0)}</b> 通貨</span>}</div>
     <main className="e1-layout"><section className="e1-map-panel"><p>場所・人物・荷車・保管具をクリックすると、物理親と所有者、再帰負荷、容量、予約、行動を確認できます。</p>
       <svg className="e1-map" viewBox={`0 0 ${map.width} ${map.height}`} role="img" aria-label="20人の物体木集落地図">
         <rect width={map.width} height={map.height} fill="#1d3028" />
@@ -99,6 +100,7 @@ export default function E1V2Debug({ autonomousBuyers = false, incomeExperiment =
       <h2>同じ場所にある物体</h2><div>{nearby?.map((o) => <button className="e1-object-link" key={o.id} onClick={() => setFocus(o.id)}>{o.id} · {o.typeId} · {o.ownerId ?? "—"}</button>)}</div>
       {w.people[focus] && <><h2>{focus}の仕事と行動</h2><p>世帯: {w.people[focus].householdId} · 体力: {w.people[focus].energy} · 空腹: {w.people[focus].hunger}</p>
         {w.wageClaims && <p>賃金請求: {w.wageClaims.filter((claim) => claim.personId === focus).reduce((n, claim) => n + claim.amount, 0)}通貨 · 支払済: {w.wageClaims.filter((claim) => claim.personId === focus && claim.paidEventId).reduce((n, claim) => n + claim.amount, 0)}通貨</p>}
+        {w.distributionClaims && <p>世帯分配: {w.distributionClaims.filter((claim) => claim.householdId === w.people[focus].householdId).reduce((n, claim) => n + claim.amount, 0)}通貨 · 支払済: {w.distributionClaims.filter((claim) => claim.householdId === w.people[focus].householdId && claim.paidEventId).reduce((n, claim) => n + claim.amount, 0)}通貨</p>}
         {w.buyerActors?.[focus] && <p>次の判断: {clock(w.buyerActors[focus].nextWakeAt)} · 知っている注文: {w.buyerActors[focus].orderId ?? "なし"}</p>}
         {focus === "S" && w.sellerActor && <p>次の判断: {clock(w.sellerActor.nextWakeAt)} · 市場で見た注文: {w.sellerActor.knownOrderIds.join("、") || "なし"} · 補充依頼: {w.sellerActor.requestEventId ?? "なし"}</p>}
         {w.farmerActors?.[focus] && <p>次の判断: {clock(w.farmerActors[focus].nextWakeAt)} · 勤務Task: {w.farmerActors[focus].shiftTaskId ?? "なし"} · 本日の収穫: {w.farmerActors[focus].harvestedToday ? "完了" : "未完了"}</p>}

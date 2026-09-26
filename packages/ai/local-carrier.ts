@@ -7,6 +7,8 @@ export type CarrierContext = {
   shipment?: { id: string; status: "requested" | "assigned" | "in_transit" | "delivered" | "failed"; quantity: number };
   task?: { id: string; status: "accepted" | "completed" | "refused" };
   farmFood?: number; cartSpace?: number; cartHere: boolean;
+  cartCondition?: number; maintenanceEnabled?: boolean; maintenanceMinutes?: number;
+  maintenanceTask?: { id: string; end: number; status: "accepted" | "completed" | "refused" };
   workStartAt: number; departAt: number; farmArriveAt: number; loadAt: number;
   marketArriveAt: number; unloadAt: number; nextDayWorkAt: number;
 };
@@ -21,6 +23,8 @@ export type CarrierAttempt =
   | { kind: "load_and_depart"; quantity: number }
   | { kind: "unload" }
   | { kind: "finish_empty" }
+  | { kind: "start_maintenance" }
+  | { kind: "finish_maintenance" }
   | { kind: "return_home" };
 export type CarrierResponse = ActorResponse<CarrierAttempt, CarrierSubjectiveState, { at: number }>;
 export type CarrierModel = PersonalityModel<CarrierInput, CarrierResponse>;
@@ -44,7 +48,14 @@ export const ordinaryCarrierModel: CarrierModel = {
         return { attempts: [{ kind: "depart_farm" }], wait: { at: c.farmArriveAt } };
       if (now < c.unloadAt) return { attempts: [], wait: { at: c.unloadAt } };
       if (c.shipment.status === "in_transit")
-        return { attempts: [{ kind: "unload" }, { kind: "return_home" }], wait: { at: c.nextDayWorkAt } };
+        return c.maintenanceEnabled ? { attempts: [{ kind: "unload" }], wait: { at: now + 1 } } :
+          { attempts: [{ kind: "unload" }, { kind: "return_home" }], wait: { at: c.nextDayWorkAt } };
+      if (c.maintenanceEnabled && c.shipment.status === "delivered" && c.cartHere && (c.cartCondition ?? 100) < 100) {
+        if (!c.maintenanceTask) return { attempts: [{ kind: "start_maintenance" }], wait: { at: now + c.maintenanceMinutes! } };
+        if (c.maintenanceTask.status === "accepted" && now >= c.maintenanceTask.end)
+          return { attempts: [{ kind: "finish_maintenance" }, { kind: "return_home" }], wait: { at: c.nextDayWorkAt } };
+        if (c.maintenanceTask.status === "accepted") return { attempts: [], wait: { at: c.maintenanceTask.end } };
+      }
       if (c.shipment.status === "failed" && c.task?.status === "accepted")
         return { attempts: [{ kind: "finish_empty" }, { kind: "return_home" }], wait: { at: c.nextDayWorkAt } };
       return { attempts: [{ kind: "return_home" }], wait: { at: c.nextDayWorkAt } };

@@ -5,6 +5,7 @@ export type SellerContext = {
   available: boolean; energy: number;
   visibleOrders: { id: string; quantity: number; requestEventId: string }[];
   marketFood?: number; reviewedToday: boolean;
+  incomeProgram?: { dailyRevenue: number };
   saleTask?: { id: string; end: number; status: "accepted" | "completed" | "refused" };
   workStartAt: number; requestAt: number; saleAt: number; closeAt: number; nextDayWorkAt: number;
   cartCapacity: number;
@@ -17,6 +18,7 @@ export type SellerAttempt =
   | { kind: "request_replenishment"; quantity: number }
   | { kind: "start_market_sale" }
   | { kind: "finish_market_sale" }
+  | { kind: "approve_distribution" }
   | { kind: "return_home" };
 export type SellerResponse = ActorResponse<SellerAttempt, SellerSubjectiveState, { at: number }>;
 export type SellerModel = PersonalityModel<SellerInput, SellerResponse>;
@@ -46,6 +48,6 @@ export const ordinarySellerModel: SellerModel = {
     if (now < c.closeAt && !c.saleTask && c.visibleOrders.length > 0)
       return { attempts: [{ kind: "start_market_sale" }], wait: { at: c.closeAt } };
     if (now < c.closeAt) return { attempts: [], wait: { at: c.closeAt } };
-    return { attempts: c.saleTask?.status === "accepted" ? [{ kind: "finish_market_sale" }, { kind: "return_home" }] : [{ kind: "return_home" }], wait: { at: c.nextDayWorkAt } };
+    return { attempts: c.saleTask?.status === "accepted" ? [{ kind: "finish_market_sale" }, ...(c.incomeProgram ? [{ kind: "approve_distribution" as const }] : []), { kind: "return_home" }] : [{ kind: "return_home" }], wait: { at: c.nextDayWorkAt } };
   },
 };

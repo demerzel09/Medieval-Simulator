@@ -18,16 +18,18 @@ const chest = (id: string) => `chest_${id}`;
 const pouch = (id: string) => `pouch_${id}`;
 const bag = (id: string) => `bag_${id}`;
 const store = (id: string) => `store_${id}`;
+const maxDays = (w: LocalWorldV2) => w.wageClaims ? 90 : 3;
 type PersonV2 = { id: string; householdId: string; role: string; hunger: number; energy: number; journey?: { transitId: string; fromId: string; toId: string; depart: number; arrive: number; mode: "walk" | "cart"; effortCost: number; distanceKm: number; causeEventId: string } };
-type LocalTaskV2 = Omit<LocalTask, "capability"> & { capability: LocalTask["capability"] | "rest" };
+type LocalTaskV2 = Omit<LocalTask, "capability"> & { capability: LocalTask["capability"] | "rest" | "maintain_cart" };
 type OrderV2 = { id: string; day: number; householdId: string; buyerId: string; quantity: number; status: "requested" | "sale_reserved" | "settled" | "expired"; requestEventId: string; reservationEventId?: string; allocations: { lotId: string; quantity: number; reservationId: string }[]; moneyReservationId?: string };
 type ShipmentV2 = { id: string; day: number; carrierId: string; status: "requested" | "assigned" | "in_transit" | "delivered" | "failed"; requestedQuantity: number; quantity: number; requestEventId: string; lastEventId: string; proposal?: FoodDeliveryProposal };
 type BuyerActorState = { day: number; nextWakeAt: number; orderId?: string; purchaseTaskId?: string; lastEventId?: string };
 type SellerActorState = { day: number; nextWakeAt: number; reviewedToday: boolean; knownOrderIds: string[]; requestEventId?: string; saleTaskId?: string; lastEventId?: string };
 type FarmerActorState = { day: number; nextWakeAt: number; shiftTaskId?: string; harvestedToday: boolean; lastEventId?: string };
-type CarrierActorState = { day: number; nextWakeAt: number; shipmentId?: string; taskId?: string; lastEventId?: string };
+type CarrierActorState = { day: number; nextWakeAt: number; shipmentId?: string; taskId?: string; maintenanceTaskId?: string; lastEventId?: string };
+type IncomeClaim = { id: string; day: number; personId: string; householdId: string; amount: number; causeEventId: string; paidEventId?: string };
 export type LocalWorldV2 = {
-  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2" | "local_food_a3_income"; engineVersion: "0.4.1-e1" | "0.5.3-a2" | "0.6.0-a3-income";
+  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2" | "local_food_a3_income"; engineVersion: "0.4.1-e1" | "0.5.3-a2" | "0.6.1-a3-income";
   seed: number; contentHash: string; minute: number; nextId: number;
   physical: PhysicalState; people: Record<string, PersonV2>;
   capabilities: Record<string, { id: string; definitionId: string; version: number; bearerId: string }>;
@@ -42,15 +44,18 @@ export type LocalWorldV2 = {
   sellerActor?: SellerActorState;
   farmerActors?: Record<string, FarmerActorState>;
   carrierActor?: CarrierActorState;
-  wageClaims?: { id: string; personId: string; householdId: string; amount: number; causeEventId: string; paidEventId?: string }[];
+  wageClaims?: IncomeClaim[];
+  distributionClaims?: IncomeClaim[];
 };
 
 function uid(w: LocalWorldV2, prefix: string) { return `${prefix}_${String(w.nextId++).padStart(6, "0")}`; }
+const eventIdCache = new WeakMap<LocalWorldV2, Set<string>>();
 function emit(w: LocalWorldV2, kind: string, actors: string[], causes: string[] = [], data: LocalEvent["data"] = {}) {
-  const known = new Set(w.events.map((e) => e.id));
+  let known = eventIdCache.get(w);
+  if (!known || known.size !== w.events.length) { known = new Set(w.events.map((e) => e.id)); eventIdCache.set(w, known); }
   if (causes.some((id) => !known.has(id))) throw Error(`unknown cause for ${kind}`);
   const e: LocalEvent = { id: uid(w, "e"), minute: w.minute, kind, actors, causes: [...causes], data };
-  w.events.push(e); return e;
+  w.events.push(e); known.add(e.id); return e;
 }
 function at(w: LocalWorldV2, id: string) { return siteOf(w.physical, id); }
 function amount(w: LocalWorldV2, parentId: string, tag: string) { return contentsQuantity(w.physical, parentId, tag); }
@@ -120,9 +125,10 @@ export function newLocalWorldA2(seed = 240924): LocalWorldV2 {
 export function newLocalWorldA3Income(seed = 240924): LocalWorldV2 {
   const w = newLocalWorldA2(seed);
   w.economicMode = "local_food_a3_income";
-  w.engineVersion = "0.6.0-a3-income";
+  w.engineVersion = "0.6.1-a3-income";
   w.contentHash = hash([c, economyA3Income]);
   w.wageClaims = [];
+  w.distributionClaims = [];
   checkLocalV2(w); return w;
 }
 
@@ -130,22 +136,54 @@ function recordWage(w: LocalWorldV2, personId: string, amount: number, causeEven
   if (!w.wageClaims) return;
   const person = w.people[personId];
   const e = emit(w, "wage_earned", [personId], [causeEventId], { householdId: person.householdId, amount });
-  w.wageClaims.push({ id: uid(w, "wage"), personId, householdId: person.householdId, amount, causeEventId: e.id });
+  w.wageClaims.push({ id: uid(w, "wage"), day: dayOf(w.minute), personId, householdId: person.householdId, amount, causeEventId: e.id });
 }
 
-function collectWages(w: LocalWorldV2, buyerId: string, decisionEventId: string) {
+function approveDistribution(w: LocalWorldV2, sellerDecisionId: string) {
+  if (!w.distributionClaims || at(w, c.roles.seller) !== "market") return;
+  const day = dayOf(w.minute);
+  if (w.distributionClaims.some((claim) => claim.day === day)) return;
+  const sales = w.events.filter((event) => event.kind === "sale_settled" && dayOf(event.minute) === day);
+  const earned = w.wageClaims!.filter((claim) => claim.day === day);
+  const revenue = sales.reduce((n, sale) => n + Number(sale.data.cost), 0);
+  const wages = earned.reduce((n, claim) => n + claim.amount, 0);
+  let pool = Math.max(0, revenue - wages);
+  const households = Object.values(w.households).sort((a, b) => a.id.localeCompare(b.id));
+  const needs = households.map((household) => ({ household,
+    amount: Math.max(0, household.memberIds.length * c.foodPerPerson * c.price * economyA3Income.householdFoodFloor -
+      earned.filter((claim) => claim.householdId === household.id).reduce((n, claim) => n + claim.amount, 0)),
+  }));
+  const totalNeed = needs.reduce((n, item) => n + item.amount, 0);
+  const allocations = needs.map((item) => Math.min(item.amount, totalNeed ? Math.floor(pool * item.amount / totalNeed) : 0));
+  pool -= allocations.reduce((n, amount) => n + amount, 0);
+  for (let i = 0; i < needs.length && pool > 0; i++) if (allocations[i] < needs[i].amount) { allocations[i]++; pool--; if (i === needs.length - 1) i = -1; }
+  const approved = emit(w, "distribution_approved", [c.roles.seller], [sellerDecisionId, ...sales.map((sale) => sale.id), ...earned.map((claim) => claim.causeEventId)],
+    { day, revenue, wages, amount: allocations.reduce((n, amount) => n + amount, 0) });
+  for (const [index, item] of needs.entries()) {
+    const amount = allocations[index];
+    if (!amount) continue;
+    const e = emit(w, "distribution_claimed", [c.roles.seller, item.household.buyerId], [approved.id], { householdId: item.household.id, amount });
+    w.distributionClaims.push({ id: uid(w, "distribution"), day, personId: item.household.buyerId,
+      householdId: item.household.id, amount, causeEventId: e.id });
+  }
+}
+
+function collectIncome(w: LocalWorldV2, buyerId: string, decisionEventId: string) {
   if (!w.wageClaims || at(w, buyerId) !== "market") return;
   const householdId = w.people[buyerId].householdId;
-  const claims = w.wageClaims.filter((claim) => claim.householdId === householdId && !claim.paidEventId);
+  const claims = [
+    ...w.wageClaims.filter((claim) => claim.householdId === householdId && !claim.paidEventId).map((claim) => ({ claim, kind: "wage" as const })),
+    ...(w.distributionClaims ?? []).filter((claim) => claim.householdId === householdId && !claim.paidEventId).map((claim) => ({ claim, kind: "distribution" as const })),
+  ];
   if (!claims.length) return;
   if (at(w, c.roles.seller) !== "market" || !taskAt(w, c.roles.seller, "market_sale", dayOf(w.minute))) {
-    emit(w, "wage_unpaid", [buyerId], [decisionEventId], { householdId,
-      amount: claims.reduce((n, claim) => n + claim.amount, 0), reason: "seller_unavailable" });
+    emit(w, "income_unpaid", [buyerId], [decisionEventId], { householdId,
+      amount: claims.reduce((n, item) => n + item.claim.amount, 0), reason: "seller_unavailable" });
     return;
   }
-  let remaining = Math.min(claims.reduce((n, claim) => n + claim.amount, 0),
+  let remaining = Math.min(claims.reduce((n, item) => n + item.claim.amount, 0),
     c.limits.personCash - amount(w, pouch(buyerId), "currency"), amount(w, "till_cooperative", "currency"));
-  for (const claim of claims) {
+  for (const { claim, kind } of claims) {
     if (claim.amount > remaining) break;
     let needed = claim.amount;
     const portions = lots(w, "till_cooperative", "currency", "cooperative").map((source) => {
@@ -161,18 +199,18 @@ function collectWages(w: LocalWorldV2, buyerId: string, decisionEventId: string)
       }
     });
     if (!result.ok) throw Error(`wage transfer failed: ${result.reason}`);
-    const paid = emit(w, "wage_paid", [buyerId, c.roles.seller, claim.personId], [decisionEventId, claim.causeEventId],
+    const paid = emit(w, kind === "wage" ? "wage_paid" : "distribution_paid", [buyerId, c.roles.seller, claim.personId], [decisionEventId, claim.causeEventId],
       { householdId, claimId: claim.id, amount: claim.amount });
     for (const { coinId } of portions) w.physical.objects[coinId].causeEventId = paid.id;
     claim.paidEventId = paid.id;
     remaining -= claim.amount;
   }
-  if (claims.some((claim) => !claim.paidEventId)) emit(w, "wage_unpaid", [buyerId, c.roles.seller], [decisionEventId],
-    { householdId, amount: claims.filter((claim) => !claim.paidEventId).reduce((n, claim) => n + claim.amount, 0) });
+  if (claims.some(({ claim }) => !claim.paidEventId)) emit(w, "income_unpaid", [buyerId, c.roles.seller], [decisionEventId],
+    { householdId, amount: claims.filter(({ claim }) => !claim.paidEventId).reduce((n, item) => n + item.claim.amount, 0) });
 }
 
 function offerTask(w: LocalWorldV2, personId: string, capability: LocalTaskV2["capability"], start: number, end: number, causes: string[] = []) {
-  const routine = capability === "rest" ? { id: "life.rest", version: 1 } : c.routines.find((r) => r.capability === capability)!;
+  const routine = capability === "rest" ? { id: "life.rest", version: 1 } : capability === "maintain_cart" ? { id: "cart.maintain", version: 1 } : c.routines.find((r) => r.capability === capability)!;
   const offer = emit(w, "task_offered", [personId], causes, { routineId: routine.id, capability, start, end });
   const overlap = w.tasks.some((task) => task.personId === personId && task.status !== "refused" && start < task.end && task.start < end);
   const unavailable = capability !== "eat_food" && capability !== "rest" && absent(w, personId, dayOf(start));
@@ -256,21 +294,30 @@ function createOrder(w: LocalWorldV2, householdId: string, day: number, quantity
 function buyerDepart(w: LocalWorldV2, order: OrderV2, decisionEventId?: string) {
   const p = w.people[order.buyerId], fromId = at(w, p.id), cost = order.quantity * c.price;
   const causes = decisionEventId ? [order.requestEventId, decisionEventId] : [order.requestEventId];
-  const available = lots(w, chest(order.householdId), "currency", order.householdId).find((o) => o.quantity >= cost);
+  const coins = lots(w, chest(order.householdId), "currency", order.householdId);
+  const totalCash = coins.reduce((n, coin) => n + coin.quantity, 0);
+  const available = coins.find((coin) => coin.quantity >= cost) ?? (totalCash >= cost ? coins[0] : undefined);
   if (!available) return travel(w, p.id, "market", w.minute + 15, causes);
+  const combine = available.quantity < cost ? coins.filter((coin) => coin.id !== available.id) : [];
   const loadedCash = amount(w, pouch(p.id), "currency") + cost;
   const effortCost = Math.ceil(c.limits.townKm * (c.limits.walkEffortPerKm + Math.ceil(loadedCash / 10)));
   if (p.energy < effortCost) {
     emit(w, "journey_blocked", [p.id], causes, { to: "market", reason: "exhausted", effortCost, energy: p.energy }); return false;
   }
-  const transitId = uid(w, "transit"), coinId = cost < available.quantity ? uid(w, "coin") : available.id;
+  const transitId = uid(w, "transit"), coinId = cost < available.quantity + combine.reduce((n, coin) => n + coin.quantity, 0) ? uid(w, "coin") : available.id;
   const result = tx(w, p.id, [order.householdId], (t) => {
+    for (const coin of combine) t.merge(coin.id, available.id);
     if (coinId !== available.id) t.split(available.id, coinId, cost, order.requestEventId);
     t.move(coinId, pouch(p.id));
     t.depart({ id: transitId, typeId: "site", parentId: "world", quantity: 1, causeEventId: order.requestEventId }, [p.id]);
   });
   if (!result.ok) { emit(w, "journey_blocked", [p.id], causes, { to: "market", reason: result.reason }); return false; }
-  const moved = emit(w, "cash_moved", [p.id], causes, { from: chest(order.householdId), to: pouch(p.id), amount: cost });
+  const combined = combine.length ? emit(w, "cash_combined", [p.id], [decisionEventId ?? order.requestEventId,
+    ...new Set([available, ...combine].map((coin) => coin.causeEventId).filter((id) => id !== "initial"))],
+    { from: chest(order.householdId), amount: available.quantity + combine.reduce((n, coin) => n + coin.quantity, 0) }) : undefined;
+  if (combined && w.physical.objects[available.id]) w.physical.objects[available.id].causeEventId = combined.id;
+  const moved = emit(w, "cash_moved", [p.id], [...causes, ...(combined ? [combined.id] : [])], { from: chest(order.householdId), to: pouch(p.id), amount: cost });
+  w.physical.objects[coinId].causeEventId = moved.id;
   p.energy -= effortCost;
   const e = emit(w, "journey_started", [p.id], [moved.id], { from: fromId, to: "market", arrive: w.minute + 15, mode: "walk", distanceKm: c.limits.townKm, effortCost, foodLoad: 0, cashLoad: loadedCash });
   p.journey = { transitId, fromId, toId: "market", depart: w.minute, arrive: w.minute + 15, mode: "walk", effortCost, distanceKm: c.limits.townKm, causeEventId: e.id };
@@ -362,7 +409,7 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
         energy: person.energy, available: !absent(w, person.id, day), householdSize: h.memberIds.length,
         homeFood: here ? amount(w, store(h.id), "food") : undefined,
         homeCash: here ? amount(w, chest(h.id), "currency") : undefined,
-        claimableWages: w.wageClaims?.filter((claim) => claim.householdId === h.id && !claim.paidEventId).reduce((n, claim) => n + claim.amount, 0),
+        claimableIncome: w.wageClaims ? [...w.wageClaims, ...(w.distributionClaims ?? [])].filter((claim) => claim.householdId === h.id && !claim.paidEventId).reduce((n, claim) => n + claim.amount, 0) : undefined,
         wageService: !!w.wageClaims,
         price: c.price,
         order: order ? { id: order.id, quantity: order.quantity, status: here && order.status !== "requested" ? "requested" : order.status } : undefined,
@@ -395,7 +442,7 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
       } else if (attempt.kind === "depart_market") {
         if (order && order.id === attempt.orderId && order.status === "requested" && here && buyerDepart(w, order, decision.id))
           state.lastEventId = person.journey?.causeEventId ?? decision.id;
-        else if (!attempt.orderId && !order && here && w.wageClaims?.some((claim) => claim.householdId === h.id && !claim.paidEventId) &&
+        else if (!attempt.orderId && !order && here && [...(w.wageClaims ?? []), ...(w.distributionClaims ?? [])].some((claim) => claim.householdId === h.id && !claim.paidEventId) &&
           travel(w, person.id, "market", w.minute + 15, [decision.id]))
           state.lastEventId = person.journey?.causeEventId ?? decision.id;
         else if (order?.id !== attempt.orderId || order?.status !== "requested" || !here)
@@ -422,8 +469,8 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
         const completed = completeTask(w, task, settled ? "purchase_completed" : "purchase_failed", [decision.id, order.requestEventId], { householdId: h.id });
         if (settled) recordWage(w, person.id, economyA3Income.purchase, completed.id);
         state.lastEventId = completed.id; returnCause = completed.id;
-      } else if (attempt.kind === "collect_wages" && location === "market") {
-        collectWages(w, person.id, decision.id);
+      } else if (attempt.kind === "collect_income" && location === "market") {
+        collectIncome(w, person.id, decision.id);
       } else if (attempt.kind === "return_home" && location === "market") {
         if (travel(w, person.id, home(h.id), w.minute + 15, [returnCause])) state.lastEventId = person.journey?.causeEventId ?? returnCause;
       }
@@ -458,6 +505,9 @@ function runSellerActor(w: LocalWorldV2, model: SellerModel) {
       available: !absent(w, sellerId, day), energy: person.energy,
       visibleOrders: visibleOrders.map((order) => ({ id: order.id, quantity: order.quantity, requestEventId: order.requestEventId })),
       marketFood: location === "market" ? amount(w, store("market"), "food") : undefined,
+      incomeProgram: w.distributionClaims && location === "market" ? {
+        dailyRevenue: w.events.filter((event) => event.kind === "sale_settled" && dayOf(event.minute) === day).reduce((n, event) => n + Number(event.data.cost), 0),
+      } : undefined,
       reviewedToday: state.reviewedToday,
       saleTask: saleTask ? { id: saleTask.id, end: saleTask.end, status: saleTask.status === "refused" ? "refused" : saleTask.status === "completed" ? "completed" : "accepted" } : undefined,
       workStartAt: base + tm.orders, requestAt: base + tm.assignment, saleAt: base + tm.unloadEnd,
@@ -465,7 +515,7 @@ function runSellerActor(w: LocalWorldV2, model: SellerModel) {
     },
   };
   const response = model.decide(input);
-  if (!Number.isSafeInteger(response.wait.at) || response.wait.at <= w.minute || response.attempts.length > 2)
+  if (!Number.isSafeInteger(response.wait.at) || response.wait.at <= w.minute || response.attempts.length > 3)
     throw Error("invalid seller response");
   const previouslyKnown = new Set(state.knownOrderIds);
   const known = new Set([...previouslyKnown, ...visibleOrders.map((order) => order.id)]);
@@ -497,6 +547,10 @@ function runSellerActor(w: LocalWorldV2, model: SellerModel) {
       const completed = completeTask(w, saleTask, "market_shift_completed", [decision.id]);
       recordWage(w, sellerId, economyA3Income.marketShift, completed.id);
       state.lastEventId = completed.id; returnCause = completed.id;
+    } else if (attempt.kind === "approve_distribution" && location === "market" && w.distributionClaims &&
+      w.minute === base + tm.marketEnd && saleTask?.status === "completed") {
+      approveDistribution(w, decision.id);
+      state.lastEventId = w.events.at(-1)?.id;
     } else if (attempt.kind === "return_home" && location === "market") {
       if (travel(w, sellerId, home(person.householdId), w.minute + 15, [returnCause])) state.lastEventId = person.journey?.causeEventId;
     } else {
@@ -524,7 +578,7 @@ function runFarmerActors(w: LocalWorldV2, model: FarmerModel) {
       knownContext: {
         day, location, homeId: home(person.householdId), journeyTo: person.journey?.toId,
         available: !absent(w, person.id, day), energy: person.energy,
-        onRoster: rosterIndex < c.farmersOnShift[day - 1],
+        onRoster: rosterIndex < c.farmersOnShift[(day - 1) % c.farmersOnShift.length],
         shift: shift ? { id: shift.id, status: shift.status === "refused" ? "refused" : shift.status === "completed" ? "completed" : "accepted" } : undefined,
         harvestedToday: state.harvestedToday,
         workStartAt: base + tm.assignment, harvestAt: base + tm.farmEnd,
@@ -667,12 +721,13 @@ function runCarrierActor(w: LocalWorldV2, model: CarrierModel) {
   const state = w.carrierActor;
   if (!state || state.nextWakeAt > w.minute) return;
   const day = dayOf(w.minute), base = baseOf(day), carrierId = c.roles.carrier;
-  if (state.day !== day) { state.day = day; state.shipmentId = undefined; state.taskId = undefined; }
+  if (state.day !== day) { state.day = day; state.shipmentId = undefined; state.taskId = undefined; state.maintenanceTaskId = undefined; }
   const person = w.people[carrierId], location = at(w, carrierId);
   const visibleRequest = location === "market" ? w.shipments.find((shipment) => shipment.day === day && shipment.status === "requested" &&
     w.events.find((event) => event.id === shipment.requestEventId)!.minute <= w.minute - 15) : undefined;
   const shipment = state.shipmentId ? w.shipments.find((s) => s.id === state.shipmentId) : undefined;
   const task = state.taskId ? w.tasks.find((t) => t.id === state.taskId) : undefined;
+  const maintenanceTask = state.maintenanceTaskId ? w.tasks.find((t) => t.id === state.maintenanceTaskId) : undefined;
   const arrival = shipment && w.events.filter((event) => event.kind === "journey_arrived" && event.actors.includes(carrierId) &&
     event.minute >= base && event.data.place === location).at(-1);
   const observedStockCauses = location === "farm" && w.minute >= base + tm.loadEnd ?
@@ -693,6 +748,11 @@ function runCarrierActor(w: LocalWorldV2, model: CarrierModel) {
       farmFood: location === "farm" ? amount(w, store("farm"), "food") : undefined,
       cartSpace: location === "farm" && at(w, "cart_1") === "farm" ? c.cartCapacity - amount(w, "cart_1", "food") : undefined,
       cartHere: at(w, "cart_1") === location,
+      cartCondition: w.wageClaims && location === "market" && at(w, "cart_1") === "market" ? w.cartCondition : undefined,
+      maintenanceEnabled: !!w.wageClaims,
+      maintenanceMinutes: economyA3Income.maintenanceMinutes,
+      maintenanceTask: maintenanceTask ? { id: maintenanceTask.id, end: maintenanceTask.end,
+        status: maintenanceTask.status === "refused" ? "refused" : maintenanceTask.status === "completed" ? "completed" : "accepted" } : undefined,
       workStartAt: base + tm.assignment, departAt: base + tm.cartDepart,
       farmArriveAt: base + tm.cartFarmArrive, loadAt: base + tm.loadEnd,
       marketArriveAt: base + tm.cartMarketArrive, unloadAt: base + tm.unloadEnd,
@@ -765,6 +825,26 @@ function runCarrierActor(w: LocalWorldV2, model: CarrierModel) {
       w.events.find((event) => event.id === shipment.lastEventId)?.data.reason === "no_stock") {
       const finished = completeTask(w, task, "carry_empty_return", [decision.id, shipment.lastEventId]);
       state.lastEventId = finished.id; returnCause = finished.id;
+    } else if (attempt.kind === "start_maintenance" && w.wageClaims && location === "market" &&
+      at(w, "cart_1") === "market" && w.cartCondition < 100 && !state.maintenanceTaskId && shipment?.status === "delivered") {
+      const maintenance = offerTask(w, carrierId, "maintain_cart", w.minute, w.minute + economyA3Income.maintenanceMinutes,
+        [decision.id, shipment.lastEventId]);
+      state.maintenanceTaskId = maintenance.id; state.lastEventId = maintenance.answerEventId;
+    } else if (attempt.kind === "finish_maintenance" && w.wageClaims && location === "market" &&
+      at(w, "cart_1") === "market" && maintenanceTask?.status === "accepted" && maintenanceTask.end === w.minute) {
+      const effort = workEffort(w, carrierId, "maintain_cart", economyA3Income.maintenanceEffort, [decision.id, maintenanceTask.answerEventId]);
+      if (effort) {
+        const before = w.cartCondition;
+        w.cartCondition = Math.min(100, before + economyA3Income.cartRepairPerService);
+        const repaired = emit(w, "vehicle_maintained", [carrierId], [decision.id, effort.id, maintenanceTask.answerEventId],
+          { vehicleId: "cart_1", conditionBefore: before, conditionAfter: w.cartCondition });
+        const completed = completeTask(w, maintenanceTask, "maintenance_completed", [repaired.id]);
+        recordWage(w, carrierId, economyA3Income.maintenance, completed.id);
+        state.lastEventId = completed.id; returnCause = completed.id;
+      } else {
+        const failed = completeTask(w, maintenanceTask, "maintenance_failed", [decision.id], { reason: "exhausted" });
+        state.lastEventId = failed.id; returnCause = failed.id;
+      }
     } else if (attempt.kind === "return_home" && ["market", "farm"].includes(location) && !person.journey) {
       if (travel(w, carrierId, home(person.householdId), w.minute + (location === "farm" ? 30 : 15), [returnCause]))
         state.lastEventId = w.people[carrierId].journey?.causeEventId;
@@ -785,7 +865,7 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
     if (atHome) p.energy = Math.min(c.limits.personEnergy, before + recovery);
     completeTask(w, task, atHome ? "rest_completed" : "rest_missed", [], { energyBefore: before, energyAfter: p.energy, recovered: p.energy - before, hunger: p.hunger });
   }
-  if (day > 3) return;
+  if (day > maxDays(w)) return;
   if (local === tm.orders) {
     if (!w.buyerActors) for (const h of Object.values(w.households)) offerTask(w, h.buyerId, "buy_food", w.minute, base + tm.notice);
     if (!w.sellerActor && !absent(w, c.roles.seller, day)) travel(w, c.roles.seller, "market", base + tm.notice);
@@ -829,7 +909,7 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
     if (w.farmerActors) runFarmerActors(w, farmerModel);
     else {
       const farmers = Object.values(w.people).filter((p) => p.role === "farmer").sort((a, b) => a.id.localeCompare(b.id));
-      for (const p of farmers.slice(0, c.farmersOnShift[day - 1])) {
+      for (const p of farmers.slice(0, c.farmersOnShift[(day - 1) % c.farmersOnShift.length])) {
         const task = offerTask(w, p.id, "work_shift", w.minute, base + tm.loadEnd, request ? [request.id] : []);
         if (task.status === "accepted" && !travel(w, p.id, "farm", base + tm.farmArrive, [task.answerEventId])) completeTask(w, task, "farm_shift_failed", [], { reason: "travel_cost" });
       }
@@ -964,16 +1044,16 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
 export function advanceLocalV2(w: LocalWorldV2, minutes: number, buyerModel: BuyerModel = ordinaryBuyerModel,
   sellerModel: SellerModel = ordinarySellerModel, farmerModel: FarmerModel = ordinaryFarmerModel,
   carrierModel: CarrierModel = ordinaryCarrierModel) {
-  if (!Number.isSafeInteger(minutes) || minutes < 0 || w.minute + minutes > 4320) throw Error("invalid E1 v2 advance");
+  if (!Number.isSafeInteger(minutes) || minutes < 0 || w.minute + minutes > maxDays(w) * 1440) throw Error("invalid E1 v2 advance");
   for (let i = 0; i < minutes; i++) { w.minute++; phase(w, buyerModel, sellerModel, farmerModel, carrierModel); }
   checkLocalV2(w); return w;
 }
 export function submitLocalV2(w: LocalWorldV2, actorId: string, action: LocalAction, id = `command_${w.commands.length + 1}`) {
   if (!w.people[actorId] || w.commands.some((command) => command.id === id)) return false;
   if (action.kind === "ABSENT") {
-    if (action.personId !== actorId || !Number.isSafeInteger(action.day) || action.day < dayOf(w.minute) || action.day > 3 || w.minute >= baseOf(action.day) + tm.orders) return false;
+    if (action.personId !== actorId || !Number.isSafeInteger(action.day) || action.day < dayOf(w.minute) || action.day > maxDays(w) || w.minute >= baseOf(action.day) + tm.orders) return false;
   } else if (action.kind === "EXTRA_ORDER") {
-    if (w.households[action.householdId]?.buyerId !== actorId || !Number.isSafeInteger(action.day) || action.day < dayOf(w.minute) || action.day > 3 || w.minute >= baseOf(action.day) + tm.orders || !Number.isSafeInteger(action.amount) || action.amount < 1) return false;
+    if (w.households[action.householdId]?.buyerId !== actorId || !Number.isSafeInteger(action.day) || action.day < dayOf(w.minute) || action.day > maxDays(w) || w.minute >= baseOf(action.day) + tm.orders || !Number.isSafeInteger(action.amount) || action.amount < 1) return false;
   } else {
     if (w.households[action.from]?.buyerId !== actorId || !Number.isSafeInteger(action.amount) || action.amount < 0 ||
       !w.households[action.from] || action.to !== "reserve" && !w.households[action.to]) return false;
@@ -1022,7 +1102,7 @@ export function saveLocalA3Income(w: LocalWorldV2) {
 }
 export function loadLocalA3Income(serialized: string): LocalWorldV2 {
   const w = JSON.parse(serialized) as LocalWorldV2;
-  if (w.economicMode !== "local_food_a3_income" || w.engineVersion !== "0.6.0-a3-income" ||
+  if (w.economicMode !== "local_food_a3_income" || w.engineVersion !== "0.6.1-a3-income" ||
     w.contentHash !== hash([c, economyA3Income])) throw Error("incompatible A3 income save");
   checkLocalV2(w); return w;
 }
@@ -1051,11 +1131,11 @@ export function replayLocalA3Income(seed: number, commands: LocalCommand[], unti
   advanceLocalV2(w, until - w.minute); return w;
 }
 export function checkLocalV2(w: LocalWorldV2) {
-  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined && w.sellerActor === undefined && w.farmerActors === undefined && w.carrierActor === undefined && w.wageClaims === undefined) ||
-      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.3-a2" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined && w.wageClaims === undefined) ||
-      (w.economicMode === "local_food_a3_income" && w.engineVersion === "0.6.0-a3-income" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined && Array.isArray(w.wageClaims))) ||
+  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined && w.sellerActor === undefined && w.farmerActors === undefined && w.carrierActor === undefined && w.wageClaims === undefined && w.distributionClaims === undefined) ||
+      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.3-a2" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined && w.wageClaims === undefined && w.distributionClaims === undefined) ||
+      (w.economicMode === "local_food_a3_income" && w.engineVersion === "0.6.1-a3-income" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined && Array.isArray(w.wageClaims) && Array.isArray(w.distributionClaims))) ||
     w.contentHash !== (w.economicMode === "local_food_a3_income" ? hash([c, economyA3Income]) : hash(c)) ||
-    !Number.isSafeInteger(w.minute) || w.minute < 0 || w.minute > 4320 ||
+    !Number.isSafeInteger(w.minute) || w.minute < 0 || w.minute > maxDays(w) * 1440 ||
     !Number.isSafeInteger(w.cartCondition) || w.cartCondition < 0 || w.cartCondition > 100) throw Error("invalid E1 v2 world");
   checkPhysical(w.physical);
   if (hash(w.physical.types) !== hash(c.physicalTypes) || w.capabilities.carry_C?.bearerId !== c.roles.carrier ||
@@ -1102,16 +1182,31 @@ export function checkLocalV2(w: LocalWorldV2) {
     if (eventIds.has(e.id) || e.causes.some((cause) => !eventIds.has(cause)) || e.actors.some((id) => !w.people[id])) throw Error("E1 v2 event graph");
     eventIds.add(e.id);
   }
+  const eventsById = new Map(w.events.map((event) => [event.id, event]));
   for (const o of [...food, ...cash]) if (o.causeEventId !== "initial" && !eventIds.has(o.causeEventId)) throw Error("E1 v2 asset cause");
   if (w.wageClaims) {
     const claimIds = new Set<string>();
     for (const claim of w.wageClaims) {
-      const earned = w.events.find((event) => event.id === claim.causeEventId);
-      const paid = claim.paidEventId ? w.events.find((event) => event.id === claim.paidEventId) : undefined;
+      const earned = eventsById.get(claim.causeEventId);
+      const paid = claim.paidEventId ? eventsById.get(claim.paidEventId) : undefined;
       if (claimIds.has(claim.id) || !w.people[claim.personId] || w.people[claim.personId].householdId !== claim.householdId ||
+        !Number.isSafeInteger(claim.day) || claim.day < 1 || claim.day > maxDays(w) || claim.day !== dayOf(earned?.minute ?? -1) ||
         !Number.isSafeInteger(claim.amount) || claim.amount <= 0 || !eventIds.has(claim.causeEventId) ||
         earned?.kind !== "wage_earned" || !earned.actors.includes(claim.personId) || earned.data.amount !== claim.amount ||
         claim.paidEventId && (paid?.kind !== "wage_paid" || !paid.causes.includes(claim.causeEventId) || paid.data.claimId !== claim.id || paid.data.amount !== claim.amount)) throw Error("A3 income claim");
+      claimIds.add(claim.id);
+    }
+  }
+  if (w.distributionClaims) {
+    const claimIds = new Set<string>();
+    for (const claim of w.distributionClaims) {
+      const created = eventsById.get(claim.causeEventId);
+      const paid = claim.paidEventId ? eventsById.get(claim.paidEventId) : undefined;
+      if (claimIds.has(claim.id) || w.households[claim.householdId]?.buyerId !== claim.personId ||
+        !Number.isSafeInteger(claim.day) || claim.day < 1 || claim.day > maxDays(w) || claim.day !== dayOf(created?.minute ?? -1) ||
+        !Number.isSafeInteger(claim.amount) || claim.amount <= 0 || created?.kind !== "distribution_claimed" ||
+        created.data.householdId !== claim.householdId || created.data.amount !== claim.amount ||
+        claim.paidEventId && (paid?.kind !== "distribution_paid" || !paid.causes.includes(claim.causeEventId) || paid.data.claimId !== claim.id || paid.data.amount !== claim.amount)) throw Error("A3 distribution claim");
       claimIds.add(claim.id);
     }
   }
@@ -1136,7 +1231,7 @@ export function checkLocalV2(w: LocalWorldV2) {
     if (Object.keys(w.buyerActors).length !== Object.keys(w.households).length) throw Error("A2 buyer actors");
     for (const h of Object.values(w.households)) {
       const actor = w.buyerActors[h.buyerId];
-      if (!actor || !Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > 3 || !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute ||
+      if (!actor || !Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > maxDays(w) || !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute ||
         actor.orderId && !w.orders.some((o) => o.id === actor.orderId && o.buyerId === h.buyerId) ||
         actor.purchaseTaskId && !w.tasks.some((t) => t.id === actor.purchaseTaskId && t.personId === h.buyerId) ||
         actor.lastEventId && !eventIds.has(actor.lastEventId)) throw Error("A2 buyer state");
@@ -1144,7 +1239,7 @@ export function checkLocalV2(w: LocalWorldV2) {
   }
   if (w.sellerActor) {
     const actor = w.sellerActor;
-    if (!Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > 3 || !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute ||
+    if (!Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > maxDays(w) || !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute ||
       typeof actor.reviewedToday !== "boolean" || !Array.isArray(actor.knownOrderIds) ||
       actor.knownOrderIds.some((id) => !w.orders.some((order) => order.id === id && order.day === actor.day)) ||
       actor.requestEventId && !w.events.some((event) => event.id === actor.requestEventId && event.kind === "replenishment_requested" && event.actors.includes(c.roles.seller)) ||
@@ -1156,7 +1251,7 @@ export function checkLocalV2(w: LocalWorldV2) {
     if (Object.keys(w.farmerActors).length !== farmerIds.length) throw Error("A2 farmer actors");
     for (const id of farmerIds) {
       const actor = w.farmerActors[id];
-      if (!actor || !Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > 3 ||
+      if (!actor || !Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > maxDays(w) ||
         !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute || typeof actor.harvestedToday !== "boolean" ||
         (actor.harvestedToday && !actor.shiftTaskId) ||
         actor.shiftTaskId && !w.tasks.some((task) => task.id === actor.shiftTaskId && task.personId === id && task.capability === "work_shift") ||
@@ -1165,10 +1260,11 @@ export function checkLocalV2(w: LocalWorldV2) {
   }
   if (w.carrierActor) {
     const actor = w.carrierActor;
-    if (!Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > 3 ||
+    if (!Number.isSafeInteger(actor.day) || actor.day < 1 || actor.day > maxDays(w) ||
       !Number.isSafeInteger(actor.nextWakeAt) || actor.nextWakeAt <= w.minute ||
       actor.shipmentId && !w.shipments.some((shipment) => shipment.id === actor.shipmentId && shipment.carrierId === c.roles.carrier) ||
       actor.taskId && !w.tasks.some((task) => task.id === actor.taskId && task.personId === c.roles.carrier && task.capability === "carry_food") ||
+      actor.maintenanceTaskId && !w.tasks.some((task) => task.id === actor.maintenanceTaskId && task.personId === c.roles.carrier && task.capability === "maintain_cart") ||
       actor.lastEventId && !eventIds.has(actor.lastEventId)) throw Error("A2 carrier state");
   }
 }

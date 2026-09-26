@@ -1,0 +1,1544 @@
+{
+  "scenario": "baseline",
+  "mode": "local_food_a3_income",
+  "seed": 240924,
+  "days": 90,
+  "day90": {
+    "day": 90,
+    "producedFood": 1800,
+    "consumedFood": 1800,
+    "farmFood": 0,
+    "marketFood": 0,
+    "cooperativeMoney": 21,
+    "ownerMoney": {
+      "H0": 35,
+      "H1": 35,
+      "H2": 35,
+      "H3": 34,
+      "cooperative": 21
+    },
+    "hungryPeople": 0,
+    "settledOrders": 360,
+    "producedToday": 18,
+    "consumedToday": 20,
+    "cartCondition": 100,
+    "unpaidWages": 2,
+    "unpaidDistributions": 19,
+    "householdHunger": {
+      "H0": 0,
+      "H1": 0,
+      "H2": 0,
+      "H3": 0
+    },
+    "farmerEnergy": {
+      "F0": 100,
+      "F1": 100,
+      "F2": 100,
+      "F3": 100,
+      "F4": 100,
+      "F5": 100,
+      "F6": 100
+    }
+  },
+  "day31To90": {
+    "consumedPerDay": [
+      20,
+      20
+    ],
+    "producedPerDay": [
+      18,
+      21
+    ],
+    "hungryPeople": [
+      0,
+      0
+    ],
+    "cartCondition": [
+      100,
+      100
+    ],
+    "unpaidWages": [
+      2,
+      2
+    ],
+    "unpaidDistributions": [
+      17,
+      19
+    ],
+    "ownerMoney": {
+      "H0": [
+        35,
+        35
+      ],
+      "H1": [
+        35,
+        35
+      ],
+      "H2": [
+        35,
+        35
+      ],
+      "H3": [
+        34,
+        36
+      ],
+      "cooperative": [
+        19,
+        21
+      ]
+    }
+  },
+  "claims": {
+    "wageClaims": 1230,
+    "paidClaims": 1229,
+    "distributionClaims": 360,
+    "paidDistributions": 356
+  },
+  "daily": [
+    {
+      "day": 1,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 2,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 3,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 4,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 5,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 6,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 7,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 8,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 9,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 10,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 11,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 12,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 13,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 14,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 15,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 16,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 17,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 18,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 19,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 20,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 21,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 22,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 23,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 24,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 25,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 26,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 27,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 28,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 29,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 30,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 31,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 32,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 33,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 34,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 35,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 36,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 37,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 38,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 39,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 40,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 41,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 42,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 43,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 44,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 45,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 46,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 47,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 48,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 49,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 50,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 51,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 52,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 53,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 54,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 55,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 56,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 57,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 58,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 59,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 60,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 61,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 62,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 63,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 64,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 65,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 66,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 67,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 68,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 69,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 70,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 71,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 72,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 73,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 74,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 75,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 76,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 77,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 78,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 79,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 80,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 81,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 82,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 83,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 84,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 85,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 86,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 87,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    },
+    {
+      "day": 88,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 89,
+      "producedToday": 21,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 36,
+        "cooperative": 19
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 17
+    },
+    {
+      "day": 90,
+      "producedToday": 18,
+      "consumedToday": 20,
+      "cartCondition": 100,
+      "hungryPeople": 0,
+      "ownerMoney": {
+        "H0": 35,
+        "H1": 35,
+        "H2": 35,
+        "H3": 34,
+        "cooperative": 21
+      },
+      "unpaidWages": 2,
+      "unpaidDistributions": 19
+    }
+  ],
+  "measurement": {
+    "command": "npm run autonomy:a3:income -- baseline --days 90",
+    "elapsedSeconds": 102.56,
+    "environment": "Linux WSL2, Node 22; one run; no multiple-seed performance statistics"
+  }
+}

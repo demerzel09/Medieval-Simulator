@@ -58,6 +58,26 @@ describe("L0 physical object contract", () => {
     expect(JSON.stringify(s)).toBe(before);
   });
 
+  it("combines only unreserved, co-located stacks with the same owner", () => {
+    const s = village();
+    s.objects.smallCoins = { id: "smallCoins", typeId: "currency", parentId: "wallet", quantity: 3, ownerId: "house", causeEventId: "fixture" };
+    const merged = physicalTransaction(s, { actorId: "buyer", ownerIds: ["house"] }, (tx) => tx.merge("smallCoins", "coins"));
+    expect(merged.ok).toBe(true);
+    if (merged.ok) {
+      expect(merged.state.objects.coins.quantity).toBe(13);
+      expect(merged.state.objects.smallCoins).toBeUndefined();
+      expect(contentsQuantity(merged.state, "wallet", "currency")).toBe(13);
+    }
+    expect(s.objects.smallCoins.quantity).toBe(3);
+    expect(physicalTransaction(s, { actorId: "buyer", ownerIds: [] }, (tx) => tx.merge("smallCoins", "coins")).ok).toBe(false);
+    const reserved = structuredClone(s);
+    reserved.reservations.push({ id: "hold", objectId: "smallCoins", claimantId: "order", quantity: 1 });
+    expect(physicalTransaction(reserved, { actorId: "buyer", ownerIds: ["house"] }, (tx) => tx.merge("smallCoins", "coins")).ok).toBe(false);
+    const otherOwner = structuredClone(s);
+    otherOwner.objects.smallCoins.ownerId = "cooperative";
+    expect(physicalTransaction(otherOwner, { actorId: "buyer", ownerIds: ["house", "cooperative"] }, (tx) => tx.merge("smallCoins", "coins")).ok).toBe(false);
+  });
+
   it("allows same-person rebagging, but enforces the outer person's combined load", () => {
     const s = village();
     const moved = physicalTransaction(s, { actorId: "buyer", ownerIds: ["house", "cooperative"] }, (tx) => {

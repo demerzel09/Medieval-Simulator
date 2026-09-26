@@ -5,7 +5,7 @@ export type BuyerContext = {
   day: number; homeId: string; location: string; journeyTo?: string;
   energy: number; available: boolean; householdSize: number;
   homeFood?: number; homeCash?: number; price: number;
-  claimableWages?: number; wageService?: boolean;
+  claimableIncome?: number; wageService?: boolean;
   order?: { id: string; quantity: number; status: "requested" | "sale_reserved" | "settled" | "expired" };
   purchaseTask?: { id: string; end: number; status: "accepted" | "completed" | "refused" };
   marketDepartAt: number; marketCloseAt: number; nextDayOrderAt: number;
@@ -19,7 +19,7 @@ export type BuyerAttempt =
   | { kind: "depart_market"; orderId?: string }
   | { kind: "reserve_sale"; orderId: string }
   | { kind: "settle_sale"; orderId: string }
-  | { kind: "collect_wages" }
+  | { kind: "collect_income" }
   | { kind: "return_home" };
 export type BuyerResponse = ActorResponse<BuyerAttempt, BuyerSubjectiveState, BuyerWake>;
 export type BuyerModel = PersonalityModel<BuyerInput, BuyerResponse>;
@@ -35,7 +35,7 @@ export const ordinaryBuyerModel: BuyerModel = {
       const need = Math.max(0, c.householdSize - c.homeFood);
       if (need > 0 && c.homeCash >= need * c.price)
         return { attempts: [{ kind: "post_order", quantity: need }], wait: { at: c.marketDepartAt } };
-      if (c.claimableWages) {
+      if (c.claimableIncome) {
         if (now >= c.marketDepartAt && now < c.marketCloseAt)
           return { attempts: [{ kind: "depart_market" }], wait: { at: now + 15 } };
         return { attempts: [], wait: { at: c.marketDepartAt } };
@@ -52,14 +52,14 @@ export const ordinaryBuyerModel: BuyerModel = {
     if (c.location === "market" && c.order?.status === "requested") {
       if (now < c.marketCloseAt)
         return { attempts: [{ kind: "reserve_sale", orderId: c.order.id }], wait: { at: now + 15 } };
-      return { attempts: [...(c.claimableWages ? [{ kind: "collect_wages" as const }] : []), { kind: "return_home" }], wait: { at: c.nextDayOrderAt } };
+      return { attempts: [...(c.claimableIncome ? [{ kind: "collect_income" as const }] : []), { kind: "return_home" }], wait: { at: c.nextDayOrderAt } };
     }
     if (c.location === "market" && c.order?.status === "sale_reserved" && c.purchaseTask) {
       if (now >= c.purchaseTask.end)
-        return { attempts: [{ kind: "settle_sale", orderId: c.order.id }, ...(c.claimableWages ? [{ kind: "collect_wages" as const }] : []), { kind: "return_home" }], wait: { at: c.nextDayOrderAt } };
+        return { attempts: [{ kind: "settle_sale", orderId: c.order.id }, ...(c.claimableIncome ? [{ kind: "collect_income" as const }] : []), { kind: "return_home" }], wait: { at: c.nextDayOrderAt } };
       return { attempts: [], wait: { at: c.purchaseTask.end } };
     }
-    if (c.location === "market") return { attempts: [...(c.claimableWages ? [{ kind: "collect_wages" as const }] : []), { kind: "return_home" }], wait: { at: c.nextDayOrderAt } };
+    if (c.location === "market") return { attempts: [...(c.claimableIncome ? [{ kind: "collect_income" as const }] : []), { kind: "return_home" }], wait: { at: c.nextDayOrderAt } };
     return nextDay;
   },
 };
