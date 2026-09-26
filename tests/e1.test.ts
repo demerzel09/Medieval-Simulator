@@ -141,6 +141,70 @@ describe("E1 local food circulation", () => {
     checkLocal(w);
   });
 
+  it("moves physical cash through the buyer pouch and charges effort for a loaded cart", () => {
+    const w = newLocalWorld();
+    expect(w.cashContainers.find((c) => c.id === "chest_H0")?.amount).toBe(40);
+    advanceLocal(w, 825);
+    expect(w.cashContainers.find((c) => c.id === "chest_H0")?.amount).toBe(30);
+    expect(w.cashContainers.find((c) => c.id === "pouch_B0")?.amount).toBe(10);
+    expect(w.cart.location).toBe("market");
+    expect(w.people.C.energy).toBeLessThan(100);
+    advanceLocal(w, 30);
+    expect(w.cashContainers.find((c) => c.id === "pouch_B0")?.amount).toBe(0);
+    expect(w.cashContainers.find((c) => c.id === "till_cooperative")?.amount).toBe(10);
+    const trip = w.events.find((e) => e.kind === "journey_started" && e.actors.includes("C") && e.data.foodLoad === 21);
+    expect(trip?.data.effortCost).toBe(20);
+    checkLocal(w);
+  });
+
+  it("blocks an exhausted carrier without moving food or creating a sale", () => {
+    const w = newLocalWorld();
+    w.people.C.energy = 10;
+    advanceLocal(w, 1440);
+    expect(w.shipments[0].status).toBe("failed");
+    expect(w.lots.filter((l) => l.place === "farm").reduce((n,l) => n+l.quantity,0)).toBe(21);
+    expect(w.orders.filter((o) => o.status === "settled")).toHaveLength(0);
+    expect(w.events.some((e) => e.kind === "journey_blocked" && e.actors.includes("C") && e.data.reason === "exhausted")).toBe(true);
+    checkLocal(w);
+  });
+
+  it("returns loaded food to the farm if the carrier cannot afford the return trip", () => {
+    const w = newLocalWorld();
+    w.people.C.energy = 11;
+    advanceLocal(w, 840);
+    expect(w.cart.location).toBe("farm");
+    expect(w.shipments[0].status).toBe("failed");
+    expect(w.lots.filter((l) => l.place === "farm").reduce((n,l) => n+l.quantity,0)).toBe(21);
+    expect(w.lots.filter((l) => l.place.startsWith("cargo:"))).toHaveLength(0);
+    expect(w.events.some((e) => e.kind === "shipment_failed" && e.data.reason === "travel_cost")).toBe(true);
+    checkLocal(w);
+  });
+
+  it("cannot use a cart that is at another location", () => {
+    const w = newLocalWorld();
+    w.cart.location = "farm";
+    advanceLocal(w, 360);
+    expect(w.shipments[0].status).toBe("failed");
+    expect(w.people.C.location).toBe("market");
+    expect(w.cart.location).toBe("farm");
+    expect(w.events.some((e) => e.kind === "journey_blocked" && e.data.reason === "cart_not_here")).toBe(true);
+    checkLocal(w);
+  });
+
+  it("rejects over-capacity food and cash rather than allowing invisible carrying", () => {
+    const w = newLocalWorld();
+    advanceLocal(w, 840);
+    const order = w.orders.find((o) => o.householdId === "H0")!;
+    expect(cancelPurchase(w, order.id)).toBe(true);
+    const chest = w.cashContainers.find((c) => c.id === "chest_H0")!;
+    const pouch = w.cashContainers.find((c) => c.id === "pouch_B0")!;
+    chest.amount -= 10; pouch.amount += 10;
+    order.status = "requested"; order.quantity = 6;
+    expect(reservePurchase(w, order.id)).toBe(false);
+    expect(pouch.amount).toBe(20);
+    expect(() => { pouch.amount = 21; chest.amount = 19; checkLocal(w); }).toThrow("invalid E1 cash container");
+  });
+
   it("rejects invalid people and impossible travel times in fixture content", () => {
     const duplicate = structuredClone(economyE1);
     duplicate.households[0].other[0] = duplicate.households[1].other[0];

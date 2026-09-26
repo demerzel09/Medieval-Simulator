@@ -16,6 +16,13 @@ export const economyE1Schema = z.object({
   walkKmh: positive,
   cartKmh: positive,
   initialHouseholdMoney: nat,
+  limits: z.object({
+    personFood: positive, personCash: positive, personEnergy: positive,
+    farmFood: positive, marketFood: positive, houseFood: positive,
+    houseChestCash: positive, marketTillCash: positive,
+    townKm: z.number().positive(), walkEffortPerKm: positive,
+    cartEffortPerKm: positive, cartExtraEffortPerFiveFoodKm: positive,
+  }),
   map: z.object({
     width: positive, height: positive, town: rect, farm: rect, market: rect,
     houses: z.record(rect),
@@ -105,6 +112,16 @@ export function validateEconomyE1(input: unknown = fixture): EconomyE1Content {
         ids.length * c.foodPerPerson * 3 ||
       c.initialHouseholdMoney < 3 * 5 * c.foodPerPerson * c.price)
     throw Error("E1 fixture does not balance three days");
+  if (c.limits.personFood < 5 * c.foodPerPerson ||
+      c.limits.personCash < 5 * c.foodPerPerson * c.price ||
+      c.limits.houseFood < 5 * c.foodPerPerson ||
+      c.limits.farmFood < c.cartCapacity || c.limits.marketFood < c.cartCapacity ||
+      c.limits.houseChestCash < c.initialHouseholdMoney ||
+      c.limits.marketTillCash < c.households.length * 3 * 5 * c.foodPerPerson * c.price ||
+      c.limits.personEnergy < 3 * (2 * c.roadKm * c.limits.cartEffortPerKm +
+        c.roadKm * Math.ceil(c.cartCapacity / 5) * c.limits.cartExtraEffortPerFiveFoodKm +
+        2 * Math.ceil(c.limits.townKm * c.limits.walkEffortPerKm)))
+    throw Error("E1 fixture exceeds carrying or effort limits");
   return c;
 }
 export const economyE1 = validateEconomyE1();

@@ -545,8 +545,13 @@ footer {
 .e1-map .e1-town-label { font-weight: 700; font-size: 18px; }
 .e1-map .e1-road-label { font-size: 13px; }
 .e1-map .e1-goods, .e1-map .e1-cargo-label { fill: #f7d88e; font-size: 13px; }
-.e1-person, .e1-site { cursor: pointer; }
+.e1-person, .e1-site, .e1-cart, .e1-item, .e1-cash { cursor: pointer; }
 .e1-person:hover circle, .e1-site:hover rect { filter: brightness(1.3); }
+.e1-cart-symbol, .e1-cash-symbol { fill: #1b3028 !important; font-weight: 700 !important; font-size: 15px !important; }
+.e1-inspector { border: 1px solid #b69b62; background: #26362d; border-radius: 5px; padding: 12px; margin-bottom: 15px; }
+.e1-inspector h2 { margin: 0 0 6px; color: #e7c681; }
+.e1-inspector p { margin: 0; }
+.e1-object-link { display: block; width: 100%; text-align: left; padding: 3px 6px; margin-top: 5px; font-size: 12px; }
 .e1-detail { max-height: calc(100vh - 230px); overflow-y: auto; }
 .e1-row { padding: 7px 0; border-bottom: 1px solid #3c4a3f; margin: 0; }
 .e1-row small { overflow-wrap: anywhere; }

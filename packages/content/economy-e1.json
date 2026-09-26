@@ -10,6 +10,20 @@
   "walkKmh": 4,
   "cartKmh": 2,
   "initialHouseholdMoney": 40,
+  "limits": {
+    "personFood": 5,
+    "personCash": 20,
+    "personEnergy": 100,
+    "farmFood": 100,
+    "marketFood": 60,
+    "houseFood": 10,
+    "houseChestCash": 100,
+    "marketTillCash": 200,
+    "townKm": 0.25,
+    "walkEffortPerKm": 3,
+    "cartEffortPerKm": 5,
+    "cartExtraEffortPerFiveFoodKm": 1
+  },
   "map": {
     "width": 960,
     "height": 520,

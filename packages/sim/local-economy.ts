@@ -2,7 +2,7 @@ import { economyE1 } from "../content/economy-e1";
 import { hash } from "./core";
 
 export type Place = "farm" | "market" | `house:${string}` | `cargo:${string}` | `carried:${string}`;
-export type Journey = { from: Place; to: Place; depart: number; arrive: number; causeEventId: string };
+export type Journey = { from: Place; to: Place; depart: number; arrive: number; causeEventId: string; mode: "walk" | "cart"; distanceKm: number; effortCost: number; foodLoad: number; cashLoad: number };
 type Capability = (typeof economyE1.routines)[number]["capability"];
 type OrderStatus = "requested" | "sale_reserved" | "settled" | "expired";
 type ShipmentStatus = "requested" | "assigned" | "loaded" | "in_transit" | "delivered" | "failed";
@@ -19,6 +19,8 @@ export type FoodLot = {
   id: string; ownerId: string; place: Place; quantity: number;
   reserved: number; causeEventId: string;
 };
+export type CashContainer = { id: string; ownerId: string; place: Place; amount: number; capacity: number; kind: "chest" | "pouch" | "till" | "reserve" };
+export type FoodCart = { id: string; ownerId: string; location: "farm" | "market"; carrierId?: string; capacity: number };
 export type LocalTask = {
   id: string; personId: string; routineId: string; routineVersion: number;
   capability: Capability; start: number; end: number;
@@ -39,11 +41,11 @@ export type LocalShipment = {
 export type LocalWorld = {
   schemaVersion: 2; economicMode: "local_food_v1"; engineVersion: "0.3.0-e1";
   seed: number; contentHash: string; minute: number; nextId: number;
-  people: Record<string, { id: string; householdId: string; role: string; location: Place; journey?: Journey; hunger: number }>;
+  people: Record<string, { id: string; householdId: string; role: string; location: Place; journey?: Journey; hunger: number; energy: number; foodCapacity: number; cashCapacity: number }>;
   households: Record<string, { id: string; memberIds: string[]; buyerId: string }>;
-  wallets: Record<string, number>; initialMoney: number;
+  wallets: Record<string, number>; cashContainers: CashContainer[]; cart: FoodCart; initialMoney: number;
   lots: FoodLot[]; producedFood: number; consumedFood: number; lostFood: number;
-  holds: { id: string; accountId: string; amount: number; orderId: string }[];
+  holds: { id: string; accountId: string; containerId: string; amount: number; orderId: string }[];
   orders: PurchaseOrder[]; shipments: LocalShipment[]; tasks: LocalTask[];
   events: LocalEvent[]; commands: LocalCommand[];
   absences: { personId: string; day: number }[];
@@ -61,8 +63,25 @@ function emit(w: LocalWorld, kind: string, actors: string[], causes: string[] = 
   w.events.push(event);
   return event;
 }
-const moneyAvailable = (w: LocalWorld, id: string) =>
-  w.wallets[id] - w.holds.filter((h) => h.accountId === id).reduce((n, h) => n + h.amount, 0);
+const container = (w: LocalWorld, id: string) => {
+  const c = w.cashContainers.find((item) => item.id === id);
+  if (!c) throw Error(`missing cash container ${id}`);
+  return c;
+};
+const chestId = (householdId: string) => `chest_${householdId}`;
+const pouchId = (buyerId: string) => `pouch_${buyerId}`;
+const cashAvailable = (w: LocalWorld, id: string) =>
+  container(w, id).amount - w.holds.filter((h) => h.containerId === id).reduce((n, h) => n + h.amount, 0);
+function moveCash(w: LocalWorld, fromId: string, toId: string, amount: number, actors: string[], causes: string[] = []) {
+  const from = container(w, fromId), to = container(w, toId);
+  const actualPlace = (c: CashContainer) => c.place.startsWith("carried:") ? w.people[c.place.slice(8)]?.journey ? undefined : w.people[c.place.slice(8)]?.location : c.place;
+  if (!Number.isSafeInteger(amount) || amount < 0 || cashAvailable(w, fromId) < amount || to.amount + amount > to.capacity)
+    throw Error("cash transfer exceeds available or capacity");
+  if (!actualPlace(from) || actualPlace(from) !== actualPlace(to)) throw Error("cash containers are not co-located");
+  from.amount -= amount; to.amount += amount;
+  w.wallets[from.ownerId] -= amount; w.wallets[to.ownerId] += amount;
+  return emit(w, "cash_moved", actors, causes, { from: fromId, to: toId, amount });
+}
 const absent = (w: LocalWorld, id: string, day: number) =>
   w.absences.some((a) => a.personId === id && a.day === day);
 const routineFor = (capability: Capability) => {
@@ -73,9 +92,30 @@ const routineFor = (capability: Capability) => {
 const home = (householdId: string): Place => `house:${householdId}`;
 function startJourney(w: LocalWorld, personId: string, to: Place, arrive: number, causes: string[] = []) {
   const person = w.people[personId];
-  if (person.journey || arrive <= w.minute || person.location === to) throw Error("invalid E1 journey start");
-  const e = emit(w, "journey_started", [personId], causes, { from: person.location, to, arrive });
-  person.journey = { from: person.location, to, depart: w.minute, arrive, causeEventId: e.id };
+  if (person.journey || arrive <= w.minute) throw Error("invalid E1 journey start");
+  if (person.location === to) return true;
+  const mode = personId === economyE1.roles.carrier &&
+    ((person.location === "market" && to === "farm") || (person.location === "farm" && to === "market")) ? "cart" : "walk";
+  const foodLoad = mode === "cart" ? w.lots.filter((lot) => lot.place.startsWith("cargo:") &&
+    w.shipments.some((s) => `cargo:${s.id}` === lot.place && s.carrierId === personId && s.status === "in_transit"))
+    .reduce((n, lot) => n + lot.quantity, 0) : w.lots.filter((lot) => lot.place === `carried:${personId}`).reduce((n, lot) => n + lot.quantity, 0);
+  const cashLoad = w.cashContainers.filter((c) => c.place === `carried:${personId}`).reduce((n, c) => n + c.amount, 0);
+  const distanceKm = person.location === "farm" || to === "farm" ? economyE1.roadKm : economyE1.limits.townKm;
+  const effortCost = mode === "cart" ? Math.ceil(distanceKm * (economyE1.limits.cartEffortPerKm +
+    Math.ceil(foodLoad / 5) * economyE1.limits.cartExtraEffortPerFiveFoodKm)) :
+    Math.ceil(distanceKm * (economyE1.limits.walkEffortPerKm + foodLoad + Math.ceil(cashLoad / 10)));
+  const reason = mode === "cart" && w.cart.location !== person.location ? "cart_not_here" :
+    foodLoad > (mode === "cart" ? w.cart.capacity : person.foodCapacity) ? "food_capacity" :
+    cashLoad > person.cashCapacity ? "cash_capacity" : person.energy < effortCost ? "exhausted" : "";
+  if (reason) {
+    emit(w, "journey_blocked", [personId], causes, { to, reason, foodLoad, cashLoad, effortCost, energy: person.energy });
+    return false;
+  }
+  person.energy -= effortCost;
+  if (mode === "cart") w.cart.carrierId = personId;
+  const e = emit(w, "journey_started", [personId], causes, { from: person.location, to, arrive, mode, distanceKm, effortCost, foodLoad, cashLoad });
+  person.journey = { from: person.location, to, depart: w.minute, arrive, causeEventId: e.id, mode, distanceKm, effortCost, foodLoad, cashLoad };
+  return true;
 }
 function finishJourney(w: LocalWorld, personId: string) {
   const person = w.people[personId], j = person.journey;
@@ -83,11 +123,19 @@ function finishJourney(w: LocalWorld, personId: string) {
   person.location = j.to;
   person.journey = undefined;
   const e = emit(w, "journey_arrived", [personId], [j.causeEventId], { place: j.to });
+  if (j.mode === "cart") {
+    w.cart.location = j.to === "farm" ? "farm" : "market";
+    w.cart.carrierId = undefined;
+  }
   if (j.to === home(person.householdId))
     for (const lot of w.lots.filter((lot) => lot.place === `carried:${personId}`)) {
       lot.place = j.to;
       lot.causeEventId = emit(w, "food_brought_home", [personId], [e.id, lot.causeEventId], { lotId: lot.id, quantity: lot.quantity }).id;
     }
+  if (j.to === home(person.householdId) && person.role === "buyer") {
+    const pouch = container(w, pouchId(personId));
+    if (pouch.amount) moveCash(w, pouch.id, chestId(person.householdId), pouch.amount, [personId], [e.id]);
+  }
   return e;
 }
 
@@ -95,22 +143,31 @@ export function newLocalWorld(seed = 240924): LocalWorld {
   if (!Number.isSafeInteger(seed)) throw Error("invalid seed");
   const people: LocalWorld["people"] = {}, households: LocalWorld["households"] = {};
   const wallets: Record<string, number> = { cooperative: 0, reserve: 0 };
+  const cashContainers: CashContainer[] = [
+    { id: "till_cooperative", ownerId: "cooperative", place: "market", amount: 0, capacity: economyE1.limits.marketTillCash, kind: "till" },
+    { id: "box_reserve", ownerId: "reserve", place: "house:H0", amount: 0, capacity: economyE1.limits.houseChestCash, kind: "reserve" },
+  ];
   for (const h of economyE1.households) {
     const members = [...h.farmers, h.buyer, ...h.other];
     households[h.id] = { id: h.id, memberIds: members, buyerId: h.buyer };
     wallets[h.id] = economyE1.initialHouseholdMoney;
+    cashContainers.push({ id: chestId(h.id), ownerId: h.id, place: home(h.id), amount: economyE1.initialHouseholdMoney, capacity: economyE1.limits.houseChestCash, kind: "chest" });
+    cashContainers.push({ id: pouchId(h.buyer), ownerId: h.id, place: `carried:${h.buyer}`, amount: 0, capacity: economyE1.limits.personCash, kind: "pouch" });
     for (const id of members)
       people[id] = {
         id, householdId: h.id,
         role: h.farmers.includes(id) ? "farmer" : id === h.buyer ? "buyer" :
           id === economyE1.roles.seller ? "seller" : id === economyE1.roles.carrier ? "carrier" : "dependent",
-        location: home(h.id), hunger: 0,
+        location: home(h.id), hunger: 0, energy: economyE1.limits.personEnergy,
+        foodCapacity: economyE1.limits.personFood, cashCapacity: economyE1.limits.personCash,
       };
   }
   const w: LocalWorld = {
     schemaVersion: 2, economicMode: "local_food_v1", engineVersion: "0.3.0-e1",
     seed, contentHash: hash(economyE1), minute: 0, nextId: 1,
-    people, households, wallets, initialMoney: Object.values(wallets).reduce((a,b)=>a+b,0),
+    people, households, wallets, cashContainers,
+    cart: { id: "cart_1", ownerId: "cooperative", location: "market", capacity: economyE1.cartCapacity },
+    initialMoney: Object.values(wallets).reduce((a,b)=>a+b,0),
     lots: [], producedFood: 0, consumedFood: 0, lostFood: 0,
     holds: [], orders: [], shipments: [], tasks: [], events: [], commands: [],
     absences: [], extraOrders: [],
@@ -163,12 +220,17 @@ export function reservePurchase(w: LocalWorld, orderId: string) {
   if (!order || order.status !== "requested") return false;
   const local = w.minute % 1440;
   if (local < t.unloadEnd || local >= t.marketEnd || order.day !== dayOf(w.minute) ||
+      w.people[order.buyerId].location !== "market" || w.people[order.buyerId].journey ||
       !w.tasks.some((task) => task.personId === economyE1.roles.seller && task.capability === "market_sale" && task.status === "accepted" && task.start <= w.minute && w.minute < task.end)) return false;
   const cost = order.quantity * economyE1.price;
   const allocations = allocateLots(w, order.quantity);
-  if (!allocations.length || moneyAvailable(w, order.householdId) < cost) return false;
+  const pouch = container(w, pouchId(order.buyerId));
+  const carriedFood = w.lots.filter((lot) => lot.place === `carried:${order.buyerId}`).reduce((n, lot) => n + lot.quantity, 0);
+  if (!allocations.length || order.quantity + carriedFood > w.people[order.buyerId].foodCapacity ||
+      cashAvailable(w, pouch.id) < cost || pouch.amount < cost ||
+      container(w, "till_cooperative").amount + cost > container(w, "till_cooperative").capacity) return false;
   for (const a of allocations) w.lots.find((lot) => lot.id === a.lotId)!.reserved += a.quantity;
-  const hold = { id: uid(w, "hold"), accountId: order.householdId, amount: cost, orderId };
+  const hold = { id: uid(w, "hold"), accountId: order.householdId, containerId: pouch.id, amount: cost, orderId };
   w.holds.push(hold); order.holdId = hold.id; order.allocations = allocations;
   order.status = "sale_reserved";
   order.reservationEventId = emit(w, "sale_reserved", [order.buyerId, economyE1.roles.seller], [order.requestEventId, ...allocations.map((a) => w.lots.find((lot) => lot.id === a.lotId)!.causeEventId)], { orderId, quantity: order.quantity, cost }).id;
@@ -190,16 +252,16 @@ export function settlePurchase(w: LocalWorld, orderId: string) {
   if (!order || order.status !== "sale_reserved" || !order.holdId) return false;
   if (!w.tasks.some((task) => task.personId === order.buyerId && task.capability === "buy_food" && task.status === "accepted" && task.end === w.minute)) return false;
   const hold = w.holds.find((h) => h.id === order.holdId)!;
-  if (!hold || w.wallets[hold.accountId] < hold.amount) throw Error("invalid reserved money");
+  if (!hold || container(w, hold.containerId).amount < hold.amount) throw Error("invalid reserved money");
+  if (container(w, "till_cooperative").amount + hold.amount > container(w, "till_cooperative").capacity) return false;
   const sourceEvents = order.allocations.map((a) => w.lots.find((lot) => lot.id === a.lotId)!.causeEventId);
   for (const a of order.allocations) {
     const lot = w.lots.find((l) => l.id === a.lotId)!;
     lot.quantity -= a.quantity; lot.reserved -= a.quantity;
   }
-  w.wallets[hold.accountId] -= hold.amount;
-  w.wallets.cooperative += hold.amount;
   w.holds = w.holds.filter((h) => h.id !== hold.id);
-  const e = emit(w, "sale_settled", [order.buyerId, economyE1.roles.seller], [order.reservationEventId!, ...sourceEvents], {
+  const payment = moveCash(w, hold.containerId, "till_cooperative", hold.amount, [order.buyerId, economyE1.roles.seller], [order.reservationEventId!]);
+  const e = emit(w, "sale_settled", [order.buyerId, economyE1.roles.seller], [order.reservationEventId!, payment.id, ...sourceEvents], {
     orderId, householdId: order.householdId, quantity: order.quantity, cost: hold.amount,
   });
   w.lots.push({ id: uid(w, "lot"), ownerId: order.householdId, place: `carried:${order.buyerId}`, quantity: order.quantity, reserved: 0, causeEventId: e.id });
@@ -235,7 +297,8 @@ function phase(w: LocalWorld) {
     }
     for (const extra of w.extraOrders.filter((o) => o.day === day))
       createOrder(w, extra.householdId, day, extra.amount, [extra.commandEventId]);
-    offerTask(w, economyE1.roles.seller, "market_sale", w.minute, base + t.assignment);
+    if (w.people[economyE1.roles.seller].location === "market")
+      offerTask(w, economyE1.roles.seller, "market_sale", w.minute, base + t.assignment);
   }
   if (local === t.assignment) {
     const seller = taskAt(w, economyE1.roles.seller, "market_sale", day);
@@ -250,18 +313,27 @@ function phase(w: LocalWorld) {
       } else {
         shipment.status = "assigned";
         shipment.lastEventId = task.answerEventId;
-        startJourney(w, shipment.carrierId, "market", base + t.cartDepart, [task.answerEventId]);
+        if (!startJourney(w, shipment.carrierId, "market", base + t.cartDepart, [task.answerEventId])) {
+          shipment.status = "failed";
+          shipment.lastEventId = completeTask(w, task, "carry_failed", [request.id], { reason: "travel_cost" }).id;
+        }
       }
     }
     const farmers = Object.values(w.people).filter((p) => p.role === "farmer").sort((a,b) => a.id.localeCompare(b.id));
     for (const p of farmers.slice(0, economyE1.farmersOnShift[day - 1])) {
       const task = offerTask(w, p.id, "work_shift", w.minute, base + t.loadEnd, request ? [request.id] : []);
-      if (task.status === "accepted") startJourney(w, p.id, "farm", base + t.farmArrive, [task.answerEventId]);
+      if (task.status === "accepted" && !startJourney(w, p.id, "farm", base + t.farmArrive, [task.answerEventId]))
+        completeTask(w, task, "farm_shift_failed", [], { reason: "travel_cost" });
     }
   }
   if (local === t.cartDepart) {
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
-    if (s) startJourney(w, s.carrierId, "farm", base + t.cartFarmArrive, [s.lastEventId]);
+    if (s && !startJourney(w, s.carrierId, "farm", base + t.cartFarmArrive, [s.lastEventId])) {
+      s.status = "failed";
+      s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [s.lastEventId], { shipmentId: s.id, reason: "travel_cost" }).id;
+      const task = taskAt(w, s.carrierId, "carry_food", day);
+      if (task) completeTask(w, task, "carry_failed", [s.lastEventId], { reason: "travel_cost" });
+    }
   }
   if (local === t.cartFarmArrive) {
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
@@ -273,7 +345,7 @@ function phase(w: LocalWorld) {
   if (local === t.farmEnd)
     for (const p of Object.values(w.people).filter((p) => p.role === "farmer")) {
       const task = taskAt(w, p.id, "work_shift", day);
-      if (!task) continue;
+      if (!task || p.location !== "farm") continue;
       const e = emit(w, "food_produced", [p.id], [task.answerEventId], { quantity: economyE1.farmOutputPerShift });
       w.lots.push({ id: uid(w, "lot"), ownerId: "cooperative", place: "farm", quantity: economyE1.farmOutputPerShift, reserved: 0, causeEventId: e.id });
       w.producedFood += economyE1.farmOutputPerShift;
@@ -286,6 +358,12 @@ function phase(w: LocalWorld) {
     }
     const s = w.shipments.find((s) => s.day === day && s.status === "assigned");
     if (s) {
+      if (w.people[s.carrierId].location !== "farm") {
+        s.status = "failed";
+        s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [s.lastEventId], { shipmentId: s.id, reason: "carrier_not_at_farm" }).id;
+        const task = taskAt(w, s.carrierId, "carry_food", day);
+        if (task) completeTask(w, task, "carry_failed", [s.lastEventId], { reason: "carrier_not_at_farm" });
+      } else {
       let remaining = Math.min(s.requestedQuantity, economyE1.cartCapacity);
       for (const lot of w.lots.filter((l) => l.ownerId === "cooperative" && l.place === "farm" && l.quantity > 0)) {
         const n = Math.min(lot.quantity, remaining);
@@ -305,7 +383,16 @@ function phase(w: LocalWorld) {
         s.status = "in_transit";
         s.lastEventId = emit(w, "shipment_loaded", [s.carrierId], [s.lastEventId, ...s.lotIds.map((id) => w.lots.find((l) => l.id === id)!.causeEventId)], { shipmentId: s.id, quantity: s.quantity }).id;
       }
-      startJourney(w, s.carrierId, "market", base + t.cartMarketArrive, [s.lastEventId]);
+      if (!startJourney(w, s.carrierId, "market", base + t.cartMarketArrive, [s.lastEventId])) {
+        const returnedIds = [...s.lotIds];
+        for (const id of s.lotIds) w.lots.find((lot) => lot.id === id)!.place = "farm";
+        s.lotIds = []; s.quantity = 0; s.status = "failed";
+        s.lastEventId = emit(w, "shipment_failed", [s.carrierId], [s.lastEventId], { shipmentId: s.id, reason: "travel_cost" }).id;
+        for (const lot of w.lots.filter((lot) => returnedIds.includes(lot.id))) lot.causeEventId = s.lastEventId;
+        const task = taskAt(w, s.carrierId, "carry_food", day);
+        if (task) completeTask(w, task, "carry_failed", [s.lastEventId], { reason: "travel_cost" });
+      }
+      }
     }
   }
   if (local === t.unloadEnd) {
@@ -318,7 +405,8 @@ function phase(w: LocalWorld) {
       const task = taskAt(w, s.carrierId, "carry_food", day)!;
       completeTask(w, task, "carry_completed", [s.lastEventId], { quantity: s.quantity });
     }
-    const empty = w.shipments.find((s) => s.day === day && s.status === "failed" && w.people[s.carrierId].location === "market");
+    const empty = w.shipments.find((s) => s.day === day && s.status === "failed" &&
+      w.events.find((e) => e.id === s.lastEventId)?.data.reason === "no_stock" && w.people[s.carrierId].location === "market");
     if (empty) {
       const task = taskAt(w, empty.carrierId, "carry_food", day);
       if (task) completeTask(w, task, "carry_empty_return", [empty.lastEventId]);
@@ -327,13 +415,21 @@ function phase(w: LocalWorld) {
       const carrier = w.people[economyE1.roles.carrier];
       startJourney(w, carrier.id, home(carrier.householdId), w.minute + 15, [s?.lastEventId ?? empty!.lastEventId]);
     }
-    offerTask(w, economyE1.roles.seller, "market_sale", w.minute, base + t.marketEnd, s ? [s.lastEventId] : []);
+    if (w.people[economyE1.roles.seller].location === "market")
+      offerTask(w, economyE1.roles.seller, "market_sale", w.minute, base + t.marketEnd, s ? [s.lastEventId] : []);
   }
   if (local >= t.unloadEnd - 15 && local < t.marketEnd - 15 && (local - (t.unloadEnd - 15)) % 15 === 0) {
     const index = (local - (t.unloadEnd - 15)) / 15;
     const h = Object.values(w.households).sort((a,b) => a.id.localeCompare(b.id))[index];
-    if (h && w.orders.some((o) => o.day === day && o.householdId === h.id && o.status === "requested"))
-      startJourney(w, h.buyerId, "market", w.minute + 15);
+    const order = h && w.orders.find((o) => o.day === day && o.householdId === h.id && o.status === "requested");
+    if (h && order) {
+      const needed = order.quantity * economyE1.price;
+      const chest = container(w, chestId(h.id)), pouch = container(w, pouchId(h.buyerId));
+      if (chest.amount >= needed && pouch.capacity - pouch.amount >= needed)
+        moveCash(w, chest.id, pouch.id, needed, [h.buyerId], [order.requestEventId]);
+      if (!startJourney(w, h.buyerId, "market", w.minute + 15, [order.requestEventId]) && pouch.amount)
+        moveCash(w, pouch.id, chest.id, pouch.amount, [h.buyerId]);
+    }
   }
   if (local >= t.unloadEnd && local < t.marketEnd && (local - t.unloadEnd) % 15 === 0) {
     const index = (local - t.unloadEnd) / 15;
@@ -342,7 +438,7 @@ function phase(w: LocalWorld) {
       const order = w.orders.find((o) => o.day === day && o.householdId === h.id && o.status === "requested");
       if (order) {
         const task = offerTask(w, h.buyerId, "buy_food", w.minute, w.minute + 15, [order.requestEventId]);
-        if (task.status === "accepted") reservePurchase(w, order.id);
+        if (task.status === "accepted" && w.people[h.buyerId].location === "market") reservePurchase(w, order.id);
       }
     }
   }
@@ -355,7 +451,7 @@ function phase(w: LocalWorld) {
       if (task) {
         const settled = order?.status === "sale_reserved" && settlePurchase(w, order.id);
         completeTask(w, task, settled ? "purchase_completed" : "purchase_failed", order ? [order.requestEventId] : [], { householdId: h.id });
-        startJourney(w, h.buyerId, home(h.id), w.minute + 15, [task.resultEventId!]);
+        if (w.people[h.buyerId].location === "market") startJourney(w, h.buyerId, home(h.id), w.minute + 15, [task.resultEventId!]);
       }
     }
   }
@@ -373,7 +469,8 @@ function phase(w: LocalWorld) {
     for (const p of Object.values(w.people)) {
       const task = taskAt(w, p.id, "eat_food", day);
       if (!task) continue;
-      const lot = w.lots.find((l) => l.ownerId === p.householdId && l.place === home(p.householdId) && l.quantity > l.reserved);
+      const lot = p.location === home(p.householdId) && !p.journey ?
+        w.lots.find((l) => l.ownerId === p.householdId && l.place === home(p.householdId) && l.quantity > l.reserved) : undefined;
       if (lot) { lot.quantity--; w.consumedFood++; p.hunger = Math.max(0,p.hunger-1); }
       else p.hunger++;
       completeTask(w, task, lot ? "meal_eaten" : "meal_missed", lot ? [lot.causeEventId] : [], { householdId: p.householdId, hunger: p.hunger });
@@ -388,19 +485,24 @@ export function advanceLocal(w: LocalWorld, minutes: number) {
 }
 export function submitLocal(w: LocalWorld, actorId: string, action: LocalAction, id = `command_${w.commands.length + 1}`) {
   if (!w.people[actorId] || w.commands.some((c) => c.id === id)) return false;
+  let cashMove: { from: string; to: string; amount: number } | undefined;
   if (action.kind === "ABSENT") {
     if (action.personId !== actorId || !Number.isSafeInteger(action.day) || action.day < dayOf(w.minute) || action.day > 3 || w.minute >= dayStart(action.day) + t.orders) return false;
     w.absences.push({ personId: actorId, day: action.day });
   } else if (action.kind === "TRANSFER_MONEY") {
-    if (w.households[action.from]?.buyerId !== actorId || !(action.to in w.wallets) ||
-        !Number.isSafeInteger(action.amount) || action.amount < 0 || moneyAvailable(w, action.from) < action.amount) return false;
-    w.wallets[action.from] -= action.amount; w.wallets[action.to] += action.amount;
+    const fromId = chestId(action.from), toId = action.to === "reserve" ? "box_reserve" : chestId(action.to);
+    const from = w.cashContainers.find((c) => c.id === fromId), to = w.cashContainers.find((c) => c.id === toId);
+    if (w.households[action.from]?.buyerId !== actorId || !from || !to || from.place !== to.place ||
+        w.people[actorId].location !== from.place || !Number.isSafeInteger(action.amount) || action.amount < 0 ||
+        cashAvailable(w, fromId) < action.amount || to.amount + action.amount > to.capacity) return false;
+    cashMove = { from: fromId, to: toId, amount: action.amount };
   } else {
     if (w.households[action.householdId]?.buyerId !== actorId || !Number.isSafeInteger(action.day) || action.day < dayOf(w.minute) || action.day > 3 || w.minute >= dayStart(action.day) + t.orders || !Number.isSafeInteger(action.amount) || action.amount < 1) return false;
   }
   const c = { id, actorId, issuedAt: w.minute, action: structuredClone(action) };
   w.commands.push(c);
   const e = emit(w, "local_command", [actorId], [], { commandId: id, action: action.kind });
+  if (cashMove) moveCash(w, cashMove.from, cashMove.to, cashMove.amount, [actorId], [e.id]);
   if (action.kind === "EXTRA_ORDER") w.extraOrders.push({ householdId: action.householdId, day: action.day, amount: action.amount, commandEventId: e.id });
   checkLocal(w);
   return true;
@@ -427,7 +529,19 @@ export function checkLocal(w: LocalWorld) {
       new Set(Object.values(w.households).flatMap((h) => h.memberIds)).size !== 20) throw Error("E1 population ownership");
   if (Object.values(w.wallets).some((n) => !Number.isSafeInteger(n) || n < 0) ||
       Object.values(w.wallets).reduce((a,b)=>a+b,0) !== w.initialMoney) throw Error("E1 money conservation");
-  for (const wallet of Object.keys(w.wallets)) if (moneyAvailable(w,wallet) < 0) throw Error("E1 money over-reserved");
+  if (new Set(w.cashContainers.map((c) => c.id)).size !== w.cashContainers.length ||
+      w.cashContainers.reduce((n, c) => n + c.amount, 0) !== w.initialMoney) throw Error("E1 cash conservation");
+  for (const c of w.cashContainers) {
+    if (!Number.isSafeInteger(c.amount) || c.amount < 0 || c.amount > c.capacity ||
+        !(c.ownerId in w.wallets) || cashAvailable(w, c.id) < 0) throw Error("invalid E1 cash container");
+    if (c.kind === "chest" && c.place !== home(c.ownerId) ||
+        c.kind === "pouch" && !Object.values(w.households).some((h) => c.id === pouchId(h.buyerId) && c.place === `carried:${h.buyerId}` && c.ownerId === h.id) ||
+        c.kind === "till" && (c.place !== "market" || c.ownerId !== "cooperative") ||
+        c.kind === "reserve" && (c.place !== "house:H0" || c.ownerId !== "reserve")) throw Error("invalid E1 cash place");
+  }
+  for (const owner of Object.keys(w.wallets))
+    if (w.wallets[owner] !== w.cashContainers.filter((c) => c.ownerId === owner).reduce((n,c) => n+c.amount, 0))
+      throw Error("E1 wallet projection mismatch");
   const ids = new Set<string>();
   for (const lot of w.lots) {
     if (ids.has(lot.id) || !Number.isSafeInteger(lot.quantity) || lot.quantity < 0 || !Number.isSafeInteger(lot.reserved) || lot.reserved < 0 || lot.reserved > lot.quantity || !(lot.ownerId === "cooperative" || w.households[lot.ownerId]) ||
@@ -440,6 +554,15 @@ export function checkLocal(w: LocalWorld) {
     ids.add(lot.id);
   }
   if (w.lots.reduce((n,l)=>n+l.quantity,0) !== w.producedFood - w.consumedFood - w.lostFood) throw Error("E1 food conservation");
+  const foodAt = (place: Place) => w.lots.filter((lot) => lot.place === place).reduce((n,lot) => n+lot.quantity, 0);
+  if (foodAt("farm") > economyE1.limits.farmFood || foodAt("market") > economyE1.limits.marketFood ||
+      Object.values(w.households).some((h) => foodAt(home(h.id)) > economyE1.limits.houseFood) ||
+      Object.values(w.people).some((p) => foodAt(`carried:${p.id}`) > p.foodCapacity) ||
+      w.shipments.reduce((n,s) => n+foodAt(`cargo:${s.id}`),0) > w.cart.capacity) throw Error("E1 food storage capacity");
+  if (w.cart.id !== "cart_1" || w.cart.ownerId !== "cooperative" || w.cart.capacity !== economyE1.cartCapacity ||
+      !["farm", "market"].includes(w.cart.location) ||
+      (w.cart.carrierId && (!w.people[w.cart.carrierId]?.journey || w.people[w.cart.carrierId].journey?.mode !== "cart" ||
+        w.people[w.cart.carrierId].journey?.from !== w.cart.location))) throw Error("invalid E1 cart");
   const events = new Set<string>();
   for (const e of w.events) {
     if (events.has(e.id) || e.causes.some((id) => !events.has(id)) || e.actors.some((id) => !w.people[id])) throw Error("invalid E1 event graph");
@@ -448,7 +571,9 @@ export function checkLocal(w: LocalWorld) {
   for (const lot of w.lots) if (!events.has(lot.causeEventId)) throw Error("E1 lot without cause");
   for (const p of Object.values(w.people)) {
     if (!w.households[p.householdId]?.memberIds.includes(p.id) ||
-        (p.location !== "farm" && p.location !== "market" && p.location !== home(p.householdId))) throw Error("invalid E1 person place");
+        (p.location !== "farm" && p.location !== "market" && p.location !== home(p.householdId)) ||
+        !Number.isSafeInteger(p.energy) || p.energy < 0 || p.energy > economyE1.limits.personEnergy ||
+        p.foodCapacity !== economyE1.limits.personFood || p.cashCapacity !== economyE1.limits.personCash) throw Error("invalid E1 person place or limits");
     if (p.journey && (p.journey.from !== p.location || p.journey.depart > w.minute ||
         p.journey.arrive <= w.minute || !events.has(p.journey.causeEventId))) throw Error("invalid E1 journey");
   }
@@ -460,7 +585,7 @@ export function checkLocal(w: LocalWorld) {
   for (let i = 0; i < accepted.length; i++) for (let j = i+1; j < accepted.length; j++)
     if (accepted[i].personId === accepted[j].personId && accepted[i].start < accepted[j].end && accepted[j].start < accepted[i].end) throw Error("E1 time overlap");
   if (new Set(w.holds.map((h) => h.id)).size !== w.holds.length) throw Error("duplicate money hold");
-  for (const hold of w.holds) if (!w.orders.some((o) => o.id === hold.orderId && o.status === "sale_reserved" && o.holdId === hold.id && o.householdId === hold.accountId && hold.amount === o.quantity * economyE1.price)) throw Error("orphan money hold");
+  for (const hold of w.holds) if (!w.orders.some((o) => o.id === hold.orderId && o.status === "sale_reserved" && o.holdId === hold.id && o.householdId === hold.accountId && hold.containerId === pouchId(o.buyerId) && hold.amount === o.quantity * economyE1.price)) throw Error("orphan money hold");
   const allocated = new Map<string, number>();
   for (const order of w.orders) if (!w.households[order.householdId] || !events.has(order.requestEventId) ||
       (order.status === "sale_reserved" && (!order.holdId || order.allocations.reduce((n,a)=>n+a.quantity,0) !== order.quantity))) throw Error("invalid E1 order");

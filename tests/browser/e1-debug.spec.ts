@@ -8,6 +8,12 @@ test("spatial E1 debug shows households, journeys, cargo and food brought home",
   await expect(page.locator(".e1-site")).toHaveCount(6);
   await expect(page.locator(".e1-person")).toHaveCount(20);
   await expect(page.locator(".e1-detail")).toContainText("F0、F1、B0、D0、D1");
+  await page.getByRole("button", { name: "荷車 cart_1" }).click();
+  await expect(page.locator(".e1-inspector")).toContainText("食料積載: 0/21食");
+  await page.locator(".e1-cash").filter({ has: page.locator("title", { hasText: "chest_H0" }) }).click();
+  await expect(page.locator(".e1-inspector")).toContainText("現金: 40/100通貨");
+  await page.locator(".e1-person").filter({ hasText: "B0" }).click();
+  await expect(page.locator(".e1-inspector")).toContainText("運べる食料: 0/5食");
   const farmer = page.locator(".e1-person").filter({ hasText: "F0" }).locator("circle");
   const homeX = Number(await farmer.getAttribute("cx"));
   await page.getByLabel("経過分").fill("345");
@@ -16,6 +22,11 @@ test("spatial E1 debug shows households, journeys, cargo and food brought home",
   expect(roadX).toBeGreaterThan(165);
   await page.getByLabel("経過分").fill("751");
   await expect(page.locator(".e1-stats span").filter({ hasText: "荷車" })).toContainText("21");
+  await page.getByRole("button", { name: "荷車 cart_1" }).click();
+  await expect(page.locator(".e1-inspector")).toContainText("食料積載: 21/21食");
+  await page.getByLabel("経過分").fill("830");
+  await page.locator(".e1-cash").filter({ has: page.locator("title", { hasText: "pouch_B0" }) }).click();
+  await expect(page.locator(".e1-inspector")).toContainText("現金: 10/20通貨");
   await page.getByLabel("経過分").fill("930");
   await expect(page.getByText("置かれた食料: 5食")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
