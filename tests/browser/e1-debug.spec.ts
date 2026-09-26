@@ -67,11 +67,11 @@ test("physical E1 v2 debug shows parent, owner, capacity and causal work", async
   expect(errors).toEqual([]);
 });
 
-test("A2 map shows buyer and seller decisions with physical purchase", async ({ page }) => {
+test("A2 map shows buyer, seller, and farmer decisions with physical goods", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/?e1=a2");
-  await expect(page.getByRole("heading", { name: "20人の集落 · 買物係・売り手の自律デバッグ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "20人の集落 · 買物係・売り手・農民の自律デバッグ" })).toBeVisible();
   await page.locator(".e1-person").filter({ hasText: "B0" }).click();
   await page.getByLabel("経過分").fill("300");
   await expect(page.locator(".e1-detail")).toContainText("buyer_decided · post_order");
@@ -82,6 +82,9 @@ test("A2 map shows buyer and seller decisions with physical purchase", async ({ 
   await page.locator(".e1-person").filter({ hasText: "S" }).click();
   await expect(page.locator(".e1-detail")).toContainText("seller_decided · finish_market_sale,return_home");
   await expect(page.locator(".e1-detail")).toContainText("市場で見た注文:");
+  await page.locator(".e1-person").filter({ hasText: "F0" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("farmer_decided · harvest,return_home");
+  await expect(page.locator(".e1-detail")).toContainText("本日の収穫: 完了");
   expect(errors).toEqual([]);
 });
 

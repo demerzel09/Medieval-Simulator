@@ -59,7 +59,7 @@ export default function E1V2Debug({ autonomousBuyers = false }: { autonomousBuye
   const places = [{ id: "farm", name: "農場", rect: map.farm }, { id: "market", name: "市場", rect: map.market },
     ...Object.entries(map.houses).map(([id, rect]) => ({ id: `house:${id}`, name: `${id}の家`, rect }))];
   return <div className="e1-debug">
-    <header className="e1-top"><div><p className="eyebrow">{autonomousBuyers ? "LOCAL FOOD A2 · BUYER & SELLER DECISIONS" : "LOCAL FOOD V2 · PHYSICAL TRUTH"}</p><h1>20人の集落 · {autonomousBuyers ? "買物係・売り手の自律デバッグ" : "物体木デバッグ"}</h1></div><div><a href="/?e1=debug">旧E1</a> · <a href="/?e1=v2">物体木版</a> · <a href="/?e1=a2">自律A2</a> · <a href="/">90日ゲーム</a></div></header>
+    <header className="e1-top"><div><p className="eyebrow">{autonomousBuyers ? "LOCAL FOOD A2 · BUYER, SELLER & FARMER DECISIONS" : "LOCAL FOOD V2 · PHYSICAL TRUTH"}</p><h1>20人の集落 · {autonomousBuyers ? "買物係・売り手・農民の自律デバッグ" : "物体木デバッグ"}</h1></div><div><a href="/?e1=debug">旧E1</a> · <a href="/?e1=v2">物体木版</a> · <a href="/?e1=a2">自律A2</a> · <a href="/">90日ゲーム</a></div></header>
     <div className="e1-controls">
       <label>シナリオ <select value={scenario} onChange={(e) => { setScenario(e.target.value as Scenario); setMinute(0); setPlaying(false); }}>
         {Object.entries(labels).map(([id, name]) => <option value={id} key={id}>{name}</option>)}
@@ -100,6 +100,7 @@ export default function E1V2Debug({ autonomousBuyers = false }: { autonomousBuye
       {w.people[focus] && <><h2>{focus}の仕事と行動</h2><p>世帯: {w.people[focus].householdId} · 体力: {w.people[focus].energy} · 空腹: {w.people[focus].hunger}</p>
         {w.buyerActors?.[focus] && <p>次の判断: {clock(w.buyerActors[focus].nextWakeAt)} · 知っている注文: {w.buyerActors[focus].orderId ?? "なし"}</p>}
         {focus === "S" && w.sellerActor && <p>次の判断: {clock(w.sellerActor.nextWakeAt)} · 市場で見た注文: {w.sellerActor.knownOrderIds.join("、") || "なし"} · 補充依頼: {w.sellerActor.requestEventId ?? "なし"}</p>}
+        {w.farmerActors?.[focus] && <p>次の判断: {clock(w.farmerActors[focus].nextWakeAt)} · 勤務Task: {w.farmerActors[focus].shiftTaskId ?? "なし"} · 本日の収穫: {w.farmerActors[focus].harvestedToday ? "完了" : "未完了"}</p>}
         {w.tasks.filter((t) => t.personId === focus && t.start <= minute).slice(-8).map((t) => <p key={t.id} className="e1-row">{clock(t.start)} · {t.capability} · {t.status}</p>)}
         {actorEvents.map((e) => <p key={e.id} className="e1-row"><b>{clock(e.minute)} · {e.kind}</b>{e.data.action ? ` · ${e.data.action}` : ""}{e.data.reason ? ` · ${e.data.reason}` : ""}<br /><small>{e.id} ← {e.causes.join(", ") || "起点"}</small></p>)}</>}
     </aside></main>

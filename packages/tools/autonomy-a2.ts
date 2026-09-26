@@ -15,6 +15,9 @@ console.log(JSON.stringify({
   sellerDecisions: world.events.filter((event) => event.kind === "seller_decided").map((event) => ({
     minute: event.minute, actorId: event.actors[0], action: event.data.action, causes: event.causes,
   })),
+  farmerDecisions: world.events.filter((event) => event.kind === "farmer_decided").map((event) => ({
+    minute: event.minute, actorId: event.actors[0], action: event.data.action, causes: event.causes,
+  })),
   purchaseResults: world.events.filter((event) => ["purchase_completed", "purchase_failed"].includes(event.kind)).map((event) => ({
     minute: event.minute, actorId: event.actors[0], kind: event.kind, causes: event.causes,
   })),
