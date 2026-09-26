@@ -1,4 +1,5 @@
 import { economyE1V2 } from "../content/economy-e1-v2";
+import { economyA3Income } from "../content/economy-a3-income";
 import { ordinaryBuyerModel, type BuyerInput, type BuyerModel, type BuyerAttempt } from "../ai/local-buyer";
 import { ordinarySellerModel, type SellerInput, type SellerModel } from "../ai/local-seller";
 import { ordinaryFarmerModel, type FarmerInput, type FarmerModel } from "../ai/local-farmer";
@@ -26,7 +27,7 @@ type SellerActorState = { day: number; nextWakeAt: number; reviewedToday: boolea
 type FarmerActorState = { day: number; nextWakeAt: number; shiftTaskId?: string; harvestedToday: boolean; lastEventId?: string };
 type CarrierActorState = { day: number; nextWakeAt: number; shipmentId?: string; taskId?: string; lastEventId?: string };
 export type LocalWorldV2 = {
-  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2"; engineVersion: "0.4.1-e1" | "0.5.3-a2";
+  schemaVersion: 3; economicMode: "local_food_v2" | "local_food_a2" | "local_food_a3_income"; engineVersion: "0.4.1-e1" | "0.5.3-a2" | "0.6.0-a3-income";
   seed: number; contentHash: string; minute: number; nextId: number;
   physical: PhysicalState; people: Record<string, PersonV2>;
   capabilities: Record<string, { id: string; definitionId: string; version: number; bearerId: string }>;
@@ -41,6 +42,7 @@ export type LocalWorldV2 = {
   sellerActor?: SellerActorState;
   farmerActors?: Record<string, FarmerActorState>;
   carrierActor?: CarrierActorState;
+  wageClaims?: { id: string; personId: string; householdId: string; amount: number; causeEventId: string; paidEventId?: string }[];
 };
 
 function uid(w: LocalWorldV2, prefix: string) { return `${prefix}_${String(w.nextId++).padStart(6, "0")}`; }
@@ -114,6 +116,61 @@ export function newLocalWorldA2(seed = 240924): LocalWorldV2 {
   checkLocalV2(w); return w;
 }
 
+/** First A3 vertical slice: earned claims must be paid with existing market cash. */
+export function newLocalWorldA3Income(seed = 240924): LocalWorldV2 {
+  const w = newLocalWorldA2(seed);
+  w.economicMode = "local_food_a3_income";
+  w.engineVersion = "0.6.0-a3-income";
+  w.contentHash = hash([c, economyA3Income]);
+  w.wageClaims = [];
+  checkLocalV2(w); return w;
+}
+
+function recordWage(w: LocalWorldV2, personId: string, amount: number, causeEventId: string) {
+  if (!w.wageClaims) return;
+  const person = w.people[personId];
+  const e = emit(w, "wage_earned", [personId], [causeEventId], { householdId: person.householdId, amount });
+  w.wageClaims.push({ id: uid(w, "wage"), personId, householdId: person.householdId, amount, causeEventId: e.id });
+}
+
+function collectWages(w: LocalWorldV2, buyerId: string, decisionEventId: string) {
+  if (!w.wageClaims || at(w, buyerId) !== "market") return;
+  const householdId = w.people[buyerId].householdId;
+  const claims = w.wageClaims.filter((claim) => claim.householdId === householdId && !claim.paidEventId);
+  if (!claims.length) return;
+  if (at(w, c.roles.seller) !== "market" || !taskAt(w, c.roles.seller, "market_sale", dayOf(w.minute))) {
+    emit(w, "wage_unpaid", [buyerId], [decisionEventId], { householdId,
+      amount: claims.reduce((n, claim) => n + claim.amount, 0), reason: "seller_unavailable" });
+    return;
+  }
+  let remaining = Math.min(claims.reduce((n, claim) => n + claim.amount, 0),
+    c.limits.personCash - amount(w, pouch(buyerId), "currency"), amount(w, "till_cooperative", "currency"));
+  for (const claim of claims) {
+    if (claim.amount > remaining) break;
+    let needed = claim.amount;
+    const portions = lots(w, "till_cooperative", "currency", "cooperative").map((source) => {
+      const quantity = Math.min(needed, source.quantity);
+      needed -= quantity;
+      return { source, quantity, coinId: quantity === source.quantity ? source.id : uid(w, "coin") };
+    }).filter((portion) => portion.quantity > 0);
+    if (needed) break;
+    const result = tx(w, buyerId, ["cooperative", householdId], (t) => {
+      for (const { source, quantity, coinId } of portions) {
+        if (coinId !== source.id) t.split(source.id, coinId, quantity, claim.causeEventId);
+        t.changeOwner(coinId, householdId); t.move(coinId, pouch(buyerId));
+      }
+    });
+    if (!result.ok) throw Error(`wage transfer failed: ${result.reason}`);
+    const paid = emit(w, "wage_paid", [buyerId, c.roles.seller, claim.personId], [decisionEventId, claim.causeEventId],
+      { householdId, claimId: claim.id, amount: claim.amount });
+    for (const { coinId } of portions) w.physical.objects[coinId].causeEventId = paid.id;
+    claim.paidEventId = paid.id;
+    remaining -= claim.amount;
+  }
+  if (claims.some((claim) => !claim.paidEventId)) emit(w, "wage_unpaid", [buyerId, c.roles.seller], [decisionEventId],
+    { householdId, amount: claims.filter((claim) => !claim.paidEventId).reduce((n, claim) => n + claim.amount, 0) });
+}
+
 function offerTask(w: LocalWorldV2, personId: string, capability: LocalTaskV2["capability"], start: number, end: number, causes: string[] = []) {
   const routine = capability === "rest" ? { id: "life.rest", version: 1 } : c.routines.find((r) => r.capability === capability)!;
   const offer = emit(w, "task_offered", [personId], causes, { routineId: routine.id, capability, start, end });
@@ -133,6 +190,7 @@ function completeTask(w: LocalWorldV2, task: LocalTaskV2, kind: string, causes: 
 }
 function workEffort(w: LocalWorldV2, personId: string, work: string, effort: number, causes: string[]) {
   const person = w.people[personId], before = person.energy;
+  if (w.wageClaims) effort += person.hunger * economyA3Income.hungerWorkEffort;
   if (before < effort) {
     emit(w, "work_blocked", [personId], causes, { work, effort, energy: before });
     return undefined;
@@ -304,6 +362,8 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
         energy: person.energy, available: !absent(w, person.id, day), householdSize: h.memberIds.length,
         homeFood: here ? amount(w, store(h.id), "food") : undefined,
         homeCash: here ? amount(w, chest(h.id), "currency") : undefined,
+        claimableWages: w.wageClaims?.filter((claim) => claim.householdId === h.id && !claim.paidEventId).reduce((n, claim) => n + claim.amount, 0),
+        wageService: !!w.wageClaims,
         price: c.price,
         order: order ? { id: order.id, quantity: order.quantity, status: here && order.status !== "requested" ? "requested" : order.status } : undefined,
         purchaseTask: task ? { id: task.id, end: task.end, status: task.status === "refused" ? "refused" : task.status === "completed" ? "completed" : "accepted" } : undefined,
@@ -313,7 +373,7 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
       },
     };
     const response = model.decide(input);
-    if (!Number.isSafeInteger(response.wait.at) || response.wait.at <= w.minute || response.attempts.length > 2) throw Error("invalid buyer response");
+    if (!Number.isSafeInteger(response.wait.at) || response.wait.at <= w.minute || response.attempts.length > 3) throw Error("invalid buyer response");
     if (response.subjectiveUpdate?.knownOrderId && response.subjectiveUpdate.knownOrderId !== state.orderId)
       throw Error("buyer cannot adopt an unknown order");
     const decision = emit(w, "buyer_decided", [person.id], state.lastEventId ? [state.lastEventId] : [],
@@ -333,9 +393,12 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
         const created = createOrder(w, h.id, day, attempt.quantity, [decision.id]);
         state.orderId = created.id; state.lastEventId = created.requestEventId;
       } else if (attempt.kind === "depart_market") {
-        if (order?.id === attempt.orderId && order.status === "requested" && here && buyerDepart(w, order, decision.id))
+        if (order && order.id === attempt.orderId && order.status === "requested" && here && buyerDepart(w, order, decision.id))
           state.lastEventId = person.journey?.causeEventId ?? decision.id;
-        else if (order?.id !== attempt.orderId || order.status !== "requested" || !here)
+        else if (!attempt.orderId && !order && here && w.wageClaims?.some((claim) => claim.householdId === h.id && !claim.paidEventId) &&
+          travel(w, person.id, "market", w.minute + 15, [decision.id]))
+          state.lastEventId = person.journey?.causeEventId ?? decision.id;
+        else if (order?.id !== attempt.orderId || order?.status !== "requested" || !here)
           emit(w, "buyer_attempt_rejected", [person.id], [decision.id], { action: attempt.kind, reason: "order_or_place" });
       } else if (attempt.kind === "reserve_sale") {
         if (order?.id !== attempt.orderId || location !== "market" || order.status !== "requested") {
@@ -357,7 +420,10 @@ function runBuyerActors(w: LocalWorldV2, model: BuyerModel) {
         }
         const settled = settlePurchaseV2(w, order.id, decision.id);
         const completed = completeTask(w, task, settled ? "purchase_completed" : "purchase_failed", [decision.id, order.requestEventId], { householdId: h.id });
+        if (settled) recordWage(w, person.id, economyA3Income.purchase, completed.id);
         state.lastEventId = completed.id; returnCause = completed.id;
+      } else if (attempt.kind === "collect_wages" && location === "market") {
+        collectWages(w, person.id, decision.id);
       } else if (attempt.kind === "return_home" && location === "market") {
         if (travel(w, person.id, home(h.id), w.minute + 15, [returnCause])) state.lastEventId = person.journey?.causeEventId ?? returnCause;
       }
@@ -429,6 +495,7 @@ function runSellerActor(w: LocalWorldV2, model: SellerModel) {
       state.lastEventId = task.answerEventId;
     } else if (attempt.kind === "finish_market_sale" && location === "market" && saleTask?.status === "accepted" && saleTask.end === w.minute) {
       const completed = completeTask(w, saleTask, "market_shift_completed", [decision.id]);
+      recordWage(w, sellerId, economyA3Income.marketShift, completed.id);
       state.lastEventId = completed.id; returnCause = completed.id;
     } else if (attempt.kind === "return_home" && location === "market") {
       if (travel(w, sellerId, home(person.householdId), w.minute + 15, [returnCause])) state.lastEventId = person.journey?.causeEventId;
@@ -503,6 +570,7 @@ function runFarmerActors(w: LocalWorldV2, model: FarmerModel) {
       } else if (attempt.kind === "finish_shift" && state.harvestedToday && shift?.status === "accepted" &&
         location === home(person.householdId) && w.minute >= base + tm.loadEnd) {
         state.lastEventId = completeTask(w, shift, "farm_shift_completed", [decision.id], { quantity: c.farmOutputPerShift }).id;
+        recordWage(w, person.id, economyA3Income.farmShift, state.lastEventId);
       } else {
         emit(w, "farmer_attempt_rejected", [person.id], [decision.id], { action: attempt.kind });
       }
@@ -529,7 +597,8 @@ function unloadCarrierShipment(w: LocalWorldV2, s: ShipmentV2, day: number, deci
     s.lastEventId = delivered.id;
     for (const lot of cargo) w.physical.objects[lot.id].causeEventId = delivered.id;
     const task = taskAt(w, s.carrierId, "carry_food", day)!;
-    completeTask(w, task, "carry_completed", [delivered.id], { quantity: s.quantity });
+    const completed = completeTask(w, task, "carry_completed", [delivered.id], { quantity: s.quantity });
+    recordWage(w, s.carrierId, economyA3Income.delivery, completed.id);
   }
 }
 
@@ -712,8 +781,9 @@ function phase(w: LocalWorldV2, buyerModel: BuyerModel, sellerModel: SellerModel
     const task = w.tasks.find((t) => t.personId === p.id && t.capability === "rest" && t.end === w.minute && t.status === "accepted");
     if (!task) continue;
     const before = p.energy, atHome = at(w, p.id) === home(p.householdId) && !p.journey;
-    if (atHome) p.energy = Math.min(c.limits.personEnergy, before + c.labor.overnightRecovery);
-    completeTask(w, task, atHome ? "rest_completed" : "rest_missed", [], { energyBefore: before, energyAfter: p.energy, recovered: p.energy - before });
+    const recovery = w.wageClaims ? Math.max(0, c.labor.overnightRecovery - p.hunger * economyA3Income.hungerRecoveryPenalty) : c.labor.overnightRecovery;
+    if (atHome) p.energy = Math.min(c.limits.personEnergy, before + recovery);
+    completeTask(w, task, atHome ? "rest_completed" : "rest_missed", [], { energyBefore: before, energyAfter: p.energy, recovered: p.energy - before, hunger: p.hunger });
   }
   if (day > 3) return;
   if (local === tm.orders) {
@@ -946,6 +1016,16 @@ export function loadLocalA2(serialized: string): LocalWorldV2 {
   if (w.economicMode !== "local_food_a2" || w.engineVersion !== "0.5.3-a2" || w.contentHash !== hash(c)) throw Error("incompatible A2 save");
   checkLocalV2(w); return w;
 }
+export function saveLocalA3Income(w: LocalWorldV2) {
+  if (w.economicMode !== "local_food_a3_income") throw Error("not A3 income world");
+  return saveLocalV2(w);
+}
+export function loadLocalA3Income(serialized: string): LocalWorldV2 {
+  const w = JSON.parse(serialized) as LocalWorldV2;
+  if (w.economicMode !== "local_food_a3_income" || w.engineVersion !== "0.6.0-a3-income" ||
+    w.contentHash !== hash([c, economyA3Income])) throw Error("incompatible A3 income save");
+  checkLocalV2(w); return w;
+}
 export function replayLocalV2(seed: number, commands: LocalCommand[], until: number) {
   const w = newLocalWorldV2(seed);
   for (const { command } of commands.map((command, index) => ({ command, index })).sort((a, b) => a.command.issuedAt - b.command.issuedAt || a.index - b.index)) {
@@ -962,9 +1042,19 @@ export function replayLocalA2(seed: number, commands: LocalCommand[], until: num
   }
   advanceLocalV2(w, until - w.minute); return w;
 }
+export function replayLocalA3Income(seed: number, commands: LocalCommand[], until: number) {
+  const w = newLocalWorldA3Income(seed);
+  for (const { command } of commands.map((command, index) => ({ command, index })).sort((a, b) => a.command.issuedAt - b.command.issuedAt || a.index - b.index)) {
+    advanceLocalV2(w, command.issuedAt - w.minute);
+    if (!submitLocalV2(w, command.actorId, command.action, command.id)) throw Error(`replay rejected ${command.id}`);
+  }
+  advanceLocalV2(w, until - w.minute); return w;
+}
 export function checkLocalV2(w: LocalWorldV2) {
-  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined && w.sellerActor === undefined && w.farmerActors === undefined && w.carrierActor === undefined) ||
-      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.3-a2" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined)) || w.contentHash !== hash(c) ||
+  if (w.schemaVersion !== 3 || !((w.economicMode === "local_food_v2" && w.engineVersion === "0.4.1-e1" && w.buyerActors === undefined && w.sellerActor === undefined && w.farmerActors === undefined && w.carrierActor === undefined && w.wageClaims === undefined) ||
+      (w.economicMode === "local_food_a2" && w.engineVersion === "0.5.3-a2" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined && w.wageClaims === undefined) ||
+      (w.economicMode === "local_food_a3_income" && w.engineVersion === "0.6.0-a3-income" && w.buyerActors !== undefined && w.sellerActor !== undefined && w.farmerActors !== undefined && w.carrierActor !== undefined && Array.isArray(w.wageClaims))) ||
+    w.contentHash !== (w.economicMode === "local_food_a3_income" ? hash([c, economyA3Income]) : hash(c)) ||
     !Number.isSafeInteger(w.minute) || w.minute < 0 || w.minute > 4320 ||
     !Number.isSafeInteger(w.cartCondition) || w.cartCondition < 0 || w.cartCondition > 100) throw Error("invalid E1 v2 world");
   checkPhysical(w.physical);
@@ -1013,6 +1103,18 @@ export function checkLocalV2(w: LocalWorldV2) {
     eventIds.add(e.id);
   }
   for (const o of [...food, ...cash]) if (o.causeEventId !== "initial" && !eventIds.has(o.causeEventId)) throw Error("E1 v2 asset cause");
+  if (w.wageClaims) {
+    const claimIds = new Set<string>();
+    for (const claim of w.wageClaims) {
+      const earned = w.events.find((event) => event.id === claim.causeEventId);
+      const paid = claim.paidEventId ? w.events.find((event) => event.id === claim.paidEventId) : undefined;
+      if (claimIds.has(claim.id) || !w.people[claim.personId] || w.people[claim.personId].householdId !== claim.householdId ||
+        !Number.isSafeInteger(claim.amount) || claim.amount <= 0 || !eventIds.has(claim.causeEventId) ||
+        earned?.kind !== "wage_earned" || !earned.actors.includes(claim.personId) || earned.data.amount !== claim.amount ||
+        claim.paidEventId && (paid?.kind !== "wage_paid" || !paid.causes.includes(claim.causeEventId) || paid.data.claimId !== claim.id || paid.data.amount !== claim.amount)) throw Error("A3 income claim");
+      claimIds.add(claim.id);
+    }
+  }
   for (const t of w.tasks) if (!w.people[t.personId] || !eventIds.has(t.offerEventId) || !eventIds.has(t.answerEventId) ||
     t.status === "completed" && !eventIds.has(t.resultEventId!)) throw Error("E1 v2 task cause");
   const acceptedTasks = w.tasks.filter((t) => t.status !== "refused");

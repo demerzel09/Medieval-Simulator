@@ -322,7 +322,7 @@ function App() {
         >
           統治を始める
         </button>
-        <a className="e1-entry" href="/?e1=debug">20人集落の空間デバッグを見る</a> <a className="e1-entry" href="/?e1=v2">物体木版を見る</a> <a className="e1-entry" href="/?a1=debug">自律A1を見る</a> <a className="e1-entry" href="/?e1=a2">買物係の自律A2を見る</a>
+        <a className="e1-entry" href="/?e1=debug">20人集落の空間デバッグを見る</a> <a className="e1-entry" href="/?e1=v2">物体木版を見る</a> <a className="e1-entry" href="/?a1=debug">自律A1を見る</a> <a className="e1-entry" href="/?e1=a2">自律A2を見る</a> <a className="e1-entry" href="/?e1=a3-income">A3所得試作を見る</a>
         <button
           onClick={async () => {
             const save = await restore();
@@ -1139,6 +1139,6 @@ createRoot(document.getElementById("root")!).render(
     <React.Suspense fallback={<p>A1を読み込んでいます…</p>}><A1Debug /></React.Suspense> :
   new URLSearchParams(window.location.search).get("e1") === "debug" ?
     <React.Suspense fallback={<p>集落を読み込んでいます…</p>}><E1Debug /></React.Suspense> :
-  ["v2", "a2"].includes(new URLSearchParams(window.location.search).get("e1") ?? "") ?
-    <React.Suspense fallback={<p>物体木を読み込んでいます…</p>}><E1V2Debug autonomousBuyers={new URLSearchParams(window.location.search).get("e1") === "a2"} /></React.Suspense> : <App />,
+  ["v2", "a2", "a3-income"].includes(new URLSearchParams(window.location.search).get("e1") ?? "") ?
+    <React.Suspense fallback={<p>物体木を読み込んでいます…</p>}><E1V2Debug autonomousBuyers={new URLSearchParams(window.location.search).get("e1") === "a2"} incomeExperiment={new URLSearchParams(window.location.search).get("e1") === "a3-income"} /></React.Suspense> : <App />,
 );

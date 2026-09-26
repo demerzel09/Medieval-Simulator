@@ -91,6 +91,22 @@ test("A2 map shows buyer, seller, farmer, and carrier decisions with physical go
   expect(errors).toEqual([]);
 });
 
+test("A3 income map exposes earned and paid wages plus the effect of missed meals", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?e1=a3-income");
+  await expect(page.getByRole("heading", { name: "20人の集落 · 実働・賃金・欠食の検証" })).toBeVisible();
+  await page.getByLabel("経過分").fill("2880");
+  await page.locator(".e1-person").filter({ hasText: "F0" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("賃金請求: 4通貨 · 支払済: 4通貨");
+  await page.getByLabel("シナリオ").selectOption("buyer-no-money");
+  await page.getByLabel("経過分").fill("2880");
+  await expect(page.locator(".e1-detail")).toContainText("体力: 98 · 空腹: 2");
+  await page.locator(".e1-person").filter({ hasText: "B0" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("wage_paid");
+  expect(errors).toEqual([]);
+});
+
 test("A1 workbench shows tool handoff, progress, and both workers", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
