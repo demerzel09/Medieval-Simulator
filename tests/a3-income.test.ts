@@ -91,4 +91,37 @@ describe("A3 income slice", () => {
     expect(w.events.some((event) => event.kind === "vehicle_maintained")).toBe(false);
     expect(w.tasks.some((task) => task.capability === "maintain_cart")).toBe(false);
   });
+
+  it("withholds farm wages when no carrier brings harvest proof to the seller", () => {
+    const w = newLocalWorldA3Income();
+    expect(submitLocalV2(w, "C", { kind: "ABSENT", personId: "C", day: 1 })).toBe(true);
+    advanceLocalV2(w, 1440);
+    expect(w.wageClaims!.filter((claim) => claim.personId.startsWith("F"))).toHaveLength(7);
+    expect(w.sellerActor?.knownWorkProofIds).toEqual([]);
+    expect(w.wageClaims!.some((claim) => claim.paidEventId)).toBe(false);
+    expect(w.events.some((event) => event.kind === "income_unpaid" && event.data.reason === "proof_not_received")).toBe(true);
+    expect(w.events.find((event) => event.kind === "distribution_approved")?.data.wages).toBe(2);
+    checkLocalV2(w);
+  });
+
+  it("delivers proof only for the harvest lots actually loaded", () => {
+    const limitedCarrier: CarrierModel = { decide(input) {
+      const response = ordinaryCarrierModel.decide(input);
+      return { ...response, attempts: response.attempts.map((attempt) => attempt.kind === "load_and_depart" ?
+        { ...attempt, quantity: 5 } : attempt) };
+    } };
+    const w = newLocalWorldA3Income();
+    advanceLocalV2(w, 1440, undefined, undefined, undefined, limitedCarrier);
+    const shipment = w.shipments[0];
+    expect(shipment.quantity).toBe(5);
+    expect(shipment.workProofIds).toHaveLength(2);
+    expect(w.sellerActor?.knownWorkProofIds).toEqual(shipment.workProofIds);
+    expect(w.events.find((event) => event.kind === "shipment_delivered")?.causes).toEqual(expect.arrayContaining(shipment.workProofIds!));
+    const visibleFarmWages = w.wageClaims!.filter((claim) => claim.workProofEventId && shipment.workProofIds!.includes(claim.workProofEventId));
+    expect(visibleFarmWages).toHaveLength(2);
+    expect(w.events.find((event) => event.kind === "distribution_approved")?.data.wages).toBe(
+      [...visibleFarmWages, ...w.wageClaims!.filter((claim) => !claim.workProofEventId)].reduce((n, claim) => n + claim.amount, 0));
+    expect(w.events.some((event) => event.kind === "income_unpaid" && event.data.reason === "proof_not_received")).toBe(true);
+    checkLocalV2(w);
+  });
 });

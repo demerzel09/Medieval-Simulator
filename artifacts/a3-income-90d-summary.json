@@ -1538,7 +1538,7 @@
   ],
   "measurement": {
     "command": "npm run autonomy:a3:income -- baseline --days 90",
-    "elapsedSeconds": 102.56,
-    "environment": "Linux WSL2, Node 22; one run; no multiple-seed performance statistics"
+    "elapsedSeconds": 106.89,
+    "environment": "Linux WSL2, Node 22; one run after work-proof change; no multiple-seed performance statistics"
   }
 }

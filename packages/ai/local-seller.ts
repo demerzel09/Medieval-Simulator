@@ -10,8 +10,8 @@ export type SellerContext = {
   workStartAt: number; requestAt: number; saleAt: number; closeAt: number; nextDayWorkAt: number;
   cartCapacity: number;
 };
-export type SellerSubjectiveState = { knownOrderIds: string[]; requestEventId?: string };
-export type SellerStimulus = { kind: "order_notice" | "stock_arrival" | "sale_result"; receivedAt: number; causeEventIds: string[] };
+export type SellerSubjectiveState = { knownOrderIds: string[]; knownWorkProofIds?: string[]; requestEventId?: string };
+export type SellerStimulus = { kind: "order_notice" | "stock_arrival" | "sale_result"; receivedAt: number; causeEventIds: string[]; workProofIds?: string[] };
 export type SellerInput = ActorInput<SellerContext, SellerSubjectiveState, SellerStimulus>;
 export type SellerAttempt =
   | { kind: "go_market" }

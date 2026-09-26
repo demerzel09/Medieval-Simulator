@@ -102,6 +102,9 @@ test("A3 income map exposes earned and paid wages plus the effect of missed meal
   await expect(page.locator(".e1-detail")).toContainText("世帯分配:");
   await page.locator(".e1-person").filter({ hasText: "C" }).click();
   await expect(page.locator(".e1-detail")).toContainText("vehicle_maintained");
+  await expect(page.locator(".e1-detail")).toContainText("積荷の収穫証拠: 7件");
+  await page.locator(".e1-person").filter({ hasText: "S" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("届いた収穫証拠: 14件");
   await expect(page.locator(".e1-stats")).toContainText("荷車の状態 100/100");
   await page.getByLabel("シナリオ").selectOption("buyer-no-money");
   await page.getByLabel("経過分").fill("2880");
