@@ -40,3 +40,25 @@ test("spatial E1 debug shows households, journeys, cargo and food brought home",
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });
+
+test("physical E1 v2 debug shows parent, owner, capacity and causal work", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?e1=v2");
+  await expect(page.getByRole("heading", { name: "20人の集落 · 物体木デバッグ" })).toBeVisible();
+  await expect(page.locator(".e1-person")).toHaveCount(20);
+  await page.getByRole("button", { name: "荷車 cart_1" }).click();
+  await expect(page.locator(".e1-inspector")).toContainText("物理親: market");
+  await expect(page.locator(".e1-inspector")).toContainText("所有者: cooperative");
+  await page.getByLabel("経過分").fill("751");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "荷車" })).toContainText("21/21");
+  await expect(page.locator(".e1-inspector")).toContainText("物理親: transit_");
+  await page.locator(".e1-person").filter({ hasText: "C" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("delivery_replanned");
+  await page.getByLabel("経過分").fill("930");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "協同事業" })).toContainText("40");
+  await page.getByLabel("シナリオ").selectOption("carrier-absent");
+  await page.getByLabel("経過分").fill("2880");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "農場" })).toContainText("21");
+  expect(errors).toEqual([]);
+});

@@ -1,6 +1,6 @@
 # E1契約: 食料を人が運び、市場で受け渡す
 
-状態: **独立した20人fixtureの食料流通を実装・検証済み**。現行本編への接続、汎用ルーティン展開、人格v2、長期の資金循環、性能測定は未実装。[E0基準](ECONOMY_E0_BASELINE.md)と[実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)を受け、E1で必要な七項目を決めた。価格形成・賃金循環・装備はE2以降の課題であり、この契約の達成結果に含めない。物体・能力モデルへの次版移行は[別の監査](E1_OBJECT_CAPABILITY_READINESS.md)で扱い、以下は現行`local_food_v1`の契約とする。
+状態: **独立した20人fixtureの食料流通を実装・検証済み**。現行本編への接続、汎用ルーティン展開、人格v2、長期の資金循環、性能測定は未実装。[E0基準](ECONOMY_E0_BASELINE.md)と[実装前監査](ECONOMY_IMPLEMENTATION_READINESS.md)を受け、E1で必要な七項目を決めた。価格形成・賃金循環・装備はE2以降の課題であり、この契約の達成結果に含めない。物体・能力モデルへの独立新版`local_food_v2`は[別の監査](E1_OBJECT_CAPABILITY_READINESS.md)で扱い、以下は旧`local_food_v1`の契約とする。
 
 ## 1. 在庫と通貨の正本
 

@@ -1,0 +1,401 @@
+{
+  "schemaVersion": 2,
+  "scenarioId": "village_food_loop",
+  "price": 2,
+  "foodPerPerson": 1,
+  "farmOutputPerShift": 3,
+  "farmersOnShift": [
+    7,
+    7,
+    6
+  ],
+  "cartCapacity": 21,
+  "roadKm": 2,
+  "walkKmh": 4,
+  "cartKmh": 2,
+  "initialHouseholdMoney": 40,
+  "limits": {
+    "personFood": 5,
+    "personCash": 20,
+    "personEnergy": 100,
+    "farmFood": 100,
+    "marketFood": 60,
+    "houseFood": 10,
+    "houseChestCash": 100,
+    "marketTillCash": 200,
+    "townKm": 0.25,
+    "walkEffortPerKm": 3,
+    "cartEffortPerKm": 5,
+    "cartExtraEffortPerFiveFoodKm": 1
+  },
+  "map": {
+    "width": 960,
+    "height": 520,
+    "town": {
+      "x": 390,
+      "y": 35,
+      "width": 525,
+      "height": 445
+    },
+    "farm": {
+      "x": 40,
+      "y": 120,
+      "width": 250,
+      "height": 280
+    },
+    "market": {
+      "x": 615,
+      "y": 190,
+      "width": 225,
+      "height": 125
+    },
+    "houses": {
+      "H0": {
+        "x": 420,
+        "y": 65,
+        "width": 150,
+        "height": 100
+      },
+      "H1": {
+        "x": 730,
+        "y": 65,
+        "width": 150,
+        "height": 100
+      },
+      "H2": {
+        "x": 420,
+        "y": 355,
+        "width": 150,
+        "height": 100
+      },
+      "H3": {
+        "x": 730,
+        "y": 355,
+        "width": 150,
+        "height": 100
+      }
+    }
+  },
+  "times": {
+    "orders": 300,
+    "notice": 315,
+    "assignment": 330,
+    "farmCommute": 330,
+    "farmArrive": 360,
+    "cartDepart": 360,
+    "cartFarmArrive": 420,
+    "farmEnd": 720,
+    "loadEnd": 750,
+    "cartMarketArrive": 810,
+    "unloadEnd": 840,
+    "marketEnd": 900,
+    "meal": 1080
+  },
+  "households": [
+    {
+      "id": "H0",
+      "farmers": [
+        "F0",
+        "F1"
+      ],
+      "buyer": "B0",
+      "other": [
+        "D0",
+        "D1"
+      ]
+    },
+    {
+      "id": "H1",
+      "farmers": [
+        "F2",
+        "F3"
+      ],
+      "buyer": "B1",
+      "other": [
+        "D2",
+        "D3"
+      ]
+    },
+    {
+      "id": "H2",
+      "farmers": [
+        "F4",
+        "F5"
+      ],
+      "buyer": "B2",
+      "other": [
+        "S",
+        "D4"
+      ]
+    },
+    {
+      "id": "H3",
+      "farmers": [
+        "F6"
+      ],
+      "buyer": "B3",
+      "other": [
+        "C",
+        "D5",
+        "D6"
+      ]
+    }
+  ],
+  "roles": {
+    "seller": "S",
+    "carrier": "C",
+    "farmManager": "F0"
+  },
+  "routines": [
+    {
+      "id": "farm.shift",
+      "version": 1,
+      "trigger": "daily",
+      "role": "farmer",
+      "capability": "work_shift"
+    },
+    {
+      "id": "market.replenish",
+      "version": 1,
+      "trigger": "notice",
+      "role": "carrier",
+      "capability": "carry_food"
+    },
+    {
+      "id": "market.sell",
+      "version": 1,
+      "trigger": "stock_arrival",
+      "role": "seller",
+      "capability": "market_sale"
+    },
+    {
+      "id": "household.buy",
+      "version": 1,
+      "trigger": "daily",
+      "role": "buyer",
+      "capability": "buy_food"
+    },
+    {
+      "id": "life.eat",
+      "version": 1,
+      "trigger": "daily",
+      "role": "all",
+      "capability": "eat_food"
+    }
+  ],
+  "physicalTypes": {
+    "world": {
+      "id": "world",
+      "tags": [
+        "world"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": false,
+      "container": {
+        "acceptsTags": [
+          "site"
+        ]
+      }
+    },
+    "site": {
+      "id": "site",
+      "tags": [
+        "site"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": false,
+      "container": {
+        "acceptsTags": [
+          "site",
+          "person",
+          "vehicle",
+          "store"
+        ]
+      }
+    },
+    "person": {
+      "id": "person",
+      "tags": [
+        "person"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": false,
+      "container": {
+        "acceptsTags": [
+          "wallet",
+          "bag"
+        ],
+        "maxContentsMass": 25,
+        "maxQuantityByTag": {
+          "food": 5,
+          "currency": 20
+        }
+      }
+    },
+    "bag": {
+      "id": "bag",
+      "tags": [
+        "bag"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "food"
+        ],
+        "maxContentsMass": 5,
+        "maxQuantityByTag": {
+          "food": 5
+        }
+      }
+    },
+    "foodStoreFarm": {
+      "id": "foodStoreFarm",
+      "tags": [
+        "store"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "food"
+        ],
+        "maxContentsMass": 100,
+        "maxQuantityByTag": {
+          "food": 100
+        }
+      }
+    },
+    "foodStoreMarket": {
+      "id": "foodStoreMarket",
+      "tags": [
+        "store"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "food"
+        ],
+        "maxContentsMass": 60,
+        "maxQuantityByTag": {
+          "food": 60
+        }
+      }
+    },
+    "foodStoreHouse": {
+      "id": "foodStoreHouse",
+      "tags": [
+        "store"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "food"
+        ],
+        "maxContentsMass": 10,
+        "maxQuantityByTag": {
+          "food": 10
+        }
+      }
+    },
+    "chest": {
+      "id": "chest",
+      "tags": [
+        "store"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "currency"
+        ],
+        "maxContentsMass": 100,
+        "maxQuantityByTag": {
+          "currency": 100
+        }
+      }
+    },
+    "pouch": {
+      "id": "pouch",
+      "tags": [
+        "wallet"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "currency"
+        ],
+        "maxContentsMass": 20,
+        "maxQuantityByTag": {
+          "currency": 20
+        }
+      }
+    },
+    "till": {
+      "id": "till",
+      "tags": [
+        "store"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "currency"
+        ],
+        "maxContentsMass": 200,
+        "maxQuantityByTag": {
+          "currency": 200
+        }
+      }
+    },
+    "cart": {
+      "id": "cart",
+      "tags": [
+        "vehicle"
+      ],
+      "unitMass": 0,
+      "stackable": false,
+      "ownable": true,
+      "container": {
+        "acceptsTags": [
+          "food"
+        ],
+        "maxContentsMass": 21,
+        "maxQuantityByTag": {
+          "food": 21
+        }
+      }
+    },
+    "food": {
+      "id": "food",
+      "tags": [
+        "food"
+      ],
+      "unitMass": 1,
+      "stackable": true,
+      "ownable": true
+    },
+    "currency": {
+      "id": "currency",
+      "tags": [
+        "currency"
+      ],
+      "unitMass": 1,
+      "stackable": true,
+      "ownable": true
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # 能力エージェントと仕事・道具の市場
 
-状態: 2026-09-26にL0の運送ルール提案とsim側の実力検査・二台馬車の積載出発を`packages/sim/transport-capability.ts`へ実装し、独立試験で検証した。既存の[人格境界v2](AGENT_INTERFACES_v2.md)、[ルーティン](DATA_DRIVEN_ROUTINES.md)、[物体・包含モデル](PHYSICAL_OBJECT_MODEL.md)を接続する全体設計である。E1人物への能力インスタンス接続、技能市場、コンテンツ/保存形式の移行は未実装。
+状態: 2026-09-26にL0の運送ルール提案とsim側の実力検査・二台馬車の積載出発を実装し、独立試験で検証した。L1では独立`local_food_v2`の運搬人Cへ最小の能力インスタンスと提案/再提案を接続した。既存の[人格境界v2](AGENT_INTERFACES_v2.md)、[ルーティン](DATA_DRIVEN_ROUTINES.md)、[物体・包含モデル](PHYSICAL_OBJECT_MODEL.md)を接続する全体設計である。技能市場、全職業の共通能力ランナー、本編のコンテンツ/保存形式移行は未実装。
 
 ## 能力を第一級の対象にする
 

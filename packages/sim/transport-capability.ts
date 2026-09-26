@@ -92,3 +92,21 @@ export function executeHaul(p: HaulProposal, truth: HaulTruth, transitId: string
   });
   return result.ok ? { ok: true, state: result.state, loadedIds } : result;
 }
+
+export type FoodDeliveryProposal = {
+  taskId: string; personId: string; capabilityId: string; cartId: string;
+  quantity: number; expectedFinishAt: number; expectedEffort: number; evidenceEventIds: string[];
+};
+/** E1 rule capability: an unknown farm stock is a target, not observed truth. */
+export function proposeFoodDelivery(input: {
+  taskId: string; personId: string; capabilityId: string; cartId: string;
+  requestedQuantity: number; cartCapacity: number; observedStock?: number;
+  roadKm: number; cartEffortPerKm: number; extraEffortPerFiveFoodKm: number;
+  expectedFinishAt: number; evidenceEventIds: string[];
+}): FoodDeliveryProposal {
+  const quantity = Math.max(0, Math.min(input.requestedQuantity, input.cartCapacity, input.observedStock ?? input.requestedQuantity));
+  return { taskId: input.taskId, personId: input.personId, capabilityId: input.capabilityId, cartId: input.cartId,
+    quantity, expectedFinishAt: input.expectedFinishAt,
+    expectedEffort: Math.ceil(input.roadKm * (input.cartEffortPerKm + Math.ceil(quantity / 5) * input.extraEffortPerFiveFoodKm)),
+    evidenceEventIds: [...input.evidenceEventIds] };
+}

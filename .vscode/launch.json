@@ -34,6 +34,19 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
     },
     {
+      "name": "経済 L1: 物体木デバッグ画面",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?e1=v2",
+        "action": "debugWithChrome"
+      },
+      "presentation": { "group": "経済", "order": 0 },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
+    },
+    {
       "name": "90日: 外交",
       "type": "node-terminal",
       "request": "launch",
@@ -87,6 +100,14 @@
         "order": 2
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:e1 -- baseline"
+    },
+    {
+      "name": "経済 L1: 物体木の基準3日",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": { "group": "経済", "order": 2 },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:e1:v2 -- baseline"
     },
     {
       "name": "経済 E1: 運搬人欠勤",
