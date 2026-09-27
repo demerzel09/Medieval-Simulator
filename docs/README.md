@@ -9,3 +9,5 @@
 | [archive](archive/) | 古いインターフェース、E0/E1/A3の契約・監査、時系列STATUS/DECISIONS、初版企画の複製 | 判断の経緯と回帰資料。古い「次の作業」は現行指示ではない |
 
 買主B1/B2の薪仕事と所得は人物間の因果で成立しました。[生活市場](baseline/LIVING_MARKET_EXPERIMENT.md)の90日結果はなお生活の安定に失敗し、中央給付や帳尻合わせで成功扱いしません。未実装の境界は[STATUS](STATUS.md)に記録します。
+
+次の実装区切りは[自律する90日生活世界への実装計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)にまとめています。
