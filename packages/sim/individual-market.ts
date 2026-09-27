@@ -9,12 +9,13 @@ type Offer = { id: string; day: number; quantity: number; price: number; carrier
   status: "posted" | "accepted" | "contracted" | "purchased" | "delivered" | "failed" };
 type BuyerId = "B1" | "B2";
 type LivingBuyers = Record<BuyerId, { hunger: number; meals: number; knownPrice: number }>;
-export type MarketWorld = { schemaVersion: 2; mode: "individual_market"; seed: number; day: number; hour: number; nextId: number;
+export type MarketWorld = { schemaVersion: 2 | 3; mode: "individual_market"; seed: number; day: number; hour: number; nextId: number;
   physical: PhysicalState; resource: { available: number; capacity: number; dailyGrowth: number };
   seller: { price: number; bid: number; carrierFee: number; reserveCash: number;
     triedMarket: boolean; soldYesterday: number; unsoldYesterday: number; fundedUnmetYesterday: number };
   foodLots: Record<string, { kind: "berries"; harvestedDay: number }>;
-  living?: { buyers: LivingBuyers; eaten: number };
+  living?: { buyers: LivingBuyers; eaten: number; wood: { available: number; capacity: number; grown: number;
+    gathered: number; burned: number; knownPrice: number; lastSupplier?: BuyerId } };
   offer?: Offer; events: MarketEvent[]; harvested: number; spoiled: number; grown: number; initialResource: number;
   initialMoney: number; initialSellerCash: number; sellerCosts: number; sellerRevenue: number };
 const ids = ["F", "C", "S", "B1", "B2"] as const;
@@ -52,11 +53,14 @@ export function newMarketWorld(seed = 240924, sellerCash = 10, buyerCash = 10): 
     wallet: { id: "wallet", tags: ["wallet"], unitMass: 0, stackable: false, ownable: true,
       container: { acceptsTags: ["currency"], maxContentsMass: 200 } },
     bag: { id: "bag", tags: ["bag"], unitMass: 0, stackable: false, ownable: true,
-      container: { acceptsTags: ["food"], maxContentsMass: 24 } },
+      container: { acceptsTags: ["food", "wood"], maxContentsMass: 24 } },
     store: { id: "store", tags: ["store"], unitMass: 0, stackable: false, ownable: true,
       container: { acceptsTags: ["food"], maxContentsMass: 24 } },
+    fuelStore: { id: "fuelStore", tags: ["store"], unitMass: 0, stackable: false, ownable: true,
+      container: { acceptsTags: ["wood"], maxContentsMass: 2 } },
     resource: { id: "resource", tags: ["resource"], unitMass: 0, stackable: false, ownable: false },
     food: { id: "food", tags: ["food"], unitMass: 1, stackable: true, ownable: true },
+    wood: { id: "wood", tags: ["wood"], unitMass: 1, stackable: true, ownable: true },
     currency: { id: "currency", tags: ["currency"], unitMass: 1, stackable: true, ownable: true },
   };
   const objects: PhysicalState["objects"] = {};
@@ -80,6 +84,10 @@ export function newMarketWorld(seed = 240924, sellerCash = 10, buyerCash = 10): 
 }
 export function newLivingMarketWorld(seed = 240924, sellerCash = 10, buyerCash = 20): MarketWorld {
   const w = newMarketWorld(seed, sellerCash, buyerCash);
+  w.schemaVersion = 3;
+  w.physical.objects.trees = { id: "trees", typeId: "resource", parentId: "grove", quantity: 1, causeEventId: "initial" };
+  w.physical.objects.fuel_S = { id: "fuel_S", typeId: "fuelStore", parentId: "market", ownerId: "S",
+    quantity: 1, causeEventId: "initial" };
   for (const id of ["B1", "B2"] as const) {
     const home = `home_${id}`, pantry = `pantry_${id}`;
     w.physical.objects[home] = { id: home, typeId: "homeSite", parentId: "world", ownerId: id,
@@ -88,7 +96,8 @@ export function newLivingMarketWorld(seed = 240924, sellerCash = 10, buyerCash =
       quantity: 1, causeEventId: "initial" };
     w.physical.objects[id].parentId = home;
   }
-  w.living = { buyers: { B1: { hunger: 0, meals: 0, knownPrice: 4 }, B2: { hunger: 0, meals: 0, knownPrice: 4 } }, eaten: 0 };
+  w.living = { buyers: { B1: { hunger: 0, meals: 0, knownPrice: 4 }, B2: { hunger: 0, meals: 0, knownPrice: 4 } },
+    eaten: 0, wood: { available: 2, capacity: 4, grown: 0, gathered: 0, burned: 0, knownPrice: 2 } };
   checkMarketWorld(w); return w;
 }
 function decide(w: MarketWorld, actorId: string, context: MarketContext, model: MarketModel,
@@ -218,6 +227,70 @@ function livingMeal(w: MarketWorld, buyerId: BuyerId, model: MarketModel) {
   if (decision.attempt?.kind === "eat" && !eatAtHome(w, buyerId, decision.eventId))
     emit(w, "attempt_failed", [buyerId], [decision.eventId], { action: "eat" });
 }
+function woodWork(w: MarketWorld, buyerId: BuyerId, model: MarketModel) {
+  const wood = w.living!.wood;
+  const proposal = decide(w, buyerId, { role: "woodcutter", phase: "propose",
+    siteId: siteOf(w.physical, buyerId), knownPrice: wood.knownPrice,
+    available: wood.available, cash: money(w, buyerId) }, model);
+  if (proposal.attempt?.kind !== "offer_wood") return;
+  const price = proposal.attempt.price;
+  if (!Number.isSafeInteger(price) || price < 1) {
+    emit(w, "wood_offer_rejected", [buyerId], [proposal.eventId], { reason: "invalid_price" }); return;
+  }
+  const offer = emit(w, "wood_offered", [buyerId, "S"], [proposal.eventId], { price, quantity: 1 });
+  const acceptance = decide(w, "S", { role: "seller", phase: "accept_wood", cash: money(w, "S"),
+    stock: contentsQuantity(w.physical, "fuel_S", "wood"), foodStock: food(w, "stock_S"), offeredPrice: price,
+    supplierId: buyerId, lastSupplier: wood.lastSupplier }, model, [offer.id]);
+  if (acceptance.attempt?.kind !== "accept_wood" || money(w, "S") < price ||
+    contentsQuantity(w.physical, "fuel_S", "wood") >= 1) {
+    emit(w, "wood_offer_declined", ["S", buyerId], [offer.id, acceptance.eventId], { price }); return;
+  }
+  const contract = emit(w, "wood_contract_accepted", ["S", buyerId], [offer.id, acceptance.eventId], { price });
+  if (siteOf(w.physical, buyerId) !== "grove") move(w, buyerId, "grove", contract.id);
+  const carried = objectsOf(w, bag(buyerId), "wood", buyerId)[0];
+  let lot = carried;
+  if (!lot) {
+    const work = decide(w, buyerId, { role: "woodcutter", phase: "work", available: wood.available }, model, [contract.id]);
+    if (work.attempt?.kind !== "gather_wood" || wood.available < 1) {
+      emit(w, "wood_work_failed", [buyerId], [work.eventId], { available: wood.available });
+      move(w, buyerId, `home_${buyerId}`, work.eventId); return;
+    }
+    const lotId = uid(w, "wood");
+    tx(w, buyerId, [], (t) => t.add({ id: lotId, typeId: "wood", parentId: bag(buyerId), ownerId: buyerId,
+      quantity: 1, causeEventId: work.eventId }));
+    wood.available--; wood.gathered++;
+    const gathered = emit(w, "wood_gathered", [buyerId], [contract.id, work.eventId], { quantity: 1, resourceId: "trees" });
+    w.physical.objects[lotId].causeEventId = gathered.id;
+    lot = w.physical.objects[lotId];
+  }
+  move(w, buyerId, "market", lot.causeEventId);
+  const handover = decide(w, buyerId, { role: "woodcutter", phase: "deliver", carriedWood: 1 }, model, [contract.id, lot.causeEventId]);
+  if (handover.attempt?.kind === "deliver_wood" && money(w, "S") >= price &&
+    contentsQuantity(w.physical, "fuel_S", "wood") < 1) {
+    const coins = objectsOf(w, wallet("S"), "currency", "S").slice(0, price);
+    tx(w, buyerId, ["S"], (t) => {
+      t.changeOwner(lot.id, "S"); t.move(lot.id, "fuel_S");
+      for (const coin of coins) { t.changeOwner(coin.id, buyerId); t.move(coin.id, wallet(buyerId)); }
+    });
+    const delivered = emit(w, "wood_delivered", [buyerId, "S"], [contract.id, handover.eventId, lot.causeEventId],
+      { quantity: 1, price });
+    const paid = emit(w, "wood_paid", ["S", buyerId], [delivered.id], { amount: price });
+    w.physical.objects[lot.id].causeEventId = delivered.id;
+    for (const coin of coins) w.physical.objects[coin.id].causeEventId = paid.id;
+    w.sellerCosts += price;
+    wood.lastSupplier = buyerId;
+  } else emit(w, "wood_delivery_failed", [buyerId, "S"], [contract.id, handover.eventId], { price });
+  move(w, buyerId, `home_${buyerId}`, handover.eventId);
+}
+function openMarket(w: MarketWorld) {
+  const lot = objectsOf(w, "fuel_S", "wood", "S")[0];
+  if (!lot || !food(w, "stock_S")) return false;
+  const cause = lot.causeEventId;
+  tx(w, "S", [], (t) => t.remove(lot.id, 1));
+  w.living!.wood.burned++;
+  emit(w, "market_heated", ["S"], [cause], { quantity: 1 });
+  return true;
+}
 function spoilOldFood(w: MarketWorld) {
   for (const lot of Object.values(w.physical.objects).filter((object) => object.typeId === "food")) {
     const age = w.day - w.foodLots[lot.id].harvestedDay;
@@ -239,6 +312,12 @@ export function advanceMarketDay(w: MarketWorld, model: MarketModel = w.living ?
   }
   if (w.day > 1) { const grown = Math.min(w.resource.dailyGrowth, w.resource.capacity - w.resource.available);
     if (grown) { w.resource.available += grown; w.grown += grown; emit(w, "resource_grew", [], [], { quantity: grown }); } }
+  if (w.living && w.day > 1) {
+    const wood = w.living.wood;
+    const grown = Math.min(2, wood.capacity - wood.available);
+    if (grown) { wood.available += grown; wood.grown += grown;
+      emit(w, "wood_regrew", [], [], { quantity: grown, resourceId: "trees" }); }
+  }
   const plan = decide(w, "S", { role: "seller", phase: "plan", cash: money(w, "S"), stock: food(w, "stock_S"),
     ...w.seller }, model, w.events.filter((e) => e.day === w.day - 1 && ["food_sold", "funded_request_unmet", "sale_price_posted"].includes(e.kind)).map((e) => e.id));
   let offer: Offer | undefined;
@@ -292,7 +371,12 @@ export function advanceMarketDay(w: MarketWorld, model: MarketModel = w.living ?
       }
     } else { offer.status = "failed"; emit(w, "carriage_declined", ["C"], [carrier.eventId], { offerId: offer.id }); }
   }
-  const quote = emit(w, "sale_price_posted", ["S"], [plan.eventId], { price: w.seller.price, stock: food(w, "stock_S") });
+  const heated = !w.living || (() => {
+    for (const buyerId of ["B1", "B2"] as const) woodWork(w, buyerId, model);
+    return openMarket(w);
+  })();
+  const quote = emit(w, "sale_price_posted", ["S"], [plan.eventId],
+    { price: w.seller.price, stock: heated ? food(w, "stock_S") : 0 });
   let sold = 0, unmet = 0;
   for (const buyerId of ["B1", "B2"] as const) {
     if (w.living) {
@@ -306,9 +390,9 @@ export function advanceMarketDay(w: MarketWorld, model: MarketModel = w.living ?
     }
     if (siteOf(w.physical, buyerId) !== "market") continue;
     const shop = decide(w, buyerId, { role: "buyer", phase: "shop", cash: money(w, buyerId),
-      stock: food(w, "stock_S"), price: w.seller.price,
+      stock: heated ? food(w, "stock_S") : 0, price: w.seller.price,
       pantryFood: w.living ? food(w, `pantry_${buyerId}`) : undefined }, model, [quote.id]);
-    if (shop.attempt?.kind === "buy" && buy(w, buyerId, w.seller.price, shop.attempt.quantity, shop.eventId, quote.id))
+    if (heated && shop.attempt?.kind === "buy" && buy(w, buyerId, w.seller.price, shop.attempt.quantity, shop.eventId, quote.id))
       sold += shop.attempt.quantity;
     else if (shop.attempt?.kind === "request_food" && money(w, buyerId) >= w.seller.price && !food(w, "stock_S")) {
       unmet++; emit(w, "funded_request_unmet", [buyerId, "S"], [shop.eventId, quote.id], { price: w.seller.price }); }
@@ -329,7 +413,7 @@ export function advanceMarketDay(w: MarketWorld, model: MarketModel = w.living ?
   checkMarketWorld(w); return w;
 }
 export function checkMarketWorld(w: MarketWorld) {
-  if (w.schemaVersion !== 2 || w.mode !== "individual_market" || !Number.isSafeInteger(w.day) || w.day < 0 || w.day > 90 ||
+  if (w.schemaVersion !== (w.living ? 3 : 2) || w.mode !== "individual_market" || !Number.isSafeInteger(w.day) || w.day < 0 || w.day > 90 ||
     !Number.isSafeInteger(w.hour) || w.hour < 0 || !Number.isSafeInteger(w.nextId) || w.nextId < 1) throw Error("invalid market world");
   checkPhysical(w.physical);
   if (w.physical.objects.market?.typeId !== "ownedSite" || w.physical.objects.market.ownerId !== "S" ||
@@ -351,6 +435,16 @@ export function checkMarketWorld(w: MarketWorld) {
   if (w.living) {
     if (!Number.isSafeInteger(w.living.eaten) || w.living.eaten < 0 ||
       Object.entries(w.living.buyers).length !== 2) throw Error("market living state");
+    const wood = w.living.wood;
+    const woodObjects = Object.values(w.physical.objects).filter((o) => o.typeId === "wood");
+    if (!wood || w.physical.objects.fuel_S?.ownerId !== "S" ||
+      [wood.available, wood.capacity, wood.grown, wood.gathered, wood.burned, wood.knownPrice].some((n) => !Number.isSafeInteger(n)) ||
+      wood.available < 0 || wood.available > wood.capacity || wood.knownPrice < 1 ||
+      (wood.lastSupplier !== undefined && !["B1", "B2"].includes(wood.lastSupplier)) ||
+      wood.available !== 2 + wood.grown - wood.gathered ||
+      woodObjects.reduce((n, o) => n + o.quantity, 0) + wood.burned !== wood.gathered ||
+      woodObjects.some((o) => o.quantity !== 1 || !["B1", "B2", "S"].includes(o.ownerId!) ||
+        o.parentId !== (o.ownerId === "S" ? "fuel_S" : bag(o.ownerId!)))) throw Error("market wood conservation");
     for (const buyerId of ["B1", "B2"] as const) {
       const buyer = w.living.buyers[buyerId];
       if (!buyer || !Number.isSafeInteger(buyer.hunger) || buyer.hunger < 0 ||
@@ -385,7 +479,10 @@ export function marketSummary(w: MarketWorld) { return { day: w.day, price: w.se
   unmetFundedYesterday: w.seller.fundedUnmetYesterday }; }
 export function livingMarketSummary(w: MarketWorld) {
   if (!w.living) throw Error("not a living market");
-  return { ...marketSummary(w), eaten: w.living.eaten,
+  return { ...marketSummary(w), eaten: w.living.eaten, wood: { ...w.living.wood,
+    stock: contentsQuantity(w.physical, "fuel_S", "wood"),
+    earnings: Object.fromEntries((["B1", "B2"] as const).map((id) => [id,
+      w.events.filter((e) => e.kind === "wood_paid" && e.actors.includes(id)).reduce((n, e) => n + Number(e.data.amount), 0)])) },
     buyers: Object.fromEntries((["B1", "B2"] as const).map((id) => [id, {
       site: siteOf(w.physical, id), hunger: w.living!.buyers[id].hunger, meals: w.living!.buyers[id].meals,
       pantryFood: food(w, `pantry_${id}`), cash: money(w, id), knownPrice: w.living!.buyers[id].knownPrice,

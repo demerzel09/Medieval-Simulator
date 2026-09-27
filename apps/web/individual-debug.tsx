@@ -42,7 +42,8 @@ export default function IndividualDebug({ initialView }: { initialView: View }) 
         <><span>店頭価格 <b>{market!.price}</b></span><span>Sの現金 <b>{market!.sellerCash}</b></span>
           <span>Sの留保額 <b>{market!.sellerReserve}</b></span><span>Sの実現損益 <b>{market!.sellerProfit}</b></span>
           <span>販売数 <b>{market!.sold}</b></span><span>在庫 <b>{market!.stock}</b></span><span>腐敗 <b>{market!.spoiled}</b></span>
-          {living && <span>食事 <b>{living.eaten}</b></span>}</>}
+          {living && <><span>食事 <b>{living.eaten}</b></span><span>薪の納品 <b>{living.wood.gathered}</b></span>
+            <span>開店用に消費した薪 <b>{living.wood.burned}</b></span></>}</>}
     </div>
     <main className="e1-layout"><section className="e1-map-panel"><p>場所・人物・資源を選ぶと、物体の所有者、携行量、本人の行動Eventを確認できます。場所は取引を実行しません。</p>
       <svg className="e1-map" viewBox={view === "living" ? "0 0 720 700" : "0 0 720 400"} role="img" aria-label="個人経済の場所と人物">
@@ -51,6 +52,7 @@ export default function IndividualDebug({ initialView }: { initialView: View }) 
           <rect x={p.x} y={p.y} width="305" height="285" rx="12" fill={id === "grove" ? "#315a3b" : "#4c5141"} stroke={focus === id ? "#ffdb8e" : "#9bae83"} strokeWidth="3" />
           <text x={p.x + 14} y={p.y + 28}>{p.name}</text><text x={p.x + 14} y={p.y + 52}>所有者: {physical.objects[id].ownerId ?? "なし"}</text>
           <text x={p.x + 14} y={p.y + 75}>食料 {contentsQuantity(physical, id, "food")} · 現金 {view === "life" ? 0 : contentsQuantity(physical, id, "currency")}</text>
+          {view === "living" && <text x={p.x + 14} y={p.y + 98}>薪 {contentsQuantity(physical, id, "wood")}</text>}
         </g>; })}
         {people.map((id, index) => { const location = siteOf(physical, id); const p = positions[location] ?? positions.grove;
           return <g key={id} role="button" aria-label={`人物 ${id}`} onClick={() => setFocus(id)}>
@@ -64,7 +66,7 @@ export default function IndividualDebug({ initialView }: { initialView: View }) 
     </section><aside className="e1-detail"><div className="e1-inspector"><h2>選択した物体</h2>{selected ? <p><b>{selected.id}</b> · {selected.typeId}<br />所在地: {siteOf(physical, selected.id)}<br />物理親: {selected.parentId ?? "なし"}<br />所有者: {selected.ownerId ?? "なし"}<br />食料: {contentsQuantity(physical, selected.id, "food")} · 現金: {view === "life" ? 0 : contentsQuantity(physical, selected.id, "currency")}</p> : <p>選択してください。</p>}</div>
       {people.includes(focus) && <><h2>{focus}の行動と財産</h2><p>本人所有の食料: {owned(physical, focus, "food")} · 通貨: {owned(physical, focus, "currency")}</p>
         {view === "life" && <p>空腹: {(w as ReturnType<typeof newLifeWorld>).people[focus].hunger} · 体力: {(w as ReturnType<typeof newLifeWorld>).people[focus].energy}</p>}
-        {living && (focus === "B1" || focus === "B2") && <p>空腹: {living.buyers[focus].hunger} · 食事: {living.buyers[focus].meals} · 家の備蓄: {living.buyers[focus].pantryFood}</p>}</>}
+        {living && (focus === "B1" || focus === "B2") && <p>空腹: {living.buyers[focus].hunger} · 食事: {living.buyers[focus].meals} · 家の備蓄: {living.buyers[focus].pantryFood} · 薪の所得: {living.wood.earnings[focus]}</p>}</>}
       <h2>関連する因果Event</h2>{events.map((e) => <p key={e.id} className="e1-row"><b>{e.hour}時 · {e.kind}</b><br /><small>{e.id} ← {e.causes.join(", ") || "起点"}</small></p>)}
     </aside></main>
   </div>;

@@ -42,6 +42,8 @@ test("living market map shows home pantry, buyer meals and unmet hunger", async 
   await page.getByRole("button", { name: "＋1日" }).click();
   await page.getByRole("button", { name: "人物 B1" }).click();
   await expect(page.locator(".e1-detail")).toContainText("家の備蓄: 1");
+  await expect(page.locator(".e1-detail")).toContainText("薪の所得: 2");
+  await expect(page.locator(".e1-detail")).toContainText("wood_paid");
   await expect(page.locator(".e1-detail")).toContainText("ate");
   await page.getByRole("button", { name: "人物 B2" }).click();
   await expect(page.locator(".e1-detail")).toContainText("空腹: 2");

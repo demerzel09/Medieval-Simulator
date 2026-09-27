@@ -12,12 +12,18 @@ export type MarketContext =
   | { role: "buyer"; phase: "shop"; cash: number; stock: number; price: number; pantryFood?: number }
   | { role: "buyer"; phase: "return_home" }
   | { role: "buyer"; phase: "store"; carriedFood: number }
-  | { role: "buyer"; phase: "eat"; hunger: number; pantryFood: number };
+  | { role: "buyer"; phase: "eat"; hunger: number; pantryFood: number }
+  | { role: "woodcutter"; phase: "propose"; siteId: string; knownPrice: number; available: number; cash: number }
+  | { role: "woodcutter"; phase: "work"; available: number }
+  | { role: "woodcutter"; phase: "deliver"; carriedWood: number }
+  | { role: "seller"; phase: "accept_wood"; cash: number; stock: number; foodStock: number; offeredPrice: number;
+      supplierId: string; lastSupplier?: string };
 export type MarketAttempt = { kind: "post_buy"; price: number; quantity: number; carrierFee: number; salePrice: number } |
   { kind: "accept_carriage" } | { kind: "accept_harvest_contract"; quantity: number } | { kind: "harvest"; quantity: number } |
   { kind: "tender_crops"; quantity: number } |
   { kind: "deliver" } | { kind: "buy"; quantity: number } | { kind: "request_food" } |
-  { kind: "travel_to_market" } | { kind: "return_home" } | { kind: "store_food" } | { kind: "eat" };
+  { kind: "travel_to_market" } | { kind: "return_home" } | { kind: "store_food" } | { kind: "eat" } |
+  { kind: "offer_wood"; price: number } | { kind: "accept_wood" } | { kind: "gather_wood" } | { kind: "deliver_wood" };
 export type MarketResponse = ActorResponse<MarketAttempt, Record<string, never>, { at: number }>;
 export type MarketModel = PersonalityModel<ActorInput<MarketContext, Record<string, never>, { kind: string; causeEventIds: string[] }>, MarketResponse>;
 
@@ -25,7 +31,7 @@ export type MarketModel = PersonalityModel<ActorInput<MarketContext, Record<stri
 export const ordinaryMarketModel: MarketModel = {
   decide(input) {
     const c = input.knownContext, wait = { at: input.at + 1 };
-    if (c.role === "seller") {
+    if (c.role === "seller" && c.phase === "plan") {
       const salePrice = c.fundedUnmetYesterday ? c.price + 1 : c.unsoldYesterday ? Math.max(1, c.price - 1) : c.price;
       const quantity = c.fundedUnmetYesterday ? 2 : 1;
       const expense = quantity * c.bid + c.carrierFee;
@@ -53,6 +59,15 @@ export const ordinaryMarketModel: MarketModel = {
 export const livingMarketModel: MarketModel = {
   decide(input) {
     const c = input.knownContext, wait = { at: input.at + 1 };
+    if (c.role === "woodcutter") {
+      if (c.phase === "propose") return { attempts: c.available > 0 && c.knownPrice >= 2 ?
+        [{ kind: "offer_wood", price: c.knownPrice }] : [], wait };
+      if (c.phase === "work") return { attempts: c.available > 0 ? [{ kind: "gather_wood" }] : [], wait };
+      return { attempts: c.carriedWood > 0 ? [{ kind: "deliver_wood" }] : [], wait };
+    }
+    if (c.role === "seller" && c.phase === "accept_wood") return { attempts:
+      c.stock < 1 && c.foodStock > 0 && c.cash >= c.offeredPrice && c.supplierId !== c.lastSupplier ?
+        [{ kind: "accept_wood" }] : [], wait };
     if (c.role !== "buyer") return ordinaryMarketModel.decide(input);
     if (c.phase === "plan_trip") return { attempts: c.siteId === "market" ? [{ kind: "return_home" }] :
       c.pantryFood < 2 && c.cash >= c.knownPrice ?
