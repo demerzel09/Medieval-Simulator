@@ -1,6 +1,8 @@
 # 次のチャットへの引き継ぎ
 
-更新: 2026-09-27。作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。設計指針の整理コミットは `530cae5`（`main`、`origin/main` にプッシュ済み）。再開時にはHEAD・`git status --short`・適用される `AGENTS.md` を確認する。直近の確認で作業ツリーはクリーン、`AGENTS.md` は見つかっていない。
+更新: 2026-09-27。作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。再開時にはHEAD・`git status --short`・適用される `AGENTS.md` を確認する。今回の作業開始時HEADは `217b69a`、`AGENTS.md` は見つかっていない。
+
+追記: 今回 `packages/sim/individual-work.ts` と `packages/ai/individual-work.ts` に2人・1件の買取縦断fixtureを追加した。Sの提示は2時間後にFへ届き、Fの承諾・採集・現物引渡し、Sへの通知後の現金支払が各人の起床と試行で進む。未到達IDの承諾・引渡しを知らない支払、拒否、納品保留、保存再開/90日再実行をテストする。CLIは `npm run autonomy:work -- 8`。生活市場への統合、F/C/Sの食事、一般権限、複数取引は次の仕事。今回のテスト結果と作業ツリーは再開前に確認する。
 
 ## 目標と変えてはいけない境界
 

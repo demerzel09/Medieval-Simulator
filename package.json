@@ -17,6 +17,7 @@
     "autonomy:a2": "tsx packages/tools/autonomy-a2.ts",
     "autonomy:a3:income": "tsx packages/tools/autonomy-a3-income.ts",
     "autonomy:life": "tsx packages/tools/individual-life.ts",
+    "autonomy:work": "tsx packages/tools/individual-work.ts",
     "autonomy:market": "tsx packages/tools/individual-market.ts",
     "autonomy:living": "tsx packages/tools/living-market.ts",
     "content:validate": "tsx packages/tools/validate.ts",
