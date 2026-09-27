@@ -1,38 +1,21 @@
 # 次のチャットへの引き継ぎ
 
-更新: 2026-09-27。作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。再開時にはHEAD・`git status --short`・適用される `AGENTS.md` を確認する。段階0の作業開始時HEADは `831402d`、`AGENTS.md` は見つかっていない。
+更新: 2026-09-27。作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。再開時はHEAD・`git status --short`・適用される `AGENTS.md` を確認する。Nodeが見つからない場合は `export PATH="$HOME/.local/node/bin:$PATH"`。
 
-前回 `packages/sim/individual-work.ts` と `packages/ai/individual-work.ts` に2人・1件の買取縦断fixtureを追加した。Sの提示は2時間後にFへ届き、Fの承諾・採集・現物引渡し、Sへの通知後の現金支払が各人の起床と試行で進む。未到達IDの承諾・引渡しを知らない支払、拒否、納品保留、保存再開/90日再実行をテストする。CLIは `npm run autonomy:work -- 8`。生活市場への統合、F/C/Sの食事、一般権限、複数取引は次の仕事。今回のテスト結果と作業ツリーは再開前に確認する。
+## 完了した区切り
 
-次の実装区切りと受入条件は [AUTONOMOUS_90_DAY_PLAN.md](baseline/AUTONOMOUS_90_DAY_PLAN.md)。段階0の5人の実行可能性表は作成済み。次は中央phaseを全員の起床/情報配送/試行へ置き換え、単純な物理法則へつないで正常fixtureの90日生活を検証する。
-段階0の[数表](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)と版付き[fixture](../fixtures/autonomous-90.ts)を追加した。毎日食品/薪各5、90日各450、初期通貨22での循環を算術上検算した。本人の判断や実際の移動・権限はまだ接続していない。次は段階1の共通起床・情報配送ランナー。
+[90日計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)の段階0〜4は完了。[実行結果](baseline/AUTONOMOUS_VILLAGE_RESULT.md)を正本とする。`autonomous_village` はS/F/C/B1/B2を共通の起床・情報配送・PersonalityModel・物理Gatewayで動かす独立モード。正常fixtureで5人全員が毎日食事・薪使用を90日続けた。食料・薪は各450採集/消費、現金26保存。注文・納品各90、食品・薪販売各270。通常実行にも一時的な未遂9件が残る。CLIは `npm run autonomy:village -- 90`、日別は `--daily`、Eventは `--events`。F5の「自律: 5人の90日生活」も追加。
 
-## 目標と変えてはいけない境界
+段階0の算術fixtureは通貨22・体力8/10。実行fixtureは物理的な待ち時間に合わせてFの初期通貨4、体力16/20とし、別ファイル `fixtures/autonomous-village.ts` で管理する。両者を混同しない。通常のrule人格はseedを保存するが乱数を使わず、同seed・同Command・途中保存で状態/Eventハッシュが一致する。拒否・欠員・資金/資源不足・通信遅延、権限外採集、部分納品、資源競合をテストする。
 
-最優先は、本人に届いた情報・身体・記憶・文化・利害から人物が自分で行動し、世界が環境変化とその試行の結果だけを確定する、持続して進行できる世界。生活・社会の存続も破綻も結果として残し、中央が仕事・所得・食料・価格を割り当てて安定させない。情報の到達と起床、権利・約束・制度の記録もこの境界を接続する。`packages/ai/personality.ts` の `PersonalityModel` は人格の外側の境界。rule/NN/LLM/人間はその内部方式。現在の `packages/sim` は物理法則だけでなく中央日次経済とphase順序を含む広い実装で、目標の世界法則と同義ではない。政治・外交・戦争の拡張は当面の優先度を下げ、旧本編は回帰用に維持する。正確な境界は [DESIGN.md](DESIGN.md) と [DECISIONS.md](DECISIONS.md)。
+## 設計上の境界
 
-現行の設計基準は [DESIGN.md](DESIGN.md)、初版企画書は [原本](foundations/ORIGINAL_GAME_DESIGN.md)、人格の意味分割は [AGENT_INTERFACES_v2.md](foundations/AGENT_INTERFACES_v2.md)、自律行動の境界は [AUTONOMY_INTERFACE_CONTRACT.md](foundations/AUTONOMY_INTERFACE_CONTRACT.md)。直近の実装判断は [DECISIONS.md](DECISIONS.md)、現行の実装/未実装/検証は [STATUS.md](STATUS.md)（時系列は [履歴](archive/STATUS_HISTORY_2026-09-27.md)）。食品・場所・技能・権利の拡張案は [FOOD_ECOLOGY_AND_MARKET_PLAN.md](baseline/FOOD_ECOLOGY_AND_MARKET_PLAN.md)。
+本人が届いた刺激、現地観察、身体、主観記憶、利害から試行する。世界は時計、情報到達、局所物理、権利と契約の証拠検査、試行結果だけを確定する。中央が仕事・食事・価格・所得を割り当てない。`packages/ai/personality.ts` のインターフェースはrule/NN/LLM/人間の境界。旧本編/A3/`individual_*` は回帰用として独立に維持する。[設計基準](DESIGN.md)と[採用中の判断](DECISIONS.md)を参照。
 
-## 現在あるもの
+## 次の候補と限界
 
-- 本編M0〜M2の機構とM3の自動90日シナリオは実装済み。M3の人間試遊は未実施。A3の固定20人・協同事業経済は90日動くが、個人主導の一般的な社会自律を証明しない。旧実装は回帰比較として維持する。
-- `packages/sim/individual-life.ts` と `packages/ai/individual-life.ts`: 世帯・市場なしで3人が本人判断により移動/採集/食事/休息する小世界。標準90日で270食採集・270食消費、空腹0。
-- `packages/sim/individual-market.ts` と `packages/ai/individual-market.ts`: Sが市場を所有するが、現金・食料の所有は人物に残る。Sが初期資金10から4通貨の留保を考えて発注し、Cが仕入金を運び、Fが単価/数量を作業前に承諾して採り、渡した実量だけ現地で支払い、Sが販売する。ベリーは収穫日を含む3日間有効。取引のみの90日対照は収穫5・販売4・腐敗5で停止する。
-- `newLivingMarketWorld` は同じ市場にB1/B2本人所有の家・備蓄箱・空腹・買物移動・食事、薪の採集・納品・所得を追加する別の小実験。標準90日でベリー収穫10・販売/食事9・腐敗1、薪採集/燃焼9、B1/B2の薪所得10/8。S/F/C/B1/B2の現金20/10/14/4/2、B1/B2の空腹85/86。**安定していない。** 詳細は [LIVING_MARKET_EXPERIMENT.md](baseline/LIVING_MARKET_EXPERIMENT.md)。拒否/未作業/未納品、保存/再実行/物量・通貨保存/因果Eventをテスト済み。
-- CLIは `npm run autonomy:life -- 30`、`npm run autonomy:market -- 7`、`npm run autonomy:living -- 30`（それぞれ最大90日）。デバッグ画面は `npm run dev` 後の `/?individual=life`、`/?individual=market`、`/?individual=living`。VS Codeの `.vscode/launch.json` に対応する起動設定あり。作業環境のWSLでLinux版Nodeが必要なら `export PATH="$HOME/.local/node/bin:$PATH"` を先に実行する。
+版1は5人・単一地理・一つのrule人格・固定の食料/薪/価格信念での受入。一般的な人口・地理・技能・季節・複数食品・契約形式、LLM人格は未検証。次は距離と複数地点、技能・食品差、一般化した契約証拠、人格と初期条件の対照を小fixtureから増やす。90日の成立を別条件へ無条件に外挿しない。本編M3の人間試遊は未実施。
 
-## 今すぐ解くべきこと
+## 検証と記録
 
-B1/B2の薪仕事は実在するが、Sの食品販売が止まると薪需要も止まる。所得18を得ても90日末の空腹は85/86で、生活経済は成立しない。二人・一件の起床/配送/試行は `individual_work` で通した。段階0の算術検算は[90日計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)と[数表](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)に記録した。次は中央phaseを全員の起床・情報到達・試行へ移し、F/C/Sも食べる同じ身体・食品ロットへ接続する。毎日の一律給付、帳尻合わせの賃金、世帯/市場からの自動分配は入れない。
-
-受入では「届いていない情報で判断しない」「本人が拒めば仕事が進まない」「simが欠員を代行しない」「世界の試行結果と人物の認識を分ける」を、保存・再実行と対照実験で確認する。`packages/sim` という既存ディレクトリ名を物理simの完成境界とみなさない。
-
-後続の仕事候補は[食品・空間の計画](baseline/FOOD_ECOLOGY_AND_MARKET_PLAN.md)にある農地の作業、運搬補助、食品とは異なる必要財など。薪だけではSの売場に依存するため、買い手の別の実需、仕事に要する時間/体力/権利、本人が見た情報、本人の利益を数表と対照fixtureで確認する。複数食品/栄養差、森/農地の成長段階、技能、なわばり、直接販売は未実装。
-
-市場のS/F/Cと薪仕事はなお中央の `phase` 順序で呼ばれ、B1/B2の生活にも日次phaseが残る。全員の起床と情報到達で仕事が連結する一般ランナー、旅の距離/荷重/体力積算、契約証拠から `PhysicalAuthority.ownerIds` への安全な権限導出も未実装。新しい対照の所得発生を全員自律や安定と呼ばない。
-
-## 検証とセーブ
-
-段階0の算術検算追加後の最終検証は `npm test` 18ファイル118/118、`npm run typecheck`、`npm run content:validate`、`npm run autonomy:feasibility` が成功。ブラウザテスト12/12（本番ビルドを含む）と薪所得を表示する個別テスト3/3は、前回の薪仕事のコード変更後の結果で、今回のCLI専用コード追加後には再実行していない。`launch.json` は35設定（26件のCLI実行と9件の画面URL）になった。追加した2件のCLIコマンドは実行済み。生活市場の性能は未計測。ブラウザテストは追跡済みの `artifacts/debug-screen.png` と `artifacts/e1-spatial-debug.png` を再生成するので、意図的な更新でなければ差分を戻す。変更後は対応するテストを再実行し、失敗/未計測を成功と書かない。取引のみの市場セーブは `schemaVersion: 2`、薪仕事を伴う生活市場は版3。seedは保存されるが現在は乱数を使わず、外部Commandの保存再適用はまだない。
-
-次のチャットでも [STATUS.md](STATUS.md) と [DECISIONS.md](DECISIONS.md) を更新する。新たな受入を満たしたらREADME、起動設定、テスト結果も更新する。これまでの依頼では変更を `main` にコミット・プッシュすることが許可されている。
+新しいテストは `tests/autonomous-village.test.ts`。最終検証は `npm test -- --testTimeout 15000` が19ファイル127件成功、型検査・内容検証・ビルド・90日CLIも成功。既定5秒の全体テストでは旧M3の1件が並列負荷でタイムアウトした。今回はブラウザテストを実施していない。ブラウザテストは追跡済みの画像を再生成するので、意図しない差分を確認する。変更はこれまでの依頼により `main` のコミット・プッシュが許可されている。

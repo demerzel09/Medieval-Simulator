@@ -1,5 +1,6 @@
 import { ordinaryLifeModel, type LifeModel, type LifeStimulus } from "../ai/individual-life";
 import { hash } from "./core";
+import { wakeActors } from "./actor-clock";
 import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, type PhysicalState } from "./physical";
 
 export type LifeEvent = { id: string; hour: number; kind: string; actors: string[]; causes: string[]; data: Record<string, string | number> };
@@ -117,8 +118,8 @@ export function advanceLifeWorld(w: LifeWorld, hours: number, model: LifeModel =
         emit(w, "hunger_increased", [person.id], [], { hunger: person.hunger }); }
     }
     for (const person of Object.values(w.people)) if (person.journey?.arriveAt === w.hour) arrive(w, person);
-    for (const person of Object.values(w.people).sort((a, b) => a.id.localeCompare(b.id))) {
-      if (person.nextWakeAt > w.hour) continue;
+    wakeActors(w.hour, w.people, [], (actorId) => {
+      const person = w.people[actorId];
       const site = siteOf(w.physical, person.id);
       const visibleResources = Object.values(w.resources).filter((resource) => resource.siteId === site);
       const response = model.decide({ actorId: person.id, at: w.hour,
@@ -137,7 +138,7 @@ export function advanceLifeWorld(w: LifeWorld, hours: number, model: LifeModel =
       if (response.attempts[0] && !act(w, person, response.attempts[0], decision.id))
         person.lastEventId = emit(w, "attempt_failed", [person.id], [decision.id], { attempt: response.attempts[0].kind }).id;
       else if (!response.attempts[0]) person.lastEventId = decision.id;
-    }
+    });
   }
   checkLifeWorld(w); return w;
 }

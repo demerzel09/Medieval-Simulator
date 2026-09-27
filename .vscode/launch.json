@@ -165,6 +165,17 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:feasibility"
     },
     {
+      "name": "自律: 5人の90日生活",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "個人経済",
+        "order": 10
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:village -- 90"
+    },
+    {
       "name": "自律 A1: 作業場デバッグ画面",
       "type": "node-terminal",
       "request": "launch",

@@ -12,3 +12,5 @@
 
 次の実装区切りは[自律する90日生活世界への実装計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)にまとめています。
 段階0の[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は算術上の条件で、実際の自律simの90日結果ではありません。
+
+段階1〜4の実行・対照は[5人の自律生活世界](baseline/AUTONOMOUS_VILLAGE_RESULT.md)に記録しています。

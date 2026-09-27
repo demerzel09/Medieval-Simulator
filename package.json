@@ -19,6 +19,7 @@
     "autonomy:life": "tsx packages/tools/individual-life.ts",
     "autonomy:work": "tsx packages/tools/individual-work.ts",
     "autonomy:feasibility": "tsx packages/tools/autonomous-feasibility.ts",
+    "autonomy:village": "tsx packages/tools/autonomous-village.ts",
     "autonomy:market": "tsx packages/tools/individual-market.ts",
     "autonomy:living": "tsx packages/tools/living-market.ts",
     "content:validate": "tsx packages/tools/validate.ts",

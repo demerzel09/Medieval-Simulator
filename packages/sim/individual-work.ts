@@ -1,5 +1,6 @@
 import { ordinaryWorkModel, type WorkAttempt, type WorkMemory, type WorkModel, type WorkStimulus } from "../ai/individual-work";
 import { hash } from "./core";
+import { wakeActors } from "./actor-clock";
 import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, type PhysicalState } from "./physical";
 
 export type WorkEvent = { id: string; hour: number; kind: string; actors: string[]; causes: string[];
@@ -120,11 +121,9 @@ export function advanceWorkWorld(w: WorkWorld, hours: number, model: WorkModel =
   if (!Number.isSafeInteger(hours) || hours < 0 || w.hour + hours > 90 * 24) throw Error("invalid work advance");
   for (let i = 0; i < hours; i++) {
     w.hour++;
-    for (const id of ["F", "S"] as const) {
+    wakeActors(w.hour, w.people, w.pending, (actorId, stimuli) => {
+      const id = actorId as "S" | "F";
       const person = w.people[id];
-      const stimuli = w.pending.filter((p) => p.recipientId === id && p.stimulus.receivedAt <= w.hour).map((p) => p.stimulus);
-      if (person.nextWakeAt > w.hour && !stimuli.length) continue;
-      w.pending = w.pending.filter((p) => !(p.recipientId === id && p.stimulus.receivedAt <= w.hour));
       for (const stimulus of stimuli) if (stimulus.kind === "offer" && stimulus.offerId &&
         !person.receivedOfferIds.includes(stimulus.offerId)) person.receivedOfferIds.push(stimulus.offerId);
       for (const stimulus of stimuli) if (stimulus.kind === "delivered" && id === "S" &&
@@ -145,7 +144,7 @@ export function advanceWorkWorld(w: WorkWorld, hours: number, model: WorkModel =
         if (reason) { const rejected = emit(w, "attempt_rejected", [id], [decision.id], { reason });
           notify(w, id, "rejected", rejected, w.offer?.id); }
       }
-    }
+    });
   }
   checkWorkWorld(w); return w;
 }
