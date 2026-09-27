@@ -7,7 +7,7 @@
 - シナリオ `pass_and_harvest`、人口1,000人、90日。engine `0.2.0`、content hash `d623749e`。
 - 無策のseed `240924`、`42`、`71`、seed `240924`の外交と軍事の計5ケース。外交・軍事の外部Commandは既存の`runner.ts`と同じ手順で、詳細成果物に保存した。敵の通常AIは全ケースで稼働する。
 - 日0は`newGame`直後（初期徴兵後）。各日末に全250世帯の食料・通貨・生存/空腹人数、各口座区分、職名人数、Activity区分、日次生産/消費と`economy` Eventの仕訳集計を採取する。
-- 実行: `npm run economy:baseline`。人が読める[要約](../artifacts/economy-e0-summary.json)と、全5ケース×90日の[詳細JSON（gzip）](../artifacts/economy-e0.json.gz)を再生成する。展開例: `gzip -dc artifacts/economy-e0.json.gz > /tmp/economy-e0.json`。
+- 実行: `npm run economy:baseline`。人が読める[要約](../../artifacts/economy-e0-summary.json)と、全5ケース×90日の[詳細JSON（gzip）](../../artifacts/economy-e0.json.gz)を再生成する。展開例: `gzip -dc artifacts/economy-e0.json.gz > /tmp/economy-e0.json`。
 
 「食料の世帯移転」は現行`dailyEconomy`の国別共同事業口座→世帯への仕訳であり、実在の売り手や運搬人を経た配送ではない。職名と`Activity(work)`は勤務時間の実測ではない。`unpaid`はその日の賃金不足の報告で、返済すべき債務の保存台帳ではない。口座残高には所在地がない。以下の「空腹人日」は食事を逃した回数ではなく、日末に`hunger>0`だった人物の延べ数。
 

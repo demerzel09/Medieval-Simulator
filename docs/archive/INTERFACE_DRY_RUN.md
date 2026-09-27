@@ -1,8 +1,8 @@
 # v2インターフェースへの現行実装の仮接続
 
-調査日: 2026-09-25。コードは変更しない。未実装の認識・動機は空の結果を返してよいと仮定し、**現行の90日ゲームの意味を保てるか**を紙上で追う。対象の設計案は [AGENT_INTERFACES_v2.md](AGENT_INTERFACES_v2.md)、コードの初回適合調査は [ARCHITECTURE_FIT_AUDIT.md](ARCHITECTURE_FIT_AUDIT.md)。ここでの「修正案」は決定済みの新契約ではない。
+調査日: 2026-09-25。コードは変更しない。未実装の認識・動機は空の結果を返してよいと仮定し、**現行の90日ゲームの意味を保てるか**を紙上で追う。対象の設計案は [AGENT_INTERFACES_v2.md](../foundations/AGENT_INTERFACES_v2.md)、コードの初回適合調査は [ARCHITECTURE_FIT_AUDIT.md](ARCHITECTURE_FIT_AUDIT.md)。ここでの「修正案」は決定済みの新契約ではない。
 
-追記（2026-09-26）: 以下は当時の型に対する調査記録。未解釈刺激、複数提案、主観と世界結果の確定点は[v2本文](AGENT_INTERFACES_v2.md)と[自律行動の外側の契約](AUTONOMY_INTERFACE_CONTRACT.md)で設計上修正した。コードへの適用・対照試験は未実施。
+追記（2026-09-26）: 以下は当時の型に対する調査記録。未解釈刺激、複数提案、主観と世界結果の確定点は[v2本文](../foundations/AGENT_INTERFACES_v2.md)と[自律行動の外側の契約](../foundations/AUTONOMY_INTERFACE_CONTRACT.md)で設計上修正した。コードへの適用・対照試験は未実施。
 
 ## 空の実装の意味
 

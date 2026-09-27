@@ -21,11 +21,11 @@ VS Codeでは「実行とデバッグ」（F5）から、ブラウザ版、90日
 
 E1の空間デバッグは `http://127.0.0.1:5173/?e1=debug`、またはF5の「経済 E1: 空間デバッグ画面」で開きます。町・4軒の家・農場・市場、20人の移動と食料・現金の所在地を時刻スライダーで再生できます。人物、荷車、現金容器、食料をホバー/クリックすると所有者・積載量/上限・体力と移動費用が見られます。[画面例](artifacts/e1-spatial-debug.png)。この画面は独立したE1実験であり、90日ゲームの世界とはまだ接続していません。
 
-A3の固定20人経済は `npm run autonomy:a3:income -- baseline --days 90` で日別計測できます。3日間の空間デバッグは `http://127.0.0.1:5173/?e1=a3-income`、資金不足の対照は `npm run autonomy:a3:income -- buyer-no-money` です。画面で人物をクリックすると、仕事、空腹・体力、賃金と協同事業の分配、運搬人による荷車整備のEventを追えます。農作業の賃金証拠は実際に荷車へ積まれた食料とともに市場へ届き、売り手は届いた証拠だけで支払・分配を判断します。固定配置の90日運用は確認していますが、食事・休息の本人判断、市場以外の職務情報の伝達、地図と人員を変えた自律性の受入は未達です。[監査と判定条件](docs/SOCIAL_SIM_AUTONOMY_AUDIT.md)を参照してください。
+A3の固定20人経済は `npm run autonomy:a3:income -- baseline --days 90` で日別計測できます。3日間の空間デバッグは `http://127.0.0.1:5173/?e1=a3-income`、資金不足の対照は `npm run autonomy:a3:income -- buyer-no-money` です。画面で人物をクリックすると、仕事、空腹・体力、賃金と協同事業の分配、運搬人による荷車整備のEventを追えます。農作業の賃金証拠は実際に荷車へ積まれた食料とともに市場へ届き、売り手は届いた証拠だけで支払・分配を判断します。固定配置の90日運用は確認していますが、食事・休息の本人判断、市場以外の職務情報の伝達、地図と人員を変えた自律性の受入は未達です。[監査と判定条件](docs/archive/SOCIAL_SIM_AUTONOMY_AUDIT.md)を参照してください。
 
-個人所有の新しい二つの独立実験も起動できます。`npm run autonomy:life -- 30` は世帯・農場・市場のない3人の採集生活、`npm run autonomy:market -- 7` はS所有の市場でFの収穫をCが運び、Sが自分の資金で単価を提示し、Cが購入金を預かり、Fが作業前に受諾して採った分だけ現地で支払い、Sが売る取引です。Sは4通貨を手元に留保する判断をし、ベリーは収穫日を含む3日間保管できます。ブラウザの `/?individual=life` と `/?individual=market`、またはF5の「自律: 制度なし採集生活の空間デバッグ画面」「自律: S個人市場の空間デバッグ画面」で1〜7日の日末状態と全員の行動・所有権・因果Eventを確認できます。CLIの引数を90にすると90日計測になります。[仕組みと測定結果](docs/INDIVIDUAL_ECONOMY_IMPLEMENTATION.md)、[複数食品・森と農場・技能・なわばりの拡張順](docs/FOOD_ECOLOGY_AND_MARKET_PLAN.md)に制約を記録しました。個人市場は買主の所得源がないため90日安定に失敗しており、本編やA3へは未接続です。
+個人所有の新しい二つの独立実験も起動できます。`npm run autonomy:life -- 30` は世帯・農場・市場のない3人の採集生活、`npm run autonomy:market -- 7` はS所有の市場でFの収穫をCが運び、Sが自分の資金で単価を提示し、Cが購入金を預かり、Fが作業前に受諾して採った分だけ現地で支払い、Sが売る取引です。Sは4通貨を手元に留保する判断をし、ベリーは収穫日を含む3日間保管できます。ブラウザの `/?individual=life` と `/?individual=market`、またはF5の「自律: 制度なし採集生活の空間デバッグ画面」「自律: S個人市場の空間デバッグ画面」で1〜7日の日末状態と全員の行動・所有権・因果Eventを確認できます。CLIの引数を90にすると90日計測になります。[仕組みと測定結果](docs/baseline/INDIVIDUAL_ECONOMY_IMPLEMENTATION.md)、[複数食品・森と農場・技能・なわばりの拡張順](docs/baseline/FOOD_ECOLOGY_AND_MARKET_PLAN.md)に制約を記録しました。個人市場は買主の所得源がないため90日安定に失敗しており、本編やA3へは未接続です。
 
-食事と個人備蓄を接続した次の独立実験は `npm run autonomy:living -- 30`、画面は `http://127.0.0.1:5173/?individual=living` です。B1/B2の家と本人所有の備蓄箱、空腹、買物の移動、実際の食事を追えます。2日目のB1は1食を翌日用に残しますが、90日では買主の所得が尽きて空腹が累積します。[生活市場の測定と未実装範囲](docs/LIVING_MARKET_EXPERIMENT.md)を参照してください。
+食事と個人備蓄を接続した次の独立実験は `npm run autonomy:living -- 30`、画面は `http://127.0.0.1:5173/?individual=living` です。B1/B2の家と本人所有の備蓄箱、空腹、買物の移動、実際の食事を追えます。2日目のB1は1食を翌日用に残しますが、90日では買主の所得が尽きて空腹が累積します。[生活市場の測定と未実装範囲](docs/baseline/LIVING_MARKET_EXPERIMENT.md)を参照してください。
 
 この作業環境のLinux版Nodeを使う場合は、先に `export PATH="$HOME/.local/node/bin:$PATH"` を実行してください。ほかの環境でNodeがすでに利用できる場合、この設定は不要です。
 
@@ -82,29 +82,7 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 `packages/sim` はDOM/UI/ネットワーク非依存、`contracts` は入力契約、`content` は固定設定、`ai` はObservationを受け取る通常AIとMock、`apps/web` はReact/Canvas/Workerです。世界状態の更新は検証されたCommandとシミュレーション内処理のみで行います。
 
-設計原本は [DESIGN.md](docs/DESIGN.md)、出発点は [concept-original.md](docs/concept-original.md)。次の受入作業は [PLAYTEST.md](docs/PLAYTEST.md) です。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
-
-動機・行動・社会的約束の共通化に関する[設計調査](docs/RESEARCH_MOTIVATION_ACTION.md)を踏まえ、A〜Cで共有する[人格の認知・行動インターフェースv2](docs/AGENT_INTERFACES_v2.md)を検討しています。文化と本人が知る状況による認識、動機づけ、判断から、[データ駆動のルーティン](docs/DATA_DRIVEN_ROUTINES.md)による複数人の仕事と実行までを設計しています。ルール・NN・LLM・人間は各ブロックの実装方法です。これは設計段階で、現行のゲームコードへの移行は未着手です。
-
-次の設計・実装の優先は[市民経済の閉路](docs/ECONOMY_LOOP_DESIGN.md)です。E0の現行経済計測に続き、E1の独立20人集落で食料流通を実装しました。[共通物流](docs/COMMON_LOGISTICS_DESIGN.md)、[物体・包含モデル](docs/PHYSICAL_OBJECT_MODEL.md)、[能力エージェント](docs/CAPABILITY_AGENTS_DESIGN.md)に沿い、L0の物体操作/二台馬車対照と、L1の物体木を正本とする3日経済`local_food_v2`を実装しました。[L1の契約と結果](docs/E1_OBJECT_CAPABILITY_READINESS.md)を参照してください。旧E1は回帰用に残し、90日ゲームの国別共同市場はまだ新経済へ移していません。
-
-[実装前監査](docs/ECONOMY_IMPLEMENTATION_READINESS.md)に、E1前に確定する在庫・取引・時間・伝達・経済Task・旧処理との切替、E2前に数表で検証する家計と事業の資金循環をまとめました。[E0の現行経済90日計測](docs/ECONOMY_E0_BASELINE.md)は実施済みで、日別・世帯別の詳細と要約を保存しています。
-
-[E1の食料流通契約](docs/ECONOMY_E1_CONTRACT.md)では、20人の集落について人員、2kmの道路、勤務と配送の時刻、食料ロット・購入注文・資産清算を具体化しました。独立fixtureは3日間動作し、60食を生産・配送・購入・消費します。`npm run economy:e1 -- baseline`で日別集計を表示できます。`carrier-absent`、`buyer-no-money`、`farmer-absent`を引数にすると反事実を確認できます。`--output <path>`で人物別Taskと因果Eventを含む世界状態をJSON保存できます。E1の共通ルーティンランナーと人格v2、本編接続、賃金循環は未実装です。
-
-物体木版は`npm run economy:e1:v2 -- baseline`で実行し、`http://127.0.0.1:5173/?e1=v2`で人物と物体をクリックして物理親・所有者・重量/容量・予約・行動Eventを確認できます。CLIには旧版と同じ3つの反事実名と`--output <path>`を渡せます。VS Codeの「経済 L1: 物体木の基準3日」「経済 L1: 物体木デバッグ画面」からも起動できます。新版のセーブは`schemaVersion:3`で、旧E1セーブは新版ローダーで明示的に拒否します。
-
-新版では[仕事・体力・車両状態](docs/WORK_ENERGY_DESIGN.md)も追えます。運搬人Cは21食の荷積みで5体力、帰路で20体力、荷下ろしで5体力を消費し、荷車の状態も走行で減ります。人物を選ぶと仕事の体力Event、荷車を選ぶと摩耗後の状態が見られます。家での夜間休息だけ体力を回復します。
-
-現行の費用は出発・作業時に一括処理します。雨・渋滞・襲撃などを道中で扱うための[時間と負荷で進む行動の設計](docs/ACTION_PROCESS_DESIGN.md)を追加しました。人・家畜、または水流で回る水車の出力を、積荷や道路の負荷に応じて進捗へ変換し、荷車の摩耗は実走距離から導く方針です。共通実行器は未実装です。
-
-現在は移動やTaskの予定を保存していますが、仕事の開始・完了は中央の時刻処理が主導します。[行動中の状態と本人主導の進行](docs/ACTOR_EXECUTION_DESIGN.md)に現行との違いを記録しました。将来は各人が届いた仕事・身体の必要・近くの出来事を受けて次の行動を選び、simはその結果だけを検証・確定する構成に移します。
-
-次の開発は[自律的な箱庭の開発順](docs/AUTONOMOUS_SANDBOX_ROADMAP.md)に沿います。固定20人の所得・保守90日対照は実行できました。生活行動と会計情報を本人の認識・行動へつなぎ、地理や人員を変えてから、故障と不作を試します。軍事の新機能、人間関係、木々や動物の生態系はこの検証より後です。
-
-[実装前の漏れ監査](docs/AUTONOMOUS_SANDBOX_GAP_AUDIT.md)では、本人へ届く情報、同時に同じ道具を使おうとした場合の調停、仕事の依頼、通貨の持ち帰り、保守の資源を受入条件へ追加しました。「安定」はまず固定収量下の90日運用を意味し、自然資源まで含む永続性や生存率の結論は後段で検証します。
-
-これらを扱う[自律行動の外側のインターフェース](docs/AUTONOMY_INTERFACE_CONTRACT.md)を設計しました。本人へ届く刺激、本人の判断と待機、simによる試行と利用権、進行中行動と結果を共通の境界とし、人格v2の意味分割を維持します。共通人格v2の全機能と20人全員への接続はまだ設計段階です。
+設計と実測の入口は [docsの案内](docs/README.md) です。[現行設計](docs/DESIGN.md)、[現在の状態](docs/STATUS.md)、[採用中の判断](docs/DECISIONS.md)を参照してください。初版企画書、人格・物体・行動の設計基盤、過去の監査は案内から辿れます。次の受入作業である人間試遊は[記録票](docs/baseline/PLAYTEST.md)を使用します。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
 
 **A1小fixture:** ブラウザの`/?a1=debug`、またはVS Code「自律 A1: 作業場デバッグ画面」で、二人と共有道具の6分間を再生できます。人物・道具を選ぶと利用権、体力、仕事の進捗、因果Eventを確認できます。`npm run autonomy:a1`（VS Code「自律 A1: 二人と一つの道具」）は同じ結果のテキスト表示です。A1のコードは[autonomy-a1.ts](packages/sim/autonomy-a1.ts)。A1自体は独立した小世界で、90日安定の検証ではありません。
 
@@ -115,4 +93,4 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 1. 買主の食事・備蓄に続き、農民・運搬人・Sの身体状態と、買主の実在する仕事・所得を同じ物体世界へつなぐ。取引停止を救済せず、仕事による収入から再び購入できるか検証する。
 2. S/F/C/買主の仕事を中央phaseから各人の起床・情報到達・委託の受諾へ移し、A1の時間積算とともに地理・人員を変えた反事実で検証する。
 3. A4で荷車故障と不作を注入し、各人が知った結果に基づく再判断と資産・時間への影響を対照する。既存90日ゲームの回帰は続ける。
-4. [人間試遊の記録票](docs/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。試遊結果と[STATUS.md](docs/STATUS.md)の未実装事項を見直し、M3の正式受入後にM4を検討する。
+4. [人間試遊の記録票](docs/baseline/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。試遊結果と[STATUS.md](docs/STATUS.md)の未実装事項を見直し、M3の正式受入後にM4を検討する。

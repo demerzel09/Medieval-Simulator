@@ -37,7 +37,7 @@ E1用世界は旧`accounts`を持たず、食料合計をロットから数え�
 
 ## 5. E1で使う人格・ルーティン境界
 
-E1は[人格v2](AGENT_INTERFACES_v2.md)全体の実装を待たず、同じ意味の最小経路を固定する。
+E1は[人格v2](../foundations/AGENT_INTERFACES_v2.md)全体の実装を待たず、同じ意味の最小経路を固定する。
 
 ```text
 known stimulus + routineRef(id,version) + role/availability
