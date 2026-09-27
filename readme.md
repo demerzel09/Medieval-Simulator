@@ -33,7 +33,7 @@ A3の固定20人経済は `npm run autonomy:a3:income -- baseline --days 90` で
 
 人物の履歴と再実行記録は `npm run autonomy:village -- 90 --record /tmp/village.json.gz` で保存できます。[同梱の90日記録](fixtures/recordings/autonomous-village-90.v2.json.gz)は `npm run autonomy:village -- replay fixtures/recordings/autonomous-village-90.v2.json.gz` で再実行できます。`history 記録 F 出力先.json` はFの行動履歴を書き出します。対照実験は `--scenario carrier-refuses` などで別に記録し、`compare 通常記録 対照記録` で最初の差分を調べられます。矩形グリッドの経路変更と畑・果樹・野草・動物の実装範囲は[版2の記録](docs/baseline/VILLAGE_RECORDING_AND_LAND_V2.md)にあります。
 
-この5人世界の次の実装順は[土地の生産を90日の生活へつなぐ計画](docs/baseline/LAND_ECONOMY_NEXT_PLAN.md)です。[土地経済の算術候補](docs/baseline/LAND_ECONOMY_FEASIBILITY_V1.md)は `npm run autonomy:land-feasibility` で再計算できます。現在の実世界の90日食料は野生ベリー中心で、栽培食品を主食にする90日は未受入です。
+土地経済の別fixtureは `npm run autonomy:village -- 90 --scenario land-economy --daily` で実行できます。5人全員が90日毎日食事し、450食のうち穀物435食、野生ベリー15食でした。日61〜90の150食はすべて穀物です。[同梱記録](fixtures/recordings/autonomous-village-land-90.v2.json.gz)は `replay` と `history` で再検証できます。[算術候補](docs/baseline/LAND_ECONOMY_FEASIBILITY_V1.md)と[実走・対照の結果](docs/baseline/LAND_ECONOMY_V3_RESULT.md)を参照してください。
 
 起床と情報到達を試す最小の仕事実験は `npm run autonomy:work -- 8`（引数は時間数、`--events` で因果Eventを表示）です。Sの買取提示がFに届いてから承諾・採集・現物引渡しが起き、引渡しの通知がSに届いてからSが自分の財布の通貨で支払います。本人が拒めば進みません。これは2人・1件の固定fixtureであり、生活市場の一般ランナーや持続する経済には未接続です。
 
@@ -100,4 +100,4 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 ## 次の作業
 
-5人の世界では、土地・作物・労働・運搬・通貨の[90日収支候補](docs/baseline/LAND_ECONOMY_FEASIBILITY_V1.md)を作成しました。次は複数区画の栽培を本人の現地作業と取引・食事へ接続し、小fixtureの記録再実行を経て、栽培食品を主食とする正常90日と不足条件の対照を検証します。[実装順と受入条件](docs/baseline/LAND_ECONOMY_NEXT_PLAN.md)を参照してください。本編M3の3〜5人の人間試遊は[記録票](docs/baseline/PLAYTEST.md)で別途実施します。
+5人の世界では[土地経済計画](docs/baseline/LAND_ECONOMY_NEXT_PLAN.md)の順1〜4を実装し、穀物中心の正常90日、供給不足・技能・通信・道路の対照、記録再実行を検証しました。次は利用権と契約証拠の一般化、作物・人格・人口・地理を変えた90日の適用範囲の検証です。[実走結果と限界](docs/baseline/LAND_ECONOMY_V3_RESULT.md)を参照してください。本編M3の3〜5人の人間試遊は[記録票](docs/baseline/PLAYTEST.md)で別途実施します。

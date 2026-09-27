@@ -9,7 +9,7 @@ export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | 
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
-  cell: { x: number; y: number };
+  cell: { x: number; y: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;

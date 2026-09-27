@@ -2,8 +2,9 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { autonomousVillageV1 } from "../../fixtures/autonomous-village";
+import { landEconomy90V1 } from "../../fixtures/land-economy-90";
 import { ordinaryVillageModel, type VillageModel } from "../ai/autonomous-world";
-import { cultivatorVillageModel } from "../ai/farming-skill";
+import { cultivatorVillageModel, landEconomyVillageModel } from "../ai/farming-skill";
 import { advanceVillageWorld, newVillageWorld, queueVillageCommand,
   queueVillageTerrainCommand, villageHash, villageSummary } from "../sim/autonomous-world";
 import { defaultVillageGrid } from "../sim/grid-path";
@@ -59,6 +60,33 @@ else if (scenario === "carrier-refuses") model = { decide(input) {
   return ordinaryVillageModel.decide(input);
 } };
 else if (scenario === "cultivation") model = cultivatorVillageModel;
+else if (["land-economy", "land-few-plots", "land-few-seeds", "land-poor-yield",
+  "land-long-field", "land-road-blocked", "land-farmer-refuses", "land-no-skill",
+  "land-late-information", "land-starvation"].includes(scenario)) {
+  Object.assign(fixture, structuredClone(landEconomy90V1.world));
+  if (scenario === "land-few-plots") fixture.landEconomy!.grainPlots = 3;
+  if (scenario === "land-few-seeds") fixture.landEconomy!.initialSeeds = 2;
+  if (scenario === "land-no-skill") fixture.landEconomy!.farmerGrainSkill = 0;
+  if (scenario === "land-late-information") fixture.informationDelayHours = 24;
+  if (scenario === "land-long-field" || scenario === "land-road-blocked") {
+    grid.sites.field = { x: 4, y: 1 };
+    grid.sites.meadow = { x: 4, y: 3 };
+  }
+  land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity,
+    fixture.landEconomy?.grainPlots, true);
+  if (scenario === "land-poor-yield") for (const patch of Object.values(land.plants))
+    if (patch.species === "grain") patch.growthQuantity = 4;
+  if (scenario === "land-starvation") for (const patch of Object.values(land.plants))
+    if (patch.species === "grass" || patch.species === "herb") {
+      patch.initialAvailable = 0; patch.available = 0; patch.growthQuantity = 0;
+      patch.stage = "regrowing";
+    }
+  model = scenario === "land-farmer-refuses" ? { decide(input) {
+    if (input.actorId === "F") return { attempts: [], wait: { at: input.at + 1 },
+      subjectiveUpdate: input.subjectiveState };
+    return landEconomyVillageModel.decide(input);
+  } } : landEconomyVillageModel;
+}
 else if (scenario === "no-grass") {
   land.plants.grass_patch.available = 0; land.plants.grass_patch.initialAvailable = 0;
   land.plants.grass_patch.stage = "regrowing";
@@ -76,6 +104,12 @@ if (scenario === "rerouted-carrier") {
     cell: { x: 2, y: 0 }, blocked: true });
   queueVillageCommand(w, { id: "carrier-redirect", actorId: "C", at: 5,
     attempt: { kind: "redirect_travel", siteId: "field" } });
+}
+if (scenario === "land-road-blocked") {
+  queueVillageTerrainCommand(w, { id: "field-north-road-closes", at: 5,
+    cell: { x: 3, y: 0 }, blocked: true });
+  queueVillageTerrainCommand(w, { id: "field-middle-road-closes", at: 5,
+    cell: { x: 3, y: 1 }, blocked: true });
 }
 const snapshots: { summary: ReturnType<typeof villageSummary>; received: Record<string, number>;
   unfinished: { actorId: string; action: string; progress: number; duration: number }[] }[] = [];
@@ -96,7 +130,12 @@ const daily = snapshots.length ? snapshots.map((snapshot, i) => {
   meals: Object.fromEntries((["S", "F", "C", "B1", "B2"] as const).map((id) =>
     [id, events.filter((e) => e.kind === "ate" && e.actors.includes(id)).length])),
   harvestedFood: events.filter((e) => e.kind === "foraged" && e.data.resource === "food")
-    .reduce((n, e) => n + Number(e.data.quantity), 0),
+    .reduce((n, e) => n + Number(e.data.quantity), 0) +
+    events.filter((e) => e.kind === "crop_harvested" || e.kind === "plant_gathered")
+      .reduce((n, e) => n + Number(e.data.quantity), 0),
+  mealsBySource: Object.fromEntries(["grain", "wild_berry", "fruit_tree", "herb", "unknown"]
+    .map((kind) => [kind, events.filter((e) => e.kind === "ate" &&
+      (e.data.species ?? "unknown") === kind).length])),
   harvestedWood: events.filter((e) => e.kind === "foraged" && e.data.resource === "wood")
     .reduce((n, e) => n + Number(e.data.quantity), 0),
   deliveries: events.filter((e) => e.kind === "food_delivered").length,

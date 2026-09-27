@@ -44,7 +44,8 @@ export type VillageWorld = { schemaVersion: 2; mode: "autonomous_village"; seed:
   land: LandEcology; initialLand: LandEcology;
   people: Record<VillageId, VillagePerson>; resources: Record<"food" | "wood", {
     available: number; capacity: number; growthPerDay: number; reserved: number; initial: number; grown: number }>;
-  foodLots: Record<string, { harvestedDay: number }>;
+  foodLots: Record<string, { harvestedDay: number; originPlantId?: string;
+    originSiteId?: string; species?: string }>;
   orders: Record<string, FoodOrder>; woodBids: Record<string, WoodBid>; saleQuotes: Record<string, SaleQuote>;
   processes: Record<string, VillageProcess>; pending: { recipientId: VillageId; stimulus: VillageStimulus }[];
   commands: VillageCommand[]; terrainCommands: VillageTerrainCommand[];
@@ -103,15 +104,25 @@ function transferUnit(t: PhysicalTransaction, lotId: string, quantity: number, u
 export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonomousVillageV1,
   initialGrid: GridMap = defaultVillageGrid(), landInput?: LandEcology): VillageWorld {
   if (!Number.isSafeInteger(seed) || fixture.schemaVersion !== 1 ||
-    !Number.isSafeInteger(fixture.informationDelayHours) || fixture.informationDelayHours < 1) throw Error("invalid village fixture");
+    !Number.isSafeInteger(fixture.informationDelayHours) || fixture.informationDelayHours < 1 ||
+    fixture.landEconomy && (!Number.isSafeInteger(fixture.landEconomy.grainPlots) ||
+      fixture.landEconomy.grainPlots < 1 || fixture.landEconomy.grainPlots > 16 ||
+      !Number.isSafeInteger(fixture.landEconomy.initialSeeds) || fixture.landEconomy.initialSeeds < 0 ||
+      !Number.isSafeInteger(fixture.landEconomy.farmerGrainSkill) ||
+      fixture.landEconomy.farmerGrainSkill < 0)) throw Error("invalid village fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   checkGridMap(grid);
   for (const site of ["market", "grove", "home_B1", "home_B2", "field", "meadow"])
     if (!grid.sites[site]) throw Error("missing village site");
   const land = structuredClone(landInput ?? newLandEcology(grid, f.resources.food.initial,
-    f.resources.food.capacity));
+    f.resources.food.capacity, f.landEconomy?.grainPlots ?? 1, !!f.landEconomy));
   checkLandEcology(land, grid);
+  if (f.landEconomy && (land.rulesetVersion !== 2 ||
+    Object.values(land.plants).filter((p) => p.species === "grain").length !==
+      f.landEconomy.grainPlots ||
+    Object.values(land.plants).some((p) => p.species === "grain" &&
+      p.useRightHolderId !== "F"))) throw Error("land economy fixture mismatch");
   if (land.plants.wild_berry.available !== f.resources.food.initial ||
     land.plants.wild_berry.initialAvailable !== f.resources.food.initial ||
     land.plants.wild_berry.grown || land.plants.wild_berry.personHarvested)
@@ -154,13 +165,14 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   for (const id of ids) {
     add(id, "person", id === "F" ? "grove" : id.startsWith("B") ? `home_${id}` : "market");
     add(bag(id), "bag", id, id); add(wallet(id), "wallet", id, id);
-    if (id === "F") objects.grain_seed_initial = { id: "grain_seed_initial", typeId: "seed",
-      parentId: bag(id), ownerId: id, quantity: 2, causeEventId: "initial" };
+    if (id === "F" && (f.landEconomy?.initialSeeds ?? 2) > 0)
+      objects.grain_seed_initial = { id: "grain_seed_initial", typeId: "seed",
+        parentId: bag(id), ownerId: id, quantity: f.landEconomy?.initialSeeds ?? 2, causeEventId: "initial" };
     for (let i = 0; i < f.initialCash[id]; i++) add(`coin_${id}_${i}`, "currency", wallet(id), id);
     const initialSite = id === "F" ? "grove" : id.startsWith("B") ? `home_${id}` : "market";
     people[id] = { id, role: roles[id], nextWakeAt: 1, hunger: 1, cold: 1, energy: f.body.initialEnergy,
       cell: structuredClone(grid.sites[initialSite]),
-      farmingSkills: id === "F" ? { grain: 1 } : {},
+      farmingSkills: id === "F" ? { grain: f.landEconomy?.farmerGrainSkill ?? 1 } : {},
       memory: { day: 0, done: [], beliefs: { foodBid: f.prices.foodBid, foodRetail: f.prices.foodRetail,
         carrierFee: f.prices.carrierFee, woodPrice: f.prices.wood } }, receivedOrderIds: [],
       seenBidIds: [], seenQuoteIds: [], receivedStimulusIds: [], inbox: [], meals: 0, fuelUsed: 0 };
@@ -175,7 +187,8 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     foodLots: {}, orders: {}, woodBids: {}, saleQuotes: {}, processes: {}, pending: [], commands: [],
     terrainCommands: [], terrainEventIds: {}, decisions: [], events: [],
     harvestedFood: 0, harvestedLandFood: 0, eatenFood: 0, spoiledFood: 0,
-    initialSeeds: 2, seedsProduced: 0, seedsUsed: 0, harvestedWood: 0, burnedWood: 0,
+    initialSeeds: f.landEconomy?.initialSeeds ?? 2, seedsProduced: 0, seedsUsed: 0,
+    harvestedWood: 0, burnedWood: 0,
     initialMoney: ids.reduce((n, id) => n + f.initialCash[id], 0) };
   checkVillageWorld(w); return w;
 }
@@ -243,7 +256,12 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
       ownerId: id, quantity, causeEventId: p.startEventId }));
     if (reason) return reason;
     resource.available -= quantity; resource.reserved -= quantity;
-    if (p.resource === "food") { w.harvestedFood += quantity; w.foodLots[lotId] = { harvestedDay: dayAt(w.hour) }; }
+    if (p.resource === "food") {
+      w.harvestedFood += quantity;
+      w.foodLots[lotId] = w.fixture.landEconomy ? { harvestedDay: dayAt(w.hour),
+        originPlantId: "wild_berry", originSiteId: "grove", species: "wild_berry" } :
+        { harvestedDay: dayAt(w.hour) };
+    }
     else w.harvestedWood += quantity;
     if (p.resource === "food") {
       const berry = w.land.plants.wild_berry;
@@ -334,7 +352,9 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
       plant.stage = p.kind === "harvest_plot" ? "bare" : plant.available ? "ripe" : "regrowing";
       if (p.kind === "harvest_plot") { plant.ageHours = 0; w.seedsProduced++; }
       w.harvestedFood += quantity; w.harvestedLandFood += quantity;
-      w.foodLots[lotId] = { harvestedDay: dayAt(w.hour) };
+      w.foodLots[lotId] = w.fixture.landEconomy ? { harvestedDay: dayAt(w.hour),
+        originPlantId: plant.id, originSiteId: plant.siteId, species: plant.species } :
+        { harvestedDay: dayAt(w.hour) };
       const event = emit(w, p.kind === "harvest_plot" ? "crop_harvested" : "plant_gathered",
         [id], [p.startEventId], { plantId: plant.id, species: plant.species,
           quantity, lotId, siteId: plant.siteId });
@@ -360,6 +380,31 @@ function progressProcesses(w: VillageWorld) {
         terrainCause ? [p.startEventId, terrainCause] : [p.startEventId],
         { destinationId: p.destinationId!, x: w.people[p.actorId].cell.x,
           y: w.people[p.actorId].cell.y });
+    }
+    if (w.fixture.landEconomy && p.kind === "travel" && p.path &&
+      p.pathIndex! < p.path.length - 1) {
+      const next = p.path[p.pathIndex! + 1];
+      const roadCell = !Object.values(w.grid.sites).some((site) => sameCell(site, next));
+      const blocker = roadCell ? ids.find((other) => other !== p.actorId &&
+        sameCell(w.people[other].cell, next) &&
+        siteOf(w.physical, other).startsWith("transit_")) : undefined;
+      if (blocker) {
+        const detour = findGridPath({ ...w.grid,
+          blocked: [...w.grid.blocked, cellKey(next)] }, w.people[p.actorId].cell,
+        w.grid.sites[p.destinationId!]);
+        if (detour) {
+          p.path = detour; p.pathIndex = 0; p.edgeProgress = 0;
+          p.duration = p.progress + routeRemainingHours(w, detour, p.stepHours!);
+          emit(w, "travel_replanned", [p.actorId], [p.startEventId,
+            w.processes[w.people[blocker].activeProcessId ?? ""]?.startEventId ?? p.startEventId],
+          { destinationId: p.destinationId!, reason: "occupied road cell",
+            x: w.people[p.actorId].cell.x, y: w.people[p.actorId].cell.y });
+        } else {
+          emit(w, "travel_waited", [p.actorId], [p.startEventId],
+            { reason: "occupied road cell", destinationId: p.destinationId! });
+          continue;
+        }
+      }
     }
     if (w.people[p.actorId].energy < p.energyPerHour) {
       w.people[p.actorId].activeProcessId = undefined; delete w.processes[p.id];
@@ -470,7 +515,8 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
         { plantId: plant.id, quantity: a.quantity });
     }
     const skill = w.people[id].farmingSkills[plant.species] ?? 0;
-    if (plant.species !== "grain" || skill < 1 || id !== "F") return "crop skill denied";
+    if (plant.species !== "grain" || skill < 1) return "crop skill denied";
+    if (plant.useRightHolderId && plant.useRightHolderId !== id) return "land use right denied";
     if (a.kind === "till_plot" && plant.stage === "bare")
       return startProcess(w, id, a.kind, skill >= 2 ? 1 : 2, 1, decisionId, { plantId: plant.id });
     if (a.kind === "sow_plot" && plant.stage === "tilled" &&
@@ -572,8 +618,10 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     });
     if (reason) return reason;
     if (lot.quantity > 1) w.foodLots[unitId] = { ...w.foodLots[lot.id] };
+    const origin = w.foodLots[lot.id];
     const event = emit(w, "food_sold", ["S", id], [decisionId, quote.postedEventId,
-      lot.causeEventId], { price: quote.price, quantity: 1 });
+      lot.causeEventId], { price: quote.price, quantity: 1,
+      ...(origin?.originPlantId ? { originPlantId: origin.originPlantId } : {}) });
     result(w, id, a.kind, event); send(w, "S", { kind: "result", action: a.kind, success: true,
       causeEventIds: [event.id] }); return undefined;
   }
@@ -581,11 +629,14 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     const lot = id === "S" ? ownObjects(w, "stock_S", "food", "S")[0] ??
       ownObjects(w, bag(id), "food", id)[0] : ownObjects(w, bag(id), "food", id)[0];
     if (!lot || w.people[id].hunger < 1) return "meal unavailable";
+    const origin = w.foodLots[lot.id];
     const reason = tx(w, id, [], (t) => t.remove(lot.id, 1));
     if (reason) return reason;
     if (!w.physical.objects[lot.id]) delete w.foodLots[lot.id];
     w.people[id].hunger--; w.people[id].meals++; w.eatenFood++;
-    const event = emit(w, "ate", [id], [decisionId, lot.causeEventId], { quantity: 1 });
+    const event = emit(w, "ate", [id], [decisionId, lot.causeEventId], { quantity: 1,
+      ...(origin?.originPlantId ? { originPlantId: origin.originPlantId,
+        species: origin.species ?? "" } : {}) });
     result(w, id, a.kind, event); return undefined;
   }
   if (a.kind === "burn_wood") {
@@ -629,7 +680,9 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
     visibleSale: quote ? { price: quote.price, stock: contentsQuantity(w.physical, "stock_S", "food") } : undefined,
     visiblePlants: Object.values(w.land.plants).filter((p) => p.siteId === siteId)
       .map((p) => ({ id: p.id, species: p.species, stage: p.stage, available: p.available })),
-    farmingSkills: structuredClone(person.farmingSkills) };
+    farmingSkills: structuredClone(person.farmingSkills),
+    ...(w.fixture.landEconomy ? { visiblePeople: ids.filter((other) =>
+      siteOf(w.physical, other) === siteId) } : {}) };
 }
 function observe(w: VillageWorld, id: VillageId, c: VillageContext): VillageStimulus {
   const event = emit(w, "observed", [id], [], { siteId: c.siteId, x: c.cell.x, y: c.cell.y,
@@ -639,7 +692,8 @@ function observe(w: VillageWorld, id: VillageId, c: VillageContext): VillageStim
     orderId: c.visibleOrder?.id ?? "", quotePrice: c.visibleSale?.price ?? -1,
     stock: c.visibleSale?.stock ?? -1,
     bids: c.visibleWoodBids.map((b) => b.buyerId).join(","),
-    plants: c.visiblePlants.map((p) => `${p.id}:${p.stage}:${p.available}`).join(",") });
+    plants: c.visiblePlants.map((p) => `${p.id}:${p.stage}:${p.available}`).join(","),
+    ...(c.visiblePeople ? { people: c.visiblePeople.join(",") } : {}) });
   const person = w.people[id];
   if (c.visibleOrder && !person.receivedOrderIds.includes(c.visibleOrder.id)) person.receivedOrderIds.push(c.visibleOrder.id);
   for (const bid of Object.values(w.woodBids)) if (bid.day === c.day && !bid.filledEventId &&
@@ -692,10 +746,27 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
         });
         if (!moved.ok) throw Error(`animal movement failed: ${moved.reason}`);
         w.physical = moved.state;
+      } else if (effect.kind === "animal_born") {
+        const bornEvent = emit(w, "animal_born", [], [], { animalId: effect.animalId!,
+          parentAnimalId: effect.parentAnimalId!, x: effect.x!, y: effect.y! });
+        const born = physicalTransaction(w.physical,
+          { actorId: effect.parentAnimalId!, ownerIds: [] }, (t) => t.add({
+            id: effect.animalId!, typeId: "animal",
+            parentId: `tile_${effect.x}_${effect.y}`, quantity: 1,
+            causeEventId: bornEvent.id }));
+        if (!born.ok) throw Error(`animal birth failed: ${born.reason}`);
+        w.physical = born.state;
+        continue;
+      } else if (effect.kind === "animal_died") {
+        const died = physicalTransaction(w.physical, { actorId: effect.animalId!, ownerIds: [] },
+          (t) => t.destroy(effect.animalId!));
+        if (!died.ok) throw Error(`animal death failed: ${died.reason}`);
+        w.physical = died.state;
       }
       emit(w, effect.kind, [], [], { plantId: effect.plantId ?? "",
         animalId: effect.animalId ?? "", x: effect.x ?? -1, y: effect.y ?? -1,
-        quantity: effect.quantity ?? 0, stage: effect.stage ?? "" });
+        quantity: effect.quantity ?? 0, stage: effect.stage ?? "",
+        ...(effect.parentAnimalId ? { parentAnimalId: effect.parentAnimalId } : {}) });
     }
     for (const command of w.terrainCommands) if (command.status === "queued" && command.at === w.hour) {
       const key = cellKey(command.cell);
@@ -803,6 +874,8 @@ export function checkVillageWorld(w: VillageWorld) {
   for (const animal of Object.values(w.land.animals)) if (w.physical.objects[animal.id]?.typeId !== "animal" ||
     w.physical.objects[animal.id].parentId !== `tile_${animal.cell.x}_${animal.cell.y}`)
     throw Error("animal physical location");
+  for (const animal of Object.values(w.physical.objects).filter((o) => o.typeId === "animal"))
+    if (!w.land.animals[animal.id]) throw Error("orphan physical animal");
   const objects = Object.values(w.physical.objects);
   if (objects.filter((o) => o.typeId === "currency").length !== w.initialMoney ||
     objects.filter((o) => o.typeId === "food").reduce((n, o) => n + o.quantity, 0) !==
@@ -814,6 +887,12 @@ export function checkVillageWorld(w: VillageWorld) {
     objects.some((o) => o.typeId === "food" && !w.foodLots[o.id]) ||
     Object.keys(w.foodLots).some((id) => w.physical.objects[id]?.typeId !== "food"))
     throw Error("village inventory conservation");
+  if (w.fixture.landEconomy && Object.values(w.foodLots).some((lot) =>
+    !lot.originPlantId || !w.land.plants[lot.originPlantId] ||
+    lot.originSiteId !== w.land.plants[lot.originPlantId].siteId ||
+    lot.species !== w.land.plants[lot.originPlantId].species ||
+    !Number.isSafeInteger(lot.harvestedDay) || lot.harvestedDay < 1 ||
+    lot.harvestedDay > dayAt(w.hour))) throw Error("village food provenance");
   for (const kind of ["food", "wood"] as const) {
     const r = w.resources[kind];
     const taken = kind === "food" ? w.harvestedFood - w.harvestedLandFood : w.harvestedWood;
@@ -911,6 +990,14 @@ export function villageHash(w: VillageWorld) { return hash(w); }
 export function villageSummary(w: VillageWorld) { return { day: w.hour ? dayAt(w.hour) : 0, hour: w.hour,
   harvestedFood: w.harvestedFood, eatenFood: w.eatenFood, spoiledFood: w.spoiledFood,
   harvestedWood: w.harvestedWood, burnedWood: w.burnedWood,
+  ...(w.fixture.landEconomy ? { landEconomy: {
+    cultivatedFood: Object.values(w.land.plants).filter((p) => p.species === "grain")
+      .reduce((n, p) => n + p.personHarvested, 0),
+    wildFood: w.land.plants.wild_berry.personHarvested,
+    seedsHeld: contentsQuantity(w.physical, bag("F"), "seed"), seedsUsed: w.seedsUsed,
+    seedsProduced: w.seedsProduced, season: w.land.season,
+    animals: Object.keys(w.land.animals).length,
+    animalBirths: w.land.animalBirths, animalDeaths: w.land.animalDeaths } } : {}),
   resource: Object.fromEntries(Object.entries(w.resources).map(([k, v]) => [k, v.available])),
   people: Object.fromEntries(ids.map((id) => [id, { site: siteOf(w.physical, id), cash: ownCash(w, id),
     hunger: w.people[id].hunger, cold: w.people[id].cold, energy: w.people[id].energy,

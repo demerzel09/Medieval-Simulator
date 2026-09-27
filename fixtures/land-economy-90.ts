@@ -14,6 +14,7 @@ export const landEconomy90V1: LandEconomyFixture = {
     resources: { ...structuredClone(autonomousVillageV1.resources),
       food: { initial: 20, capacity: 20, growthPerDay: 0 } },
     body: { initialEnergy: 20, maxEnergy: 20 },
+    landEconomy: { grainPlots: 4, initialSeeds: 4, farmerGrainSkill: 2 },
   },
   plots: 4,
   initialSeeds: 4,

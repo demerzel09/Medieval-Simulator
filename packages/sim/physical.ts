@@ -182,6 +182,15 @@ export class PhysicalTransaction {
       this.s.reservations.some((r) => r.objectId === id) || siteOf(this.s, this.auth.actorId) !== siteOf(this.s, id)) fail("physical consumption denied");
     if (quantity === o.quantity) delete this.s.objects[id]; else o.quantity -= quantity;
   }
+  destroy(id: string): void {
+    const o = object(this.s, id);
+    if (!authorized(o, this.auth) || typeOf(this.s, o).stackable ||
+      children(this.s, id).length || this.s.reservations.some((r) => r.objectId === id) ||
+      siteOf(this.s, this.auth.actorId) !== siteOf(this.s, id))
+      fail("physical destruction denied");
+    delete this.s.objects[id];
+    checkPhysical(this.s);
+  }
   depart(transit: PhysicalObject, participantIds: string[]): void {
     if (this.s.objects[transit.id] || transit.parentId !== "world" || !typeOf(this.s, transit).tags.includes("site") ||
       !participantIds.includes(this.auth.actorId) || new Set(participantIds).size !== participantIds.length) fail("invalid departure");

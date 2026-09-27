@@ -33,3 +33,4 @@ CLIの対照は `low-capital`、`scarce-wood`、`late-information`、`carrier-re
 `cultivation` は穀物の生育・本人作業を確かめる4日程度の対照で、90日生活の正常fixtureではない。通常の90日取引は野生ベリーを用いる。畑作で5人の交易を90日支える仕事配分、種の種類、季節、動物の繁殖・死亡、複数の同時作物は次段の検証対象として残す。
 
 次の実装順と受入条件は[土地の生産を90日の生活へつなぐ計画](LAND_ECONOMY_NEXT_PLAN.md)にまとめた。
+[後続の90日実走](LAND_ECONOMY_V3_RESULT.md)では、この版2の記録・経路・土地を基に栽培食品を主食にした。
