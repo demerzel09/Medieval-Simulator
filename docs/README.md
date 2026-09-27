@@ -14,3 +14,4 @@
 段階0の[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は算術上の条件で、実際の自律simの90日結果ではありません。
 
 段階1〜4の実行・対照は[5人の自律生活世界](baseline/AUTONOMOUS_VILLAGE_RESULT.md)に記録しています。
+[履歴・経路・土地の版2](baseline/VILLAGE_RECORDING_AND_LAND_V2.md)は、その後の記録再生、矩形グリッド、植物・動物の実装範囲と対照を説明します。

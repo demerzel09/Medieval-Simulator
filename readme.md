@@ -31,6 +31,8 @@ A3の固定20人経済は `npm run autonomy:a3:income -- baseline --days 90` で
 
 5人の自律生活世界は `npm run autonomy:village -- 90`、日別結果は `npm run autonomy:village -- 90 --daily` で実行できます。本人の起床・通知・現地観察・試行から仕事、現物取引、食事、薪使用が進み、基準fixtureで90日続きます。F5の「自律: 5人の90日生活」からも起動できます。初期条件・測定値・対照の範囲は[実行結果](docs/baseline/AUTONOMOUS_VILLAGE_RESULT.md)を参照してください。
 
+人物の履歴と再実行記録は `npm run autonomy:village -- 90 --record /tmp/village.json.gz` で保存できます。[同梱の90日記録](fixtures/recordings/autonomous-village-90.v2.json.gz)は `npm run autonomy:village -- replay fixtures/recordings/autonomous-village-90.v2.json.gz` で再実行できます。`history 記録 F 出力先.json` はFの行動履歴を書き出します。対照実験は `--scenario carrier-refuses` などで別に記録し、`compare 通常記録 対照記録` で最初の差分を調べられます。矩形グリッドの経路変更と畑・果樹・野草・動物の実装範囲は[版2の記録](docs/baseline/VILLAGE_RECORDING_AND_LAND_V2.md)にあります。
+
 起床と情報到達を試す最小の仕事実験は `npm run autonomy:work -- 8`（引数は時間数、`--events` で因果Eventを表示）です。Sの買取提示がFに届いてから承諾・採集・現物引渡しが起き、引渡しの通知がSに届いてからSが自分の財布の通貨で支払います。本人が拒めば進みません。これは2人・1件の固定fixtureであり、生活市場の一般ランナーや持続する経済には未接続です。
 
 この作業環境のLinux版Nodeを使う場合は、先に `export PATH="$HOME/.local/node/bin:$PATH"` を実行してください。ほかの環境でNodeがすでに利用できる場合、この設定は不要です。

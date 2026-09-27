@@ -9,24 +9,31 @@ export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | 
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
+  cell: { x: number; y: number };
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;
     status: string }; fundedOrderId?: string; tenderedOrderId?: string;
   carriedFarmerFood: number; carriedSellerFood: number;
   visibleWoodBids: { buyerId: VillageId; price: number }[];
-  visibleSale?: { price: number; stock: number }; };
+  visibleSale?: { price: number; stock: number };
+  visiblePlants: { id: string; species: string; stage: string; available: number }[];
+  farmingSkills: Record<string, number> };
 export type VillageAttempt =
   | { kind: "post_food_order"; quantity: number; bid: number; carrierFee: number; salePrice: number }
   | { kind: "accept_carriage"; orderId: string } | { kind: "fund_carriage"; orderId: string }
   | { kind: "post_wood_bid"; price: number } | { kind: "post_sale_quote"; price: number }
   | { kind: "travel"; siteId: string } | { kind: "relay_order"; orderId: string }
+  | { kind: "redirect_travel"; siteId: string }
   | { kind: "accept_food_order"; orderId: string }
   | { kind: "forage"; resource: "food" | "wood"; quantity: number }
   | { kind: "tender_food"; orderId: string; quantity: number }
   | { kind: "purchase_food"; orderId: string } | { kind: "deliver_food"; orderId: string }
   | { kind: "sell_wood"; buyerId: VillageId } | { kind: "buy_food" }
-  | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" };
+  | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" }
+  | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string }
+  | { kind: "harvest_plot"; plantId: string }
+  | { kind: "gather_plant"; plantId: string; quantity: number };
 export type VillageResponse = ActorResponse<VillageAttempt, VillageMemory, { at: number }>;
 export type VillageModel = PersonalityModel<ActorInput<VillageContext, VillageMemory, VillageStimulus>, VillageResponse>;
 
