@@ -17,7 +17,8 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   carriedFarmerFood: number; carriedSellerFood: number;
   visibleWoodBids: { buyerId: VillageId; price: number }[];
   visibleSale?: { price: number; stock: number };
-  visiblePlants: { id: string; species: string; stage: string; available: number }[];
+  visiblePlants: { id: string; species: string; stage: string; available: number;
+    siteId?: string; cell?: { x: number; y: number } }[];
   farmingSkills: Record<string, number> };
 export type VillageAttempt =
   | { kind: "post_food_order"; quantity: number; bid: number; carrierFee: number; salePrice: number }

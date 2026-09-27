@@ -3,11 +3,13 @@ import { dirname, resolve } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { autonomousVillageV1 } from "../../fixtures/autonomous-village";
 import { landEconomy90V1 } from "../../fixtures/land-economy-90";
+import { spatialLandEconomy90V1 } from "../../fixtures/land-economy-spatial";
 import { ordinaryVillageModel, type VillageModel } from "../ai/autonomous-world";
-import { cultivatorVillageModel, landEconomyVillageModel } from "../ai/farming-skill";
+import { cultivatorVillageModel, landEconomyVillageModel,
+  spatialLandEconomyVillageModel } from "../ai/farming-skill";
 import { advanceVillageWorld, newVillageWorld, queueVillageCommand,
   queueVillageTerrainCommand, villageHash, villageSummary } from "../sim/autonomous-world";
-import { defaultVillageGrid } from "../sim/grid-path";
+import { defaultVillageGrid, spatialVillageGrid } from "../sim/grid-path";
 import { newLandEcology } from "../sim/land-ecology";
 import { captureVillageRecording, compareVillageRecordings, replayVillageRecording,
   recordedVillageActorHistory, villageActorHistory, type VillageRecording } from "../sim/village-recording";
@@ -48,7 +50,8 @@ const days = Number(process.argv[2] ?? 90);
 if (!Number.isSafeInteger(days) || days < 1 || days > 90) throw Error("days must be 1..90");
 const scenarioIndex = args.indexOf("--scenario");
 const scenario = scenarioIndex < 0 ? "baseline" : args[scenarioIndex + 1];
-const fixture = structuredClone(autonomousVillageV1), grid = defaultVillageGrid();
+const fixture = structuredClone(autonomousVillageV1);
+let grid = defaultVillageGrid();
 let land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity);
 let model: VillageModel = ordinaryVillageModel;
 if (scenario === "low-capital") fixture.initialCash.S = 0;
@@ -60,10 +63,14 @@ else if (scenario === "carrier-refuses") model = { decide(input) {
   return ordinaryVillageModel.decide(input);
 } };
 else if (scenario === "cultivation") model = cultivatorVillageModel;
-else if (["land-economy", "land-few-plots", "land-few-seeds", "land-poor-yield",
+else if (["land-economy", "land-spatial", "land-few-plots", "land-few-seeds", "land-poor-yield",
   "land-long-field", "land-road-blocked", "land-farmer-refuses", "land-no-skill",
   "land-late-information", "land-starvation"].includes(scenario)) {
   Object.assign(fixture, structuredClone(landEconomy90V1.world));
+  if (scenario === "land-spatial") {
+    Object.assign(fixture, structuredClone(spatialLandEconomy90V1));
+    grid = spatialVillageGrid();
+  }
   if (scenario === "land-few-plots") fixture.landEconomy!.grainPlots = 3;
   if (scenario === "land-few-seeds") fixture.landEconomy!.initialSeeds = 2;
   if (scenario === "land-no-skill") fixture.landEconomy!.farmerGrainSkill = 0;
@@ -81,7 +88,8 @@ else if (["land-economy", "land-few-plots", "land-few-seeds", "land-poor-yield",
       patch.initialAvailable = 0; patch.available = 0; patch.growthQuantity = 0;
       patch.stage = "regrowing";
     }
-  model = scenario === "land-farmer-refuses" ? { decide(input) {
+  model = scenario === "land-spatial" ? spatialLandEconomyVillageModel :
+    scenario === "land-farmer-refuses" ? { decide(input) {
     if (input.actorId === "F") return { attempts: [], wait: { at: input.at + 1 },
       subjectiveUpdate: input.subjectiveState };
     return landEconomyVillageModel.decide(input);

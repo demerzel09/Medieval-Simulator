@@ -3,7 +3,7 @@ import { ordinaryVillageModel, type VillageAttempt, type VillageContext, type Vi
   type VillageModel, type VillageResponse, type VillageRole, type VillageStimulus } from "../ai/autonomous-world";
 import { wakeActors } from "./actor-clock";
 import { hash } from "./core";
-import { cellKey, checkGridMap, defaultVillageGrid, findGridPath, inGrid, sameCell,
+import { cellKey, checkGridMap, defaultVillageGrid, findGridPath, inGrid, sameCell, spatialVillageGrid,
   traversable, type GridMap, type GridPoint } from "./grid-path";
 import { advanceLandHour, checkLandEcology, newLandEcology, type LandEcology } from "./land-ecology";
 import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, totalMass,
@@ -102,7 +102,8 @@ function transferUnit(t: PhysicalTransaction, lotId: string, quantity: number, u
   t.move(unit, parentId); t.changeOwner(unit, ownerId); return unit;
 }
 export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonomousVillageV1,
-  initialGrid: GridMap = defaultVillageGrid(), landInput?: LandEcology): VillageWorld {
+  initialGrid: GridMap = fixture.landEconomy?.spatialGrid ? spatialVillageGrid() : defaultVillageGrid(),
+  landInput?: LandEcology): VillageWorld {
   if (!Number.isSafeInteger(seed) || fixture.schemaVersion !== 1 ||
     !Number.isSafeInteger(fixture.informationDelayHours) || fixture.informationDelayHours < 1 ||
     fixture.landEconomy && (!Number.isSafeInteger(fixture.landEconomy.grainPlots) ||
@@ -115,9 +116,15 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   checkGridMap(grid);
   for (const site of ["market", "grove", "home_B1", "home_B2", "field", "meadow"])
     if (!grid.sites[site]) throw Error("missing village site");
+  if (f.landEconomy?.spatialGrid && Array.from({ length: f.landEconomy.grainPlots },
+    (_, i) => i ? `grain_plot_${i + 1}` : "grain_plot").some((id) => !grid.sites[id]))
+    throw Error("spatial crop cell missing");
   const land = structuredClone(landInput ?? newLandEcology(grid, f.resources.food.initial,
     f.resources.food.capacity, f.landEconomy?.grainPlots ?? 1, !!f.landEconomy));
   checkLandEcology(land, grid);
+  if (f.landEconomy?.spatialGrid && new Set(Object.values(land.plants)
+    .map((p) => cellKey(p.cell))).size !== Object.keys(land.plants).length)
+    throw Error("spatial plants share a cell");
   if (f.landEconomy && (land.rulesetVersion !== 2 ||
     Object.values(land.plants).filter((p) => p.species === "grain").length !==
       f.landEconomy.grainPlots ||
@@ -153,7 +160,12 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   };
   add("world", "world", null);
   for (const site of Object.keys(grid.sites)) add(site, "site", "world");
-  for (let y = 0; y < grid.height; y++) for (let x = 0; x < grid.width; x++)
+  if (f.landEconomy?.spatialGrid) {
+    for (const animal of Object.values(land.animals)) {
+      const id = `tile_${animal.cell.x}_${animal.cell.y}`;
+      if (!objects[id]) add(id, "site", "world");
+    }
+  } else for (let y = 0; y < grid.height; y++) for (let x = 0; x < grid.width; x++)
     add(`tile_${x}_${y}`, "site", "world");
   for (const animal of Object.values(land.animals))
     add(animal.id, "animal", `tile_${animal.cell.x}_${animal.cell.y}`);
@@ -678,8 +690,13 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
     carriedFarmerFood, carriedSellerFood,
     visibleWoodBids: bids.map((bid) => ({ buyerId: bid.buyerId, price: bid.price })),
     visibleSale: quote ? { price: quote.price, stock: contentsQuantity(w.physical, "stock_S", "food") } : undefined,
-    visiblePlants: Object.values(w.land.plants).filter((p) => p.siteId === siteId)
-      .map((p) => ({ id: p.id, species: p.species, stage: p.stage, available: p.available })),
+    visiblePlants: Object.values(w.land.plants).filter((p) =>
+      w.fixture.landEconomy?.spatialGrid ?
+        Math.max(Math.abs(p.cell.x - person.cell.x), Math.abs(p.cell.y - person.cell.y)) <= 1 :
+        p.siteId === siteId)
+      .map((p) => ({ id: p.id, species: p.species, stage: p.stage, available: p.available,
+        ...(w.fixture.landEconomy?.spatialGrid ? { siteId: p.siteId,
+          cell: structuredClone(p.cell) } : {}) })),
     farmingSkills: structuredClone(person.farmingSkills),
     ...(w.fixture.landEconomy ? { visiblePeople: ids.filter((other) =>
       siteOf(w.physical, other) === siteId) } : {}) };
@@ -739,10 +756,18 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
     for (const effect of advanceLandHour(w.land, w.grid, w.hour)) {
       if (effect.kind === "animal_moved") {
         const animalId = effect.animalId!, transitId = uid(w, "animal_transit");
+        const tileId = `tile_${effect.x}_${effect.y}`;
+        if (!w.physical.objects[tileId]) {
+          const tile = physicalTransaction(w.physical, { actorId: "world", ownerIds: [] },
+            (t) => t.add({ id: tileId, typeId: "site", parentId: "world",
+              quantity: 1, causeEventId: "animal_step" }));
+          if (!tile.ok) throw Error(`animal tile failed: ${tile.reason}`);
+          w.physical = tile.state;
+        }
         const moved = physicalTransaction(w.physical, { actorId: animalId, ownerIds: [] }, (t) => {
           t.depart({ id: transitId, typeId: "site", parentId: "world", quantity: 1,
             causeEventId: "animal_step" }, [animalId]);
-          t.arrive(transitId, `tile_${effect.x}_${effect.y}`, [animalId]);
+          t.arrive(transitId, tileId, [animalId]);
         });
         if (!moved.ok) throw Error(`animal movement failed: ${moved.reason}`);
         w.physical = moved.state;

@@ -8,7 +8,8 @@ import { advanceVillageWorld, checkVillageWorld, newVillageWorld, queueVillageCo
   type VillageWorld } from "./autonomous-world";
 
 export type VillageRecording = { formatVersion: 2; worldSchemaVersion: 2;
-  rulesetId: "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2"; seed: number;
+  rulesetId: "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2" |
+    "autonomous-village-spatial-land-v3"; seed: number;
   fixture: VillageFixture; initialGrid: GridMap; initialLand: LandEcology; untilHour: number;
   commands: { id: string; actorId: VillageId; at: number; attempt: VillageAttempt }[];
   terrainCommands: { id: string; at: number; cell: GridPoint; blocked: boolean }[];
@@ -32,7 +33,8 @@ export function recordedVillageActorHistory(recording: VillageRecording, actorId
 export function captureVillageRecording(w: VillageWorld): VillageRecording {
   checkVillageWorld(w);
   return structuredClone({ formatVersion: 2, worldSchemaVersion: 2,
-    rulesetId: w.fixture.landEconomy ? "autonomous-village-land-economy-v2" :
+    rulesetId: w.fixture.landEconomy?.spatialGrid ? "autonomous-village-spatial-land-v3" :
+      w.fixture.landEconomy ? "autonomous-village-land-economy-v2" :
       "autonomous-village-grid-land-v1", seed: w.seed,
     fixture: w.fixture, initialGrid: w.initialGrid, initialLand: w.initialLand,
     untilHour: w.hour,
@@ -43,8 +45,9 @@ export function captureVillageRecording(w: VillageWorld): VillageRecording {
 }
 export function replayVillageRecording(recording: VillageRecording): VillageWorld {
   if (recording.formatVersion !== 2 || recording.worldSchemaVersion !== 2 ||
-    recording.rulesetId !== (recording.fixture.landEconomy ?
-      "autonomous-village-land-economy-v2" : "autonomous-village-grid-land-v1") ||
+    recording.rulesetId !== (recording.fixture.landEconomy?.spatialGrid ?
+      "autonomous-village-spatial-land-v3" : recording.fixture.landEconomy ?
+        "autonomous-village-land-economy-v2" : "autonomous-village-grid-land-v1") ||
     !Number.isSafeInteger(recording.untilHour) || recording.untilHour < 0 ||
     hash(recording.events) !== recording.finalEventHash)
     throw Error("unsupported village recording");

@@ -28,13 +28,20 @@ export function newLandEcology(grid: GridMap, wildFood: number, wildCapacity: nu
   const plants: LandEcology["plants"] = {
     wild_berry: patch("wild_berry", "wild_berry", "grove", "ripe", wildFood, wildCapacity, 24, 5),
     grain_plot: patch("grain_plot", "grain", "field", "bare", 0, 5, 72, 5),
-    orchard: patch("orchard", "fruit_tree", "meadow", "ripe", 2, 4, 48, 2),
-    herb_patch: patch("herb_patch", "herb", "grove", "ripe", 2, 3, 24, 1),
-    grass_patch: patch("grass_patch", "grass", "meadow", "ripe", 3, 3, 24, 3),
+    orchard: patch("orchard", "fruit_tree", grid.sites.orchard ? "orchard" : "meadow",
+      "ripe", 2, 4, 48, 2),
+    herb_patch: patch("herb_patch", "herb", grid.sites.herb_patch ? "herb_patch" : "grove",
+      "ripe", 2, 3, 24, 1),
+    grass_patch: patch("grass_patch", "grass", grid.sites.grass_patch ? "grass_patch" : "meadow",
+      "ripe", 3, 3, 24, 3),
   };
   for (let i = 1; i <= grainPlots; i++) {
     const id = i === 1 ? "grain_plot" : `grain_plot_${i}`;
-    if (i > 1) plants[id] = patch(id, "grain", "field", "bare", 0, 5, 72, 5);
+    if (i > 1) plants[id] = patch(id, "grain", grid.sites[id] ? id : "field", "bare", 0, 5, 72, 5);
+    if (i === 1 && grid.sites[id]) {
+      plants[id].siteId = id;
+      plants[id].cell = structuredClone(grid.sites[id]);
+    }
     if (ecologyV2) plants[id].useRightHolderId = "F";
   }
   const ecology: LandEcology = { plants, animals: { rabbit_1: { id: "rabbit_1", species: "rabbit",

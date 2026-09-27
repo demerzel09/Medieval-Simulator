@@ -12,7 +12,7 @@
 
 `npm run autonomy:village -- 90 --scenario land-economy --daily` と[同梱の記録](../../fixtures/recordings/autonomous-village-land-90.v2.json.gz)で再現できる。
 
-F5の「自律: 土地経済90日の記録デバッグ画面」、または `/?village=land-economy` では、同梱記録の地図・作物・動物・各人のEventと判断を日・時刻で追える。画面は記録の閲覧であり、実走・再実行の一致検査はCLIで行う。
+この5×5の場所モデルを画面に拡大した旧表示は意図した空間モデルではなかった。後続の[40×24セルの空間版](SPATIAL_GRID_V4_RESULT.md)では、作物と移動を実際のセルに置き、1280×768ピクセルの画面と別の90日記録を使う。
 
 | 指標 | 実測 |
 |---|---:|

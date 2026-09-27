@@ -91,3 +91,26 @@ export function defaultVillageGrid(): GridMap {
     field: { x: 1, y: 1 }, meadow: { x: 3, y: 1 },
   } };
 }
+
+/** 40×24 cells at 32 pixels per cell: a 1280×768 physical playfield. */
+export function spatialVillageGrid(): GridMap {
+  const blocked: string[] = [];
+  const rectangle = (left: number, top: number, width: number, height: number) => {
+    for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++)
+      blocked.push(`${x},${y}`);
+  };
+  rectangle(7, 5, 5, 3);    // rocks
+  rectangle(25, 4, 8, 4);   // ridge
+  rectangle(29, 14, 5, 5);  // boulders
+  rectangle(15, 15, 2, 2);  // building footprint
+  return { width: 40, height: 24, blocked, cost: {}, sites: {
+    market: { x: 18, y: 12 }, grove: { x: 19, y: 11 },
+    home_B1: { x: 18, y: 11 }, home_B2: { x: 19, y: 12 },
+    field: { x: 20, y: 11 }, meadow: { x: 22, y: 12 },
+    orchard: { x: 23, y: 11 }, herb_patch: { x: 19, y: 10 },
+    grass_patch: { x: 23, y: 12 },
+    rock_west: { x: 6, y: 6 }, ridge_east: { x: 34, y: 6 },
+    grain_plot: { x: 20, y: 10 }, grain_plot_2: { x: 21, y: 10 },
+    grain_plot_3: { x: 21, y: 11 }, grain_plot_4: { x: 21, y: 12 },
+  } };
+}

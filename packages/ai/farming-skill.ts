@@ -77,3 +77,52 @@ export const landEconomyVillageModel: VillageModel = { decide(input) {
   }
   return { ...ordinary, attempts: attempt ? [attempt] : [], wait: { at: input.at + (attempt ? 1 : 2) } };
 } };
+
+/** Spatial farmer: each crop action requires arrival at that crop's own cell. */
+export const spatialLandEconomyVillageModel: VillageModel = { decide(input) {
+  const ordinary = landEconomyVillageModel.decide(input);
+  if (input.actorId !== "F") return ordinary;
+  const c = input.knownContext, m = ordinary.subjectiveUpdate!;
+  const done = (action: VillageAttempt["kind"]) => m.done.includes(action);
+  let attempt: VillageAttempt | undefined;
+  if (!c.activeAction) {
+    if (c.hunger > 0 && c.ownFood > 0) attempt = { kind: "eat" };
+    else if (c.cold > 0 && c.ownWood > 0) attempt = { kind: "burn_wood" };
+    else if (c.siteId === "grove") {
+      if (c.day <= 3 && c.hunger > 0 && c.ownFood === 0 && !done("forage") &&
+        (c.foodResource ?? 0) > 0) attempt = { kind: "forage", resource: "food", quantity: 1 };
+      else if (!done("post_wood_bid")) attempt = { kind: "post_wood_bid", price: m.beliefs.woodPrice };
+      else if (!done("sow_plot") || c.day >= 4 && !done("harvest_plot") && c.hourOfDay < 15)
+        attempt = { kind: "travel", siteId: "field" };
+      else if (m.knownOrder && !done("accept_food_order") && m.knownOrder.bid >= m.beliefs.foodBid)
+        attempt = { kind: "accept_food_order", orderId: m.knownOrder.id };
+      else if (done("accept_food_order") && !done("tender_food") && c.ownFood < 4 &&
+        (c.foodResource ?? 0) >= 4)
+        attempt = { kind: "forage", resource: "food", quantity: 4 };
+      else if (done("accept_food_order") && !done("tender_food") && c.ownFood >= 4 && m.knownOrder)
+        attempt = { kind: "tender_food", orderId: m.knownOrder.id, quantity: 4 };
+    } else if (c.siteId === "field" || c.siteId.startsWith("grain_plot")) {
+      const crops = c.visiblePlants.filter((p) => p.species === "grain");
+      const next = !done("sow_plot") ?
+        crops.find((p) => p.stage === "tilled") ?? crops.find((p) => p.stage === "bare") :
+        undefined;
+      const ripe = c.day >= 4 && !done("harvest_plot") ?
+        crops.find((p) => p.stage === "ripe") : undefined;
+      const target = next ?? ripe;
+      if (target) attempt = c.siteId === target.siteId ?
+        grainSkillAction(target.stage, target.id, c.farmingSkills.grain ?? 0) :
+        { kind: "travel", siteId: target.siteId! };
+      else if (c.siteId !== "field" && !done("sow_plot") && c.hourOfDay < 15)
+        attempt = { kind: "travel", siteId: "field" };
+      else if (done("sow_plot") && (c.day < 4 || done("harvest_plot") || c.hourOfDay >= 15))
+        attempt = { kind: "travel", siteId: "grove" };
+      else if (c.siteId !== "field") attempt = { kind: "travel", siteId: "field" };
+    }
+    if (!attempt && !done("rest") && (c.energy <= 6 || c.hourOfDay >= 17))
+      attempt = { kind: "rest" };
+    if (attempt?.kind !== "rest" && attempt && c.energy <
+      (attempt.kind === "travel" ? 1 : attempt.kind === "forage" ? attempt.quantity : 1))
+      attempt = !done("rest") ? { kind: "rest" } : undefined;
+  }
+  return { ...ordinary, attempts: attempt ? [attempt] : [], wait: { at: input.at + (attempt ? 1 : 2) } };
+} };
