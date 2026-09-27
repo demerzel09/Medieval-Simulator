@@ -3,6 +3,7 @@
 更新: 2026-09-27。目標は、**正常条件を与えた小世界で、全員が届いた情報と身体・記憶から判断し、単純な物理法則に対する試行だけで90日生活すること**。90日生存をsimが保証する機能にはしない。旧本編、A3、`individual_life`、`individual_market`、`individual_work`は回帰用に残す。
 
 段階0〜4の版1受入は完了。実行fixtureの初期条件、通常90日と対照の測定は[実行結果](AUTONOMOUS_VILLAGE_RESULT.md)を参照。
+版2以降の新しい実装順と受入条件は[土地経済の計画](LAND_ECONOMY_NEXT_PLAN.md)を参照。
 
 ## 区切りの定義
 

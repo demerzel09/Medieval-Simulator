@@ -33,6 +33,8 @@ A3の固定20人経済は `npm run autonomy:a3:income -- baseline --days 90` で
 
 人物の履歴と再実行記録は `npm run autonomy:village -- 90 --record /tmp/village.json.gz` で保存できます。[同梱の90日記録](fixtures/recordings/autonomous-village-90.v2.json.gz)は `npm run autonomy:village -- replay fixtures/recordings/autonomous-village-90.v2.json.gz` で再実行できます。`history 記録 F 出力先.json` はFの行動履歴を書き出します。対照実験は `--scenario carrier-refuses` などで別に記録し、`compare 通常記録 対照記録` で最初の差分を調べられます。矩形グリッドの経路変更と畑・果樹・野草・動物の実装範囲は[版2の記録](docs/baseline/VILLAGE_RECORDING_AND_LAND_V2.md)にあります。
 
+この5人世界の次の実装順は[土地の生産を90日の生活へつなぐ計画](docs/baseline/LAND_ECONOMY_NEXT_PLAN.md)です。現在の90日食料は野生ベリー中心で、栽培食品を主食にする90日は未受入です。
+
 起床と情報到達を試す最小の仕事実験は `npm run autonomy:work -- 8`（引数は時間数、`--events` で因果Eventを表示）です。Sの買取提示がFに届いてから承諾・採集・現物引渡しが起き、引渡しの通知がSに届いてからSが自分の財布の通貨で支払います。本人が拒めば進みません。これは2人・1件の固定fixtureであり、生活市場の一般ランナーや持続する経済には未接続です。
 
 この作業環境のLinux版Nodeを使う場合は、先に `export PATH="$HOME/.local/node/bin:$PATH"` を実行してください。ほかの環境でNodeがすでに利用できる場合、この設定は不要です。
@@ -98,7 +100,4 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 ## 次の作業
 
-1. 買主の食事・備蓄・薪仕事に続き、農民・運搬人・Sの身体状態を同じ物体世界へつなぐ。取引停止を救済せず、仕事による収入から再び購入できるか検証する。
-2. S/F/C/買主の仕事を中央phaseから各人の起床・情報到達・委託の受諾へ移し、A1の時間積算とともに地理・人員を変えた反事実で検証する。
-3. A4で荷車故障と不作を注入し、各人が知った結果に基づく再判断と資産・時間への影響を対照する。既存90日ゲームの回帰は続ける。
-4. [人間試遊の記録票](docs/baseline/PLAYTEST.md)を使い、3〜5人に30〜60分遊んでもらう。試遊結果と[STATUS.md](docs/STATUS.md)の未実装事項を見直し、M3の正式受入後にM4を検討する。
+5人の世界では、まず土地・作物・労働・運搬・通貨の90日収支を計算します。次に複数区画の栽培を本人の現地作業と取引・食事へ接続し、小fixtureの記録再実行を経て、栽培食品を主食とする正常90日と不足条件の対照を検証します。[実装順と受入条件](docs/baseline/LAND_ECONOMY_NEXT_PLAN.md)を参照してください。本編M3の3〜5人の人間試遊は[記録票](docs/baseline/PLAYTEST.md)で別途実施します。

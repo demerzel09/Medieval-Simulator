@@ -10,8 +10,4 @@
 
 買主B1/B2の薪仕事と所得は人物間の因果で成立しました。[生活市場](baseline/LIVING_MARKET_EXPERIMENT.md)の90日結果はなお生活の安定に失敗し、中央給付や帳尻合わせで成功扱いしません。未実装の境界は[STATUS](STATUS.md)に記録します。
 
-次の実装区切りは[自律する90日生活世界への実装計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)にまとめています。
-段階0の[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は算術上の条件で、実際の自律simの90日結果ではありません。
-
-段階1〜4の実行・対照は[5人の自律生活世界](baseline/AUTONOMOUS_VILLAGE_RESULT.md)に記録しています。
-[履歴・経路・土地の版2](baseline/VILLAGE_RECORDING_AND_LAND_V2.md)は、その後の記録再生、矩形グリッド、植物・動物の実装範囲と対照を説明します。
+次の実装順と受入条件は[土地の生産を90日の生活へつなぐ計画](baseline/LAND_ECONOMY_NEXT_PLAN.md)にまとめています。[自律する90日生活世界への旧計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)の段階0〜4は完了済みで、[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は当時の算術条件、[5人の自律生活世界](baseline/AUTONOMOUS_VILLAGE_RESULT.md)は実行・対照の結果です。[履歴・経路・土地の版2](baseline/VILLAGE_RECORDING_AND_LAND_V2.md)は、その後の記録再生、矩形グリッド、植物・動物の実装範囲を説明します。
