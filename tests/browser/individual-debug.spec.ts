@@ -32,3 +32,18 @@ test("individual market map shows S-owned site and local price response", async 
   await expect(page.locator(".e1-stats")).toContainText("腐敗 5");
   expect(errors).toEqual([]);
 });
+
+test("living market map shows home pantry, buyer meals and unmet hunger", async ({ page }) => {
+  const errors: string[] = []; page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/?individual=living");
+  await expect(page.getByRole("heading", { name: "食事と個人備蓄の市場" })).toBeVisible();
+  await page.getByRole("button", { name: "B1の家と備蓄 home_B1" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("所有者: B1");
+  await page.getByRole("button", { name: "＋1日" }).click();
+  await page.getByRole("button", { name: "人物 B1" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("家の備蓄: 1");
+  await expect(page.locator(".e1-detail")).toContainText("ate");
+  await page.getByRole("button", { name: "人物 B2" }).click();
+  await expect(page.locator(".e1-detail")).toContainText("空腹: 2");
+  expect(errors).toEqual([]);
+});

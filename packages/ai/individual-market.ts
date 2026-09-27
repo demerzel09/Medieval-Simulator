@@ -8,11 +8,16 @@ export type MarketContext =
   | { role: "farmer"; phase: "work"; contractedQuantity: number; available: number; bagSpace: number }
   | { role: "farmer"; phase: "handover"; contractedQuantity: number; carriedFood: number }
   | { role: "carrier"; phase: "deliver"; carriedForSeller: number }
-  | { role: "buyer"; phase: "shop"; cash: number; stock: number; price: number };
+  | { role: "buyer"; phase: "plan_trip"; siteId: string; cash: number; pantryFood: number; knownPrice: number }
+  | { role: "buyer"; phase: "shop"; cash: number; stock: number; price: number; pantryFood?: number }
+  | { role: "buyer"; phase: "return_home" }
+  | { role: "buyer"; phase: "store"; carriedFood: number }
+  | { role: "buyer"; phase: "eat"; hunger: number; pantryFood: number };
 export type MarketAttempt = { kind: "post_buy"; price: number; quantity: number; carrierFee: number; salePrice: number } |
   { kind: "accept_carriage" } | { kind: "accept_harvest_contract"; quantity: number } | { kind: "harvest"; quantity: number } |
   { kind: "tender_crops"; quantity: number } |
-  { kind: "deliver" } | { kind: "buy"; quantity: number } | { kind: "request_food" };
+  { kind: "deliver" } | { kind: "buy"; quantity: number } | { kind: "request_food" } |
+  { kind: "travel_to_market" } | { kind: "return_home" } | { kind: "store_food" } | { kind: "eat" };
 export type MarketResponse = ActorResponse<MarketAttempt, Record<string, never>, { at: number }>;
 export type MarketModel = PersonalityModel<ActorInput<MarketContext, Record<string, never>, { kind: string; causeEventIds: string[] }>, MarketResponse>;
 
@@ -38,6 +43,28 @@ export const ordinaryMarketModel: MarketModel = {
       [{ kind: "harvest", quantity: Math.min(c.contractedQuantity, c.available, c.bagSpace) }] : [], wait };
     if (c.role === "farmer") return { attempts: c.carriedFood ?
       [{ kind: "tender_crops", quantity: Math.min(c.contractedQuantity, c.carriedFood) }] : [], wait };
-    return { attempts: c.cash < c.price ? [] : c.stock ? [{ kind: "buy", quantity: 1 }] : [{ kind: "request_food" }], wait };
+    if (c.role === "buyer" && c.phase === "shop") return { attempts: c.cash < c.price ? [] :
+      c.stock ? [{ kind: "buy", quantity: 1 }] : [{ kind: "request_food" }], wait };
+    return { attempts: [], wait };
+  },
+};
+
+/** Buyer needs and local food ownership, using the same personality port as the trade-only fixture. */
+export const livingMarketModel: MarketModel = {
+  decide(input) {
+    const c = input.knownContext, wait = { at: input.at + 1 };
+    if (c.role !== "buyer") return ordinaryMarketModel.decide(input);
+    if (c.phase === "plan_trip") return { attempts: c.siteId === "market" ? [{ kind: "return_home" }] :
+      c.pantryFood < 2 && c.cash >= c.knownPrice ?
+      [{ kind: "travel_to_market" }] : [], wait };
+    if (c.phase === "shop") {
+      if (c.pantryFood! >= 2 || c.cash < c.price) return { attempts: [], wait };
+      if (!c.stock) return { attempts: [{ kind: "request_food" }], wait };
+      const quantity = Math.min(2 - c.pantryFood!, c.stock, Math.floor(c.cash / c.price));
+      return { attempts: quantity ? [{ kind: "buy", quantity }] : [], wait };
+    }
+    if (c.phase === "return_home") return { attempts: [{ kind: "return_home" }], wait };
+    if (c.phase === "store") return { attempts: c.carriedFood ? [{ kind: "store_food" }] : [], wait };
+    return { attempts: c.hunger > 0 && c.pantryFood > 0 ? [{ kind: "eat" }] : [], wait };
   },
 };

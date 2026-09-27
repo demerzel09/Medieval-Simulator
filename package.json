@@ -18,6 +18,7 @@
     "autonomy:a3:income": "tsx packages/tools/autonomy-a3-income.ts",
     "autonomy:life": "tsx packages/tools/individual-life.ts",
     "autonomy:market": "tsx packages/tools/individual-market.ts",
+    "autonomy:living": "tsx packages/tools/living-market.ts",
     "content:validate": "tsx packages/tools/validate.ts",
     "test:browser": "playwright test",
     "fixtures": "tsx packages/tools/combat-report.ts"

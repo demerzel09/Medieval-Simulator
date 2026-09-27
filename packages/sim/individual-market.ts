@@ -1,4 +1,4 @@
-import { ordinaryMarketModel, type MarketContext, type MarketModel, type MarketAttempt } from "../ai/individual-market";
+import { livingMarketModel, ordinaryMarketModel, type MarketContext, type MarketModel, type MarketAttempt } from "../ai/individual-market";
 import { hash } from "./core";
 import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, type PhysicalObject, type PhysicalState } from "./physical";
 
@@ -7,11 +7,14 @@ type MarketEvent = { id: string; hour: number; day: number; kind: string; actors
 type Offer = { id: string; day: number; quantity: number; price: number; carrierFee: number; salePrice: number;
   eventId: string; contractEventId?: string; contractedQuantity?: number;
   status: "posted" | "accepted" | "contracted" | "purchased" | "delivered" | "failed" };
+type BuyerId = "B1" | "B2";
+type LivingBuyers = Record<BuyerId, { hunger: number; meals: number; knownPrice: number }>;
 export type MarketWorld = { schemaVersion: 2; mode: "individual_market"; seed: number; day: number; hour: number; nextId: number;
   physical: PhysicalState; resource: { available: number; capacity: number; dailyGrowth: number };
   seller: { price: number; bid: number; carrierFee: number; reserveCash: number;
     triedMarket: boolean; soldYesterday: number; unsoldYesterday: number; fundedUnmetYesterday: number };
   foodLots: Record<string, { kind: "berries"; harvestedDay: number }>;
+  living?: { buyers: LivingBuyers; eaten: number };
   offer?: Offer; events: MarketEvent[]; harvested: number; spoiled: number; grown: number; initialResource: number;
   initialMoney: number; initialSellerCash: number; sellerCosts: number; sellerRevenue: number };
 const ids = ["F", "C", "S", "B1", "B2"] as const;
@@ -41,6 +44,8 @@ export function newMarketWorld(seed = 240924, sellerCash = 10, buyerCash = 10): 
     site: { id: "site", tags: ["site"], unitMass: 0, stackable: false, ownable: false,
       container: { acceptsTags: ["person", "resource"] } },
     ownedSite: { id: "ownedSite", tags: ["site"], unitMass: 0, stackable: false, ownable: true,
+      container: { acceptsTags: ["person", "store"] } },
+    homeSite: { id: "homeSite", tags: ["site"], unitMass: 0, stackable: false, ownable: true,
       container: { acceptsTags: ["person", "store"] } },
     person: { id: "person", tags: ["person"], unitMass: 0, stackable: false, ownable: false,
       container: { acceptsTags: ["wallet", "bag"], maxContentsMass: 200 } },
@@ -73,6 +78,19 @@ export function newMarketWorld(seed = 240924, sellerCash = 10, buyerCash = 10): 
     sellerCosts: 0, sellerRevenue: 0 };
   checkMarketWorld(w); return w;
 }
+export function newLivingMarketWorld(seed = 240924, sellerCash = 10, buyerCash = 20): MarketWorld {
+  const w = newMarketWorld(seed, sellerCash, buyerCash);
+  for (const id of ["B1", "B2"] as const) {
+    const home = `home_${id}`, pantry = `pantry_${id}`;
+    w.physical.objects[home] = { id: home, typeId: "homeSite", parentId: "world", ownerId: id,
+      quantity: 1, causeEventId: "initial" };
+    w.physical.objects[pantry] = { id: pantry, typeId: "store", parentId: home, ownerId: id,
+      quantity: 1, causeEventId: "initial" };
+    w.physical.objects[id].parentId = home;
+  }
+  w.living = { buyers: { B1: { hunger: 0, meals: 0, knownPrice: 4 }, B2: { hunger: 0, meals: 0, knownPrice: 4 } }, eaten: 0 };
+  checkMarketWorld(w); return w;
+}
 function decide(w: MarketWorld, actorId: string, context: MarketContext, model: MarketModel,
   causes: string[] = []): { attempt?: MarketAttempt; eventId: string } {
   w.hour++;
@@ -83,7 +101,7 @@ function decide(w: MarketWorld, actorId: string, context: MarketContext, model: 
   const event = emit(w, "person_decided", [actorId], causes, { action: response.attempts[0]?.kind ?? "wait" });
   return { attempt: response.attempts[0], eventId: event.id };
 }
-function move(w: MarketWorld, personId: string, destination: "grove" | "market", causeEventId: string) {
+function move(w: MarketWorld, personId: string, destination: string, causeEventId: string) {
   const from = siteOf(w.physical, personId), transit = uid(w, "transit");
   tx(w, personId, [], (t) => t.depart({ id: transit, typeId: "site", parentId: "world", quantity: 1, causeEventId }, [personId]));
   const departed = emit(w, "departed", [personId], [causeEventId], { from, to: destination });
@@ -153,22 +171,52 @@ function deliver(w: MarketWorld, offer: Offer, decisionId: string) {
   for (const lot of cargo) w.physical.objects[lot.id].causeEventId = e.id;
   offer.status = "delivered"; return true;
 }
-function buy(w: MarketWorld, buyerId: "B1" | "B2", price: number, decisionId: string, quoteId: string) {
-  if (siteOf(w.physical, buyerId) !== "market" || money(w, buyerId) < price || !food(w, "stock_S")) return false;
+function buy(w: MarketWorld, buyerId: BuyerId, price: number, quantity: number, decisionId: string, quoteId: string) {
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 2 ||
+    siteOf(w.physical, buyerId) !== "market" || money(w, buyerId) < price * quantity || food(w, "stock_S") < quantity) return false;
   const source = objectsOf(w, "stock_S", "food", "S")[0];
-  const receivedId = source.quantity === 1 ? source.id : uid(w, "food");
-  const coins = objectsOf(w, wallet(buyerId), "currency", buyerId).slice(0, price);
+  if (!source || source.quantity < quantity) return false;
+  const receivedId = source.quantity === quantity ? source.id : uid(w, "food");
+  const coins = objectsOf(w, wallet(buyerId), "currency", buyerId).slice(0, price * quantity);
   tx(w, buyerId, ["S"], (t) => {
-    if (receivedId !== source.id) t.split(source.id, receivedId, 1, decisionId);
+    if (receivedId !== source.id) t.split(source.id, receivedId, quantity, decisionId);
     t.changeOwner(receivedId, buyerId); t.move(receivedId, bag(buyerId));
     for (const coin of coins) { t.changeOwner(coin.id, "S"); t.move(coin.id, wallet("S")); }
   });
   if (receivedId !== source.id) w.foodLots[receivedId] = { ...w.foodLots[source.id] };
-  w.sellerRevenue += price;
-  const e = emit(w, "food_sold", ["S", buyerId], [quoteId, decisionId, source.causeEventId], { quantity: 1, price });
+  w.sellerRevenue += price * quantity;
+  const e = emit(w, "food_sold", ["S", buyerId], [quoteId, decisionId, source.causeEventId], { quantity, price });
   w.physical.objects[receivedId].causeEventId = e.id;
   for (const coin of coins) w.physical.objects[coin.id].causeEventId = e.id;
   return true;
+}
+function storeAtHome(w: MarketWorld, buyerId: BuyerId, decisionId: string) {
+  const lots = objectsOf(w, bag(buyerId), "food", buyerId);
+  if (!w.living || siteOf(w.physical, buyerId) !== `home_${buyerId}` || !lots.length) return false;
+  tx(w, buyerId, [], (t) => { for (const lot of lots) t.move(lot.id, `pantry_${buyerId}`); });
+  const e = emit(w, "food_stored", [buyerId], [decisionId, ...lots.map((lot) => lot.causeEventId)],
+    { quantity: lots.reduce((n, lot) => n + lot.quantity, 0), pantryId: `pantry_${buyerId}` });
+  for (const lot of lots) w.physical.objects[lot.id].causeEventId = e.id;
+  return true;
+}
+function eatAtHome(w: MarketWorld, buyerId: BuyerId, decisionId: string) {
+  const body = w.living?.buyers[buyerId];
+  const lot = objectsOf(w, `pantry_${buyerId}`, "food", buyerId)
+    .sort((a, b) => w.foodLots[a.id].harvestedDay - w.foodLots[b.id].harvestedDay)[0];
+  if (!body || body.hunger < 1 || !lot || siteOf(w.physical, buyerId) !== `home_${buyerId}`) return false;
+  const cause = lot.causeEventId, kind = w.foodLots[lot.id].kind;
+  tx(w, buyerId, [], (t) => t.remove(lot.id, 1));
+  if (!w.physical.objects[lot.id]) delete w.foodLots[lot.id];
+  body.hunger = Math.max(0, body.hunger - marketFoodKinds[kind].nutrition);
+  body.meals++; w.living!.eaten++;
+  emit(w, "ate", [buyerId], [decisionId, cause], { quantity: 1, foodKind: kind, nutrition: marketFoodKinds[kind].nutrition });
+  return true;
+}
+function livingMeal(w: MarketWorld, buyerId: BuyerId, model: MarketModel) {
+  const decision = decide(w, buyerId, { role: "buyer", phase: "eat", hunger: w.living!.buyers[buyerId].hunger,
+    pantryFood: food(w, `pantry_${buyerId}`) }, model);
+  if (decision.attempt?.kind === "eat" && !eatAtHome(w, buyerId, decision.eventId))
+    emit(w, "attempt_failed", [buyerId], [decision.eventId], { action: "eat" });
 }
 function spoilOldFood(w: MarketWorld) {
   for (const lot of Object.values(w.physical.objects).filter((object) => object.typeId === "food")) {
@@ -180,10 +228,15 @@ function spoilOldFood(w: MarketWorld) {
     delete w.physical.objects[lot.id]; delete w.foodLots[lot.id];
   }
 }
-export function advanceMarketDay(w: MarketWorld, model: MarketModel = ordinaryMarketModel) {
+export function advanceMarketDay(w: MarketWorld, model: MarketModel = w.living ? livingMarketModel : ordinaryMarketModel) {
   if (w.day >= 90) throw Error("market fixture ends at day 90");
   w.day++; w.offer = undefined;
   spoilOldFood(w);
+  if (w.living) for (const buyerId of ["B1", "B2"] as const) {
+    const body = w.living.buyers[buyerId]; body.hunger++;
+    emit(w, "hunger_increased", [buyerId], [], { hunger: body.hunger });
+    if (siteOf(w.physical, buyerId) === `home_${buyerId}`) livingMeal(w, buyerId, model);
+  }
   if (w.day > 1) { const grown = Math.min(w.resource.dailyGrowth, w.resource.capacity - w.resource.available);
     if (grown) { w.resource.available += grown; w.grown += grown; emit(w, "resource_grew", [], [], { quantity: grown }); } }
   const plan = decide(w, "S", { role: "seller", phase: "plan", cash: money(w, "S"), stock: food(w, "stock_S"),
@@ -242,11 +295,34 @@ export function advanceMarketDay(w: MarketWorld, model: MarketModel = ordinaryMa
   const quote = emit(w, "sale_price_posted", ["S"], [plan.eventId], { price: w.seller.price, stock: food(w, "stock_S") });
   let sold = 0, unmet = 0;
   for (const buyerId of ["B1", "B2"] as const) {
+    if (w.living) {
+      const planTrip = decide(w, buyerId, { role: "buyer", phase: "plan_trip", siteId: siteOf(w.physical, buyerId),
+        cash: money(w, buyerId), pantryFood: food(w, `pantry_${buyerId}`),
+        knownPrice: w.living.buyers[buyerId].knownPrice }, model);
+      if (planTrip.attempt?.kind === "return_home" && siteOf(w.physical, buyerId) === "market")
+        move(w, buyerId, `home_${buyerId}`, planTrip.eventId);
+      if (planTrip.attempt?.kind === "travel_to_market" && siteOf(w.physical, buyerId) === `home_${buyerId}`)
+        move(w, buyerId, "market", planTrip.eventId);
+    }
+    if (siteOf(w.physical, buyerId) !== "market") continue;
     const shop = decide(w, buyerId, { role: "buyer", phase: "shop", cash: money(w, buyerId),
-      stock: food(w, "stock_S"), price: w.seller.price }, model, [quote.id]);
-    if (shop.attempt?.kind === "buy" && shop.attempt.quantity === 1 && buy(w, buyerId, w.seller.price, shop.eventId, quote.id)) sold++;
+      stock: food(w, "stock_S"), price: w.seller.price,
+      pantryFood: w.living ? food(w, `pantry_${buyerId}`) : undefined }, model, [quote.id]);
+    if (shop.attempt?.kind === "buy" && buy(w, buyerId, w.seller.price, shop.attempt.quantity, shop.eventId, quote.id))
+      sold += shop.attempt.quantity;
     else if (shop.attempt?.kind === "request_food" && money(w, buyerId) >= w.seller.price && !food(w, "stock_S")) {
       unmet++; emit(w, "funded_request_unmet", [buyerId, "S"], [shop.eventId, quote.id], { price: w.seller.price }); }
+    if (w.living) {
+      w.living.buyers[buyerId].knownPrice = w.seller.price;
+      const returnTrip = decide(w, buyerId, { role: "buyer", phase: "return_home" }, model, [shop.eventId]);
+      if (returnTrip.attempt?.kind === "return_home") move(w, buyerId, `home_${buyerId}`, returnTrip.eventId);
+      if (siteOf(w.physical, buyerId) === `home_${buyerId}`) {
+        const store = decide(w, buyerId, { role: "buyer", phase: "store", carriedFood: food(w, bag(buyerId)) }, model);
+        if (store.attempt?.kind === "store_food" && !storeAtHome(w, buyerId, store.eventId))
+          emit(w, "attempt_failed", [buyerId], [store.eventId], { action: "store_food" });
+        livingMeal(w, buyerId, model);
+      }
+    }
   }
   w.seller.triedMarket = true;
   w.seller.soldYesterday = sold; w.seller.unsoldYesterday = food(w, "stock_S"); w.seller.fundedUnmetYesterday = unmet;
@@ -262,15 +338,30 @@ export function checkMarketWorld(w: MarketWorld) {
   const goods = Object.values(w.physical.objects).filter((o) => o.typeId === "food");
   if (cash.reduce((n, o) => n + o.quantity, 0) !== w.initialMoney || cash.some((o) => o.quantity !== 1 || !ids.includes(o.ownerId as typeof ids[number])) ||
     cash.some((o) => o.parentId !== wallet(o.ownerId!) && !(o.ownerId === "S" && o.parentId === wallet("C") && w.offer?.status === "accepted")) ||
-    goods.reduce((n, o) => n + o.quantity, 0) + w.spoiled !== w.harvested ||
+    goods.reduce((n, o) => n + o.quantity, 0) + w.spoiled + (w.living?.eaten ?? 0) !== w.harvested ||
     w.resource.available !== w.initialResource + w.grown - w.harvested ||
     !Number.isSafeInteger(w.resource.available) || w.resource.available < 0 || w.resource.available > w.resource.capacity ||
     w.sellerRevenue - w.sellerCosts !== money(w, "S") - w.initialSellerCash +
       objectsOf(w, wallet("C"), "currency", "S").length) throw Error("market conservation");
   for (const o of goods) if (!ids.includes(o.ownerId as typeof ids[number]) ||
     !((o.ownerId === "F" && o.parentId === bag("F")) || (o.ownerId === "S" && [bag("C"), "stock_S"].includes(o.parentId!)) ||
-      (["B1", "B2"].includes(o.ownerId!) && o.parentId === bag(o.ownerId!))))
+      (["B1", "B2"].includes(o.ownerId!) && (o.parentId === bag(o.ownerId!) ||
+        (w.living && o.parentId === `pantry_${o.ownerId!}`)))))
     throw Error("market food ownership");
+  if (w.living) {
+    if (!Number.isSafeInteger(w.living.eaten) || w.living.eaten < 0 ||
+      Object.entries(w.living.buyers).length !== 2) throw Error("market living state");
+    for (const buyerId of ["B1", "B2"] as const) {
+      const buyer = w.living.buyers[buyerId];
+      if (!buyer || !Number.isSafeInteger(buyer.hunger) || buyer.hunger < 0 ||
+        !Number.isSafeInteger(buyer.meals) || buyer.meals < 0 ||
+        !Number.isSafeInteger(buyer.knownPrice) || buyer.knownPrice < 1 ||
+        w.physical.objects[`home_${buyerId}`]?.ownerId !== buyerId ||
+        w.physical.objects[`pantry_${buyerId}`]?.ownerId !== buyerId ||
+        !["market", `home_${buyerId}`].includes(siteOf(w.physical, buyerId))) throw Error("market living buyer");
+    }
+    if (w.living.buyers.B1.meals + w.living.buyers.B2.meals !== w.living.eaten) throw Error("market meals");
+  }
   if (Object.keys(w.foodLots).length !== goods.length || goods.some((o) => !w.foodLots[o.id] ||
     w.foodLots[o.id].kind !== "berries" || !Number.isSafeInteger(w.foodLots[o.id].harvestedDay) ||
     w.foodLots[o.id].harvestedDay < 1 || w.foodLots[o.id].harvestedDay > w.day ||
@@ -289,10 +380,24 @@ export function marketSummary(w: MarketWorld) { return { day: w.day, price: w.se
   sellerReserve: w.seller.reserveCash,
   farmerCash: money(w, "F"), carrierCash: money(w, "C"), buyerCash: { B1: money(w, "B1"), B2: money(w, "B2") },
   stock: food(w, "stock_S"), resource: w.resource.available, harvested: w.harvested, spoiled: w.spoiled,
-  sold: w.events.filter((e) => e.kind === "food_sold").length, sellerProfit: w.sellerRevenue - w.sellerCosts,
+  sold: w.events.filter((e) => e.kind === "food_sold").reduce((n, e) => n + Number(e.data.quantity), 0),
+  sellerProfit: w.sellerRevenue - w.sellerCosts,
   unmetFundedYesterday: w.seller.fundedUnmetYesterday }; }
+export function livingMarketSummary(w: MarketWorld) {
+  if (!w.living) throw Error("not a living market");
+  return { ...marketSummary(w), eaten: w.living.eaten,
+    buyers: Object.fromEntries((["B1", "B2"] as const).map((id) => [id, {
+      site: siteOf(w.physical, id), hunger: w.living!.buyers[id].hunger, meals: w.living!.buyers[id].meals,
+      pantryFood: food(w, `pantry_${id}`), cash: money(w, id), knownPrice: w.living!.buyers[id].knownPrice,
+    }])) };
+}
 export function saveMarketWorld(w: MarketWorld) { checkMarketWorld(w); return JSON.stringify(w); }
 export function loadMarketWorld(json: string) { const w = JSON.parse(json) as MarketWorld; checkMarketWorld(w); return w; }
 export function replayMarketWorld(seed: number, days: number, sellerCash = 10, buyerCash = 10) {
   const w = newMarketWorld(seed, sellerCash, buyerCash); for (let day = 0; day < days; day++) advanceMarketDay(w); return w; }
+export function replayLivingMarketWorld(seed: number, days: number, sellerCash = 10, buyerCash = 20) {
+  const w = newLivingMarketWorld(seed, sellerCash, buyerCash);
+  for (let day = 0; day < days; day++) advanceMarketDay(w);
+  return w;
+}
 export function marketHash(w: MarketWorld) { return hash(w); }

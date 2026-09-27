@@ -1136,8 +1136,8 @@ function App() {
   );
 }
 createRoot(document.getElementById("root")!).render(
-  ["life", "market"].includes(new URLSearchParams(window.location.search).get("individual") ?? "") ?
-    <React.Suspense fallback={<p>個人経済を読み込んでいます…</p>}><IndividualDebug initialView={new URLSearchParams(window.location.search).get("individual") as "life" | "market"} /></React.Suspense> :
+  ["life", "market", "living"].includes(new URLSearchParams(window.location.search).get("individual") ?? "") ?
+    <React.Suspense fallback={<p>個人経済を読み込んでいます…</p>}><IndividualDebug initialView={new URLSearchParams(window.location.search).get("individual") as "life" | "market" | "living"} /></React.Suspense> :
   new URLSearchParams(window.location.search).get("a1") === "debug" ?
     <React.Suspense fallback={<p>A1を読み込んでいます…</p>}><A1Debug /></React.Suspense> :
   new URLSearchParams(window.location.search).get("e1") === "debug" ?
