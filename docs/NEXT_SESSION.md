@@ -1,10 +1,11 @@
 # 次のチャットへの引き継ぎ
 
-更新: 2026-09-27。作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。再開時にはHEAD・`git status --short`・適用される `AGENTS.md` を確認する。今回の作業開始時HEADは `217b69a`、`AGENTS.md` は見つかっていない。
+更新: 2026-09-27。作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。再開時にはHEAD・`git status --short`・適用される `AGENTS.md` を確認する。段階0の作業開始時HEADは `831402d`、`AGENTS.md` は見つかっていない。
 
-追記: 今回 `packages/sim/individual-work.ts` と `packages/ai/individual-work.ts` に2人・1件の買取縦断fixtureを追加した。Sの提示は2時間後にFへ届き、Fの承諾・採集・現物引渡し、Sへの通知後の現金支払が各人の起床と試行で進む。未到達IDの承諾・引渡しを知らない支払、拒否、納品保留、保存再開/90日再実行をテストする。CLIは `npm run autonomy:work -- 8`。生活市場への統合、F/C/Sの食事、一般権限、複数取引は次の仕事。今回のテスト結果と作業ツリーは再開前に確認する。
+前回 `packages/sim/individual-work.ts` と `packages/ai/individual-work.ts` に2人・1件の買取縦断fixtureを追加した。Sの提示は2時間後にFへ届き、Fの承諾・採集・現物引渡し、Sへの通知後の現金支払が各人の起床と試行で進む。未到達IDの承諾・引渡しを知らない支払、拒否、納品保留、保存再開/90日再実行をテストする。CLIは `npm run autonomy:work -- 8`。生活市場への統合、F/C/Sの食事、一般権限、複数取引は次の仕事。今回のテスト結果と作業ツリーは再開前に確認する。
 
-次の実装区切りと受入条件は [AUTONOMOUS_90_DAY_PLAN.md](baseline/AUTONOMOUS_90_DAY_PLAN.md)。段階0の5人の必要量・作業時間・通貨循環の実行可能性表から着手し、中央phaseを全員の起床/情報配送/試行へ置き換え、単純な物理法則へつないで正常fixtureの90日生活を検証する。
+次の実装区切りと受入条件は [AUTONOMOUS_90_DAY_PLAN.md](baseline/AUTONOMOUS_90_DAY_PLAN.md)。段階0の5人の実行可能性表は作成済み。次は中央phaseを全員の起床/情報配送/試行へ置き換え、単純な物理法則へつないで正常fixtureの90日生活を検証する。
+段階0の[数表](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)と版付き[fixture](../fixtures/autonomous-90.ts)を追加した。毎日食品/薪各5、90日各450、初期通貨22での循環を算術上検算した。本人の判断や実際の移動・権限はまだ接続していない。次は段階1の共通起床・情報配送ランナー。
 
 ## 目標と変えてはいけない境界
 
@@ -22,7 +23,7 @@
 
 ## 今すぐ解くべきこと
 
-B1/B2の薪仕事は実在するが、Sの食品販売が止まると薪需要も止まる。所得18を得ても90日末の空腹は85/86で、生活経済は成立しない。二人・一件の起床/配送/試行は `individual_work` で通した。次は[90日計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)の段階0から始め、5人の必要食数・生産量・移動/労働時間・通貨循環の実行可能性を数表で確かめる。その後、中央phaseを全員の起床・情報到達・試行へ移し、F/C/Sも食べる同じ身体・食品ロットへ接続する。毎日の一律給付、帳尻合わせの賃金、世帯/市場からの自動分配は入れない。
+B1/B2の薪仕事は実在するが、Sの食品販売が止まると薪需要も止まる。所得18を得ても90日末の空腹は85/86で、生活経済は成立しない。二人・一件の起床/配送/試行は `individual_work` で通した。段階0の算術検算は[90日計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)と[数表](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)に記録した。次は中央phaseを全員の起床・情報到達・試行へ移し、F/C/Sも食べる同じ身体・食品ロットへ接続する。毎日の一律給付、帳尻合わせの賃金、世帯/市場からの自動分配は入れない。
 
 受入では「届いていない情報で判断しない」「本人が拒めば仕事が進まない」「simが欠員を代行しない」「世界の試行結果と人物の認識を分ける」を、保存・再実行と対照実験で確認する。`packages/sim` という既存ディレクトリ名を物理simの完成境界とみなさない。
 
@@ -32,6 +33,6 @@ B1/B2の薪仕事は実在するが、Sの食品販売が止まると薪需要�
 
 ## 検証とセーブ
 
-`5b7189c` のコード変更後の最終検証は `npm test` 17ファイル116/116、`npm run typecheck`、`npm run content:validate` が成功。ブラウザテスト12/12（本番ビルドを含む）と薪所得を表示する個別テスト3/3は、前回の薪仕事のコード変更後の結果で、今回のCLI専用コード追加後には再実行していない。`launch.json` の33設定は24件のCLI実行と9件の画面URLを監査し、実行不能な設定は見つからなかった。生活市場の性能は未計測。ブラウザテストは追跡済みの `artifacts/debug-screen.png` と `artifacts/e1-spatial-debug.png` を再生成するので、意図的な更新でなければ差分を戻す。変更後は対応するテストを再実行し、失敗/未計測を成功と書かない。取引のみの市場セーブは `schemaVersion: 2`、薪仕事を伴う生活市場は版3。seedは保存されるが現在は乱数を使わず、外部Commandの保存再適用はまだない。
+段階0の算術検算追加後の最終検証は `npm test` 18ファイル118/118、`npm run typecheck`、`npm run content:validate`、`npm run autonomy:feasibility` が成功。ブラウザテスト12/12（本番ビルドを含む）と薪所得を表示する個別テスト3/3は、前回の薪仕事のコード変更後の結果で、今回のCLI専用コード追加後には再実行していない。`launch.json` は35設定（26件のCLI実行と9件の画面URL）になった。追加した2件のCLIコマンドは実行済み。生活市場の性能は未計測。ブラウザテストは追跡済みの `artifacts/debug-screen.png` と `artifacts/e1-spatial-debug.png` を再生成するので、意図的な更新でなければ差分を戻す。変更後は対応するテストを再実行し、失敗/未計測を成功と書かない。取引のみの市場セーブは `schemaVersion: 2`、薪仕事を伴う生活市場は版3。seedは保存されるが現在は乱数を使わず、外部Commandの保存再適用はまだない。
 
 次のチャットでも [STATUS.md](STATUS.md) と [DECISIONS.md](DECISIONS.md) を更新する。新たな受入を満たしたらREADME、起動設定、テスト結果も更新する。これまでの依頼では変更を `main` にコミット・プッシュすることが許可されている。

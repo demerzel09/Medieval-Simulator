@@ -11,3 +11,4 @@
 買主B1/B2の薪仕事と所得は人物間の因果で成立しました。[生活市場](baseline/LIVING_MARKET_EXPERIMENT.md)の90日結果はなお生活の安定に失敗し、中央給付や帳尻合わせで成功扱いしません。未実装の境界は[STATUS](STATUS.md)に記録します。
 
 次の実装区切りは[自律する90日生活世界への実装計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)にまとめています。
+段階0の[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は算術上の条件で、実際の自律simの90日結果ではありません。

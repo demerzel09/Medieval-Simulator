@@ -143,6 +143,28 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:living -- 90"
     },
     {
+      "name": "自律: 起床と情報到達の8時間実験",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "個人経済",
+        "order": 8
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:work -- 8"
+    },
+    {
+      "name": "自律: 90日生活の算術実行可能性",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "個人経済",
+        "order": 9
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:feasibility"
+    },
+    {
       "name": "自律 A1: 作業場デバッグ画面",
       "type": "node-terminal",
       "request": "launch",
