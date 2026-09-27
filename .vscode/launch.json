@@ -176,6 +176,22 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:village -- 90"
     },
     {
+      "name": "自律: 土地経済90日の記録デバッグ画面",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?village=land-economy",
+        "action": "debugWithChrome"
+      },
+      "presentation": {
+        "group": "個人経済",
+        "order": 11
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
+    },
+    {
       "name": "自律 A1: 作業場デバッグ画面",
       "type": "node-terminal",
       "request": "launch",

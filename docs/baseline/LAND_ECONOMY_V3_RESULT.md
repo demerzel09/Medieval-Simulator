@@ -12,6 +12,8 @@
 
 `npm run autonomy:village -- 90 --scenario land-economy --daily` と[同梱の記録](../../fixtures/recordings/autonomous-village-land-90.v2.json.gz)で再現できる。
 
+F5の「自律: 土地経済90日の記録デバッグ画面」、または `/?village=land-economy` では、同梱記録の地図・作物・動物・各人のEventと判断を日・時刻で追える。画面は記録の閲覧であり、実走・再実行の一致検査はCLIで行う。
+
 | 指標 | 実測 |
 |---|---:|
 | 全員の食事・薪使用 | 各日1回、各90回。欠食・未使用0 |

@@ -10,6 +10,7 @@ const E1Debug = React.lazy(() => import("./e1-debug"));
 const E1V2Debug = React.lazy(() => import("./e1-v2-debug"));
 const A1Debug = React.lazy(() => import("./a1-debug"));
 const IndividualDebug = React.lazy(() => import("./individual-debug"));
+const VillageDebug = React.lazy(() => import("./village-debug"));
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
 });
@@ -1136,6 +1137,8 @@ function App() {
   );
 }
 createRoot(document.getElementById("root")!).render(
+  new URLSearchParams(window.location.search).get("village") === "land-economy" ?
+    <React.Suspense fallback={<p>土地経済の記録を読み込んでいます…</p>}><VillageDebug /></React.Suspense> :
   ["life", "market", "living"].includes(new URLSearchParams(window.location.search).get("individual") ?? "") ?
     <React.Suspense fallback={<p>個人経済を読み込んでいます…</p>}><IndividualDebug initialView={new URLSearchParams(window.location.search).get("individual") as "life" | "market" | "living"} /></React.Suspense> :
   new URLSearchParams(window.location.search).get("a1") === "debug" ?
