@@ -19,7 +19,7 @@ export type EcologyEffect = { kind: "plant_stage" | "plant_grew" | "animal_moved
   x?: number; y?: number; quantity?: number; stage?: string };
 
 export function newLandEcology(grid: GridMap, wildFood: number, wildCapacity: number,
-  grainPlots = 1, ecologyV2 = grainPlots > 1): LandEcology {
+  grainPlots = 1, ecologyV2 = grainPlots > 1, wideWorld = false): LandEcology {
   const patch = (id: string, species: PlantSpecies, siteId: string, stage: PlantStage,
     available: number, capacity: number, growHours: number, growthQuantity: number): PlantPatch => ({
     id, species, siteId, cell: structuredClone(grid.sites[siteId]), stage, ageHours: 0,
@@ -46,7 +46,7 @@ export function newLandEcology(grid: GridMap, wildFood: number, wildCapacity: nu
   }
   const ecology: LandEcology = { plants, animals: { rabbit_1: { id: "rabbit_1", species: "rabbit",
     cell: structuredClone(grid.sites.meadow), ageHours: 0, lifeStage: "juvenile",
-    hunger: 1, diet: ["grass", "herb"], senseRange: 2, lastMealHour: 0 } } };
+    hunger: 1, diet: ["grass", "herb"], senseRange: wideWorld ? 6 : 2, lastMealHour: 0 } } };
   if (ecologyV2) {
     ecology.rulesetVersion = 2; ecology.season = "spring";
     ecology.initialAnimals = 2; ecology.animalBirths = 0; ecology.animalDeaths = 0;
@@ -55,7 +55,7 @@ export function newLandEcology(grid: GridMap, wildFood: number, wildCapacity: nu
     ecology.animals.rabbit_1.lastBirthHour = 0;
     ecology.animals.rabbit_2 = { id: "rabbit_2", species: "rabbit",
       cell: structuredClone(grid.sites.meadow), ageHours: 72, lifeStage: "adult",
-      hunger: 1, diet: ["grass", "herb"], senseRange: 2, lastMealHour: 0,
+      hunger: 1, diet: ["grass", "herb"], senseRange: wideWorld ? 6 : 2, lastMealHour: 0,
       sex: "male", lastBirthHour: 0 };
   }
   return ecology;

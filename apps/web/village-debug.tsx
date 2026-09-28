@@ -3,7 +3,7 @@ import type { VillageId } from "../../packages/ai/autonomous-world";
 import { findGridPath, type GridMap, type GridPoint } from "../../packages/sim/grid-path";
 import type { VillageRecording } from "../../packages/sim/village-recording";
 
-const recordingUrl = new URL("../../fixtures/recordings/autonomous-village-spatial-90.v2.json.gz", import.meta.url).href;
+const recordingUrl = new URL("../../fixtures/recordings/autonomous-village-wide-90.v2.json.gz", import.meta.url).href;
 const people: VillageId[] = ["S", "F", "C", "B1", "B2"];
 const plantNames: Record<string, string> = {
   grain: "穀物", wild_berry: "野生ベリー", fruit_tree: "果樹", herb: "野草", grass: "草",
@@ -20,15 +20,19 @@ const clock = (hour: number) => `${Math.floor((hour - 1) / 24) + 1}日目 ${Stri
 async function readRecording(): Promise<VillageRecording> {
   const response = await fetch(recordingUrl);
   if (!response.ok) throw Error(`記録の取得に失敗しました (${response.status})`);
-  // Vite serves the archived .gz asset with Content-Encoding: gzip; fetch decodes it.
-  const text = await response.text();
+  const bytes = await response.arrayBuffer();
+  // Dev servers may decode Content-Encoding; static hosts may serve the .gz bytes directly.
+  const source = new Uint8Array(bytes);
+  const text = new TextDecoder().decode(source[0] === 0x1f && source[1] === 0x8b ?
+    await new Response(new Blob([bytes]).stream()
+      .pipeThrough(new DecompressionStream("gzip"))).arrayBuffer() : bytes);
   const recording = JSON.parse(text) as VillageRecording;
-  if (recording.rulesetId !== "autonomous-village-spatial-land-v3" || recording.untilHour !== 2160)
+  if (recording.rulesetId !== "autonomous-village-wide-land-v4" || recording.untilHour !== 2160)
     throw Error("土地経済90日の記録ではありません");
   return recording;
 }
 
-function atHour(recording: VillageRecording, hour: number) {
+function atHour(recording: VillageRecording, hour: number, eventFrame: number) {
   const positions: Record<VillageId, GridPoint> = {
     S: recording.initialGrid.sites.market, F: recording.initialGrid.sites.grove,
     C: recording.initialGrid.sites.market, B1: recording.initialGrid.sites.home_B1,
@@ -39,8 +43,10 @@ function atHour(recording: VillageRecording, hour: number) {
   const animals = Object.fromEntries(Object.values(recording.initialLand.animals).map((a) =>
     [a.id, { ...a, cell: { ...a.cell } }]));
   const totals = { grainMeals: 0, wildMeals: 0, harvestedGrain: 0, meals: 0, wood: 0 };
+  let frame = 0;
   for (const e of recording.events) {
     if (e.hour > hour) break;
+    if (e.hour === hour && frame++ >= eventFrame) break;
     if (e.kind === "travel_step") {
       const actor = e.actors[0] as VillageId;
       positions[actor] = { x: Number(e.data.x), y: Number(e.data.y) };
@@ -94,14 +100,15 @@ function drawSpatialMap(canvas: HTMLCanvasElement, map: GridMap,
   for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
     const px = x * cellSize, py = y * cellSize;
     const blocked = map.blocked.includes(`${x},${y}`);
-    const farm = x >= 20 && x <= 22 && y >= 9 && y <= 13;
-    const forest = x >= 13 && x <= 20 && y >= 7 && y <= 12;
-    const meadow = x >= 21 && x <= 27 && y >= 10 && y <= 16;
-    ctx.fillStyle = blocked ? y >= 15 && x <= 16 ? "#685842" : "#6b706e" :
+    const farm = Math.max(Math.abs(x - map.sites.field.x), Math.abs(y - map.sites.field.y)) <= 3;
+    const forest = Math.max(Math.abs(x - map.sites.grove.x), Math.abs(y - map.sites.grove.y)) <= 4;
+    const meadow = Math.max(Math.abs(x - map.sites.meadow.x), Math.abs(y - map.sites.meadow.y)) <= 4;
+    const building = blocked && x >= 6 && x <= 8 && y >= 3 && y <= 5;
+    ctx.fillStyle = blocked ? building ? "#685842" : "#6b706e" :
       farm ? "#705b3d" : forest ? "#335a3e" : meadow ? "#5e7846" : "#496347";
     ctx.fillRect(px, py, cellSize, cellSize);
     if (blocked) {
-      ctx.fillStyle = y >= 15 && x <= 16 ? "#8b7658" : "#8d938d";
+      ctx.fillStyle = building ? "#8b7658" : "#8d938d";
       ctx.fillRect(px + 4, py + 4, 24, 24);
       ctx.fillStyle = "#474e49";
       ctx.fillRect(px + 4, py + 23, 24, 5);
@@ -182,11 +189,12 @@ function drawSpatialMap(canvas: HTMLCanvasElement, map: GridMap,
 export default function VillageDebug() {
   const [recording, setRecording] = useState<VillageRecording>();
   const [error, setError] = useState("");
-  const [day, setDay] = useState(4);
-  const [hourOfDay, setHourOfDay] = useState(12);
-  const [selected, setSelected] = useState<VillageId>("F");
+  const [day, setDay] = useState(1);
+  const [hourOfDay, setHourOfDay] = useState(1);
+  const [selected, setSelected] = useState<VillageId>("C");
   const [routeTo, setRouteTo] = useState("field");
-  const [focusCell, setFocusCell] = useState<GridPoint>({ x: 20, y: 11 });
+  const [focusCell, setFocusCell] = useState<GridPoint>({ x: 34, y: 4 });
+  const [eventFrame, setEventFrame] = useState(-1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
@@ -195,7 +203,12 @@ export default function VillageDebug() {
     return () => { active = false; };
   }, []);
   const hour = (day - 1) * 24 + hourOfDay;
-  const snapshot = useMemo(() => recording && atHour(recording, hour), [recording, hour]);
+  const eventsThisHour = useMemo(() => recording?.events.filter((e) => e.hour === hour) ?? [],
+    [recording, hour]);
+  const visibleFrame = eventFrame < 0 ? eventsThisHour.length :
+    Math.min(eventFrame, eventsThisHour.length);
+  const snapshot = useMemo(() => recording && atHour(recording, hour, visibleFrame),
+    [recording, hour, visibleFrame]);
   const gridNow = useMemo(() => {
     if (!recording) return undefined;
     const blocked = new Set(recording.initialGrid.blocked);
@@ -227,12 +240,16 @@ export default function VillageDebug() {
     <header className="e1-top"><div><p className="eyebrow">AUTONOMOUS VILLAGE · RECORDED LAND ECONOMY</p>
       <h1>土地経済90日 · 空間デバッグ</h1></div><div><a href="/">90日ゲーム</a></div></header>
     <div className="e1-controls"><label>日 <input aria-label="土地経済の日" type="range" min="1" max="90" value={day}
-      onChange={(e) => setDay(Number(e.target.value))} /></label>
-      <button onClick={() => setDay(Math.max(1, day - 1))}>−1日</button>
-      <button onClick={() => setDay(Math.min(90, day + 1))}>＋1日</button>
+      onChange={(e) => { setDay(Number(e.target.value)); setEventFrame(-1); }} /></label>
+      <button onClick={() => { setDay(Math.max(1, day - 1)); setEventFrame(-1); }}>−1日</button>
+      <button onClick={() => { setDay(Math.min(90, day + 1)); setEventFrame(-1); }}>＋1日</button>
       <label>時刻 <input aria-label="土地経済の時刻" type="range" min="1" max="24" value={hourOfDay}
-        onChange={(e) => setHourOfDay(Number(e.target.value))} /></label>
+        onChange={(e) => { setHourOfDay(Number(e.target.value)); setEventFrame(-1); }} /></label>
       <strong>{clock(hour)}</strong>
+      <label>時刻内の進行 <input aria-label="時刻内の進行" type="range" min="0"
+        max={eventsThisHour.length} value={visibleFrame}
+        onChange={(e) => setEventFrame(Number(e.target.value))} /></label>
+      <span>{visibleFrame}/{eventsThisHour.length} Event</span>
       <label>経路の行先 <select aria-label="経路の行先" value={routeTo}
         onChange={(e) => setRouteTo(e.target.value)}><option value="">表示しない</option>
         {Object.keys(recording.initialGrid.sites).map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
@@ -246,7 +263,7 @@ export default function VillageDebug() {
       <span>薪使用 <b>{snapshot.totals.wood}/450</b></span>
       <span>動物 <b>{Object.keys(snapshot.animals).length}</b></span></div>
     <main className="e1-layout"><section className="e1-map-panel">
-      <p>保存済みの判断とEventを時刻順に表示します。セルの人物、作物、動物は記録された位置と変化です。</p>
+      <p>保存済みの判断とEventを時刻順に表示します。時刻内の進行を動かすと、各セルを通る移動を1 Eventずつ確認できます。</p>
       <div className="village-canvas-scroll"><canvas ref={canvasRef} width={1280} height={768}
         role="img" aria-label="土地経済の1280×768ピクセル地図"
         onClick={(event) => {

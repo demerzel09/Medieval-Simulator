@@ -114,3 +114,26 @@ export function spatialVillageGrid(): GridMap {
     grain_plot_3: { x: 21, y: 11 }, grain_plot_4: { x: 21, y: 12 },
   } };
 }
+
+/** The working village uses the full 40×24 field, with obstacles between its sites. */
+export function wideVillageGrid(): GridMap {
+  const blocked: string[] = [];
+  const rectangle = (left: number, top: number, width: number, height: number) => {
+    for (let y = top; y < top + height; y++) for (let x = left; x < left + width; x++)
+      blocked.push(`${x},${y}`);
+  };
+  rectangle(8, 10, 4, 5);   // rock wall between market and grove
+  rectangle(21, 6, 5, 8);   // ridge between grove and field
+  rectangle(27, 14, 5, 5);  // boulders between field and meadow
+  rectangle(6, 3, 3, 3);    // outbuilding
+  return { width: 40, height: 24, blocked, cost: {}, sites: {
+    market: { x: 4, y: 12 }, grove: { x: 16, y: 12 },
+    home_B1: { x: 2, y: 4 }, home_B2: { x: 3, y: 20 },
+    field: { x: 34, y: 5 }, meadow: { x: 35, y: 19 },
+    orchard: { x: 34, y: 8 }, herb_patch: { x: 15, y: 9 },
+    grass_patch: { x: 31, y: 21 },
+    rock_west: { x: 7, y: 8 }, ridge_east: { x: 37, y: 7 },
+    grain_plot: { x: 34, y: 4 }, grain_plot_2: { x: 35, y: 4 },
+    grain_plot_3: { x: 35, y: 5 }, grain_plot_4: { x: 35, y: 6 },
+  } };
+}

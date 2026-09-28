@@ -2,6 +2,8 @@
 
 更新: 2026-09-28。前回の[土地経済90日](LAND_ECONOMY_V3_RESULT.md)を5×5の抽象的な場所で拡大表示した画面は、意図した空間モデルではなかった。今回は別の規則版 `autonomous-village-spatial-land-v3` と[空間fixture](../../fixtures/land-economy-spatial.ts)を作り、旧記録の再現性を維持したまま、シミュレーションと画面が同じセル地図を使うようにした。
 
+**後続の判定:** この版の市場・家・畑・森・草原は中央約9×9セルに集中していたため、広い地図での経路・土地利用の受入には不足していた。現在の画面は[全域版](WIDE_WORLD_V5_RESULT.md)の記録を表示する。この版のfixtureと記録は回帰比較用に保存する。
+
 ## 実装した空間
 
 - 論理地図は40列×24行、1セル32ピクセル。画面の描画領域は正確に1280×768ピクセルのCanvas。
@@ -14,7 +16,7 @@ npm run autonomy:village -- 90 --scenario land-spatial --daily
 npm run autonomy:village -- replay fixtures/recordings/autonomous-village-spatial-90.v2.json.gz
 ```
 
-F5の「自律: 土地経済90日の空間デバッグ画面」、または `/?village=land-economy` で記録を開く。人物・日・時刻・経路の行先を選択し、セルをクリックするとそのセルの植物・動物を確認できる。
+この版の画面は全域版に置き換えた。記録はCLIの `replay` で引き続き検証できる。
 
 ## 正常90日と検証
 

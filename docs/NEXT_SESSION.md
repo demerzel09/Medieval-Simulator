@@ -6,7 +6,7 @@
 
 [土地経済計画](baseline/LAND_ECONOMY_NEXT_PLAN.md)の順1〜4を実装した。順1は[90日収支の算術候補](baseline/LAND_ECONOMY_FEASIBILITY_V1.md)、順2〜4は[5人の実走と対照](baseline/LAND_ECONOMY_V3_RESULT.md)を正本とする。従来の版2基準90日は野生ベリー中心の独立fixtureとして保存し、[同梱記録](../fixtures/recordings/autonomous-village-90.v2.json.gz)を引き続き再実行できる。
 
-F5の「自律: 土地経済90日の空間デバッグ画面」は[空間版](baseline/SPATIAL_GRID_V4_RESULT.md)の40×24セルを1280×768ピクセルで描く。作物はセル別に生育し、人物・動物の移動と矩形障害物が同じ世界状態にある。URLは `/?village=land-economy`。画面は空間版の保存済み90日記録を閲覧する。
+F5の「自律: 土地経済90日の全域デバッグ画面」は[全域版](baseline/WIDE_WORLD_V5_RESULT.md)の40×24セルを1280×768ピクセルで描く。旧空間版の活動が中央約9×9セルに集中していた問題を改め、市場・家・森・畑・草原を地図に分散した。90日で人がx=0〜35・y=4〜20の79セルを通過し、各セルの `travel_step` を時刻内Eventで再生できる。URLは `/?village=land-economy`。画面は全域版の保存済み90日記録を閲覧する。
 
 旧5×5の土地経済fixtureでは、4つの穀物区画、Fの初期種4と穀物技能2、野生ベリー初期20・再生0で5人の90日を実行した。全員が各日1食と薪1を使用し、食料450食の内訳は穀物435・野生ベリー15。日61〜90の150食は穀物。通貨26保存、正常系の拒否・失敗0。栽培・所有・運搬・販売・食事を食品ロットの産地まで追跡し、途中保存と[90日記録](../fixtures/recordings/autonomous-village-land-90.v2.json.gz)の再実行が一致した。
 
@@ -15,7 +15,8 @@ F5の「自律: 土地経済90日の空間デバッグ画面」は[空間版](ba
 ## 実行・設計境界
 
 ```bash
-npm run autonomy:village -- 90 --scenario land-spatial --daily
+npm run autonomy:village -- 90 --scenario land-wide --daily
+npm run autonomy:village -- replay fixtures/recordings/autonomous-village-wide-90.v2.json.gz
 npm run autonomy:village -- replay fixtures/recordings/autonomous-village-spatial-90.v2.json.gz
 npm run autonomy:village -- 90 --scenario land-economy --daily
 npm run autonomy:village -- replay fixtures/recordings/autonomous-village-land-90.v2.json.gz
@@ -27,6 +28,6 @@ npm run autonomy:village -- compare fixtures/recordings/autonomous-village-land-
 
 ## 次の候補と検証
 
-次は土地利用権の移転・共同利用、注文専用の契約証拠の一般化、複数作物と技能・価格・人格・人口・地理を変えた対照から選ぶ。各対照は別fixture・記録として再現し、正常90日の結果をそのまま一般化しない。本編M3の3〜5人の人間試遊は別途未実施。実測と限界の一覧は[STATUS](STATUS.md)。
+次は地形別の移動コストと土地の利用可能性、動物の広域採餌、土地利用権の移転・共同利用、注文専用の契約証拠の一般化、複数作物と技能・価格・人格・人口・地理を変えた対照から選ぶ。各対照は別fixture・記録として再現し、正常90日の結果をそのまま一般化しない。本編M3の3〜5人の人間試遊は別途未実施。実測と限界の一覧は[STATUS](STATUS.md)。
 
 変更後は `npm test -- --testTimeout 60000`、`npm run typecheck`、`npm run content:validate`、`npm run build`、旧版と土地経済の記録再実行を確認する。記録画面のブラウザテストは追加済み。ユーザーの既存の許可により `main` のコミット・プッシュが可能。

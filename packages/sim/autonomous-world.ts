@@ -4,6 +4,7 @@ import { ordinaryVillageModel, type VillageAttempt, type VillageContext, type Vi
 import { wakeActors } from "./actor-clock";
 import { hash } from "./core";
 import { cellKey, checkGridMap, defaultVillageGrid, findGridPath, inGrid, sameCell, spatialVillageGrid,
+  wideVillageGrid,
   traversable, type GridMap, type GridPoint } from "./grid-path";
 import { advanceLandHour, checkLandEcology, newLandEcology, type LandEcology } from "./land-ecology";
 import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, totalMass,
@@ -102,7 +103,8 @@ function transferUnit(t: PhysicalTransaction, lotId: string, quantity: number, u
   t.move(unit, parentId); t.changeOwner(unit, ownerId); return unit;
 }
 export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonomousVillageV1,
-  initialGrid: GridMap = fixture.landEconomy?.spatialGrid ? spatialVillageGrid() : defaultVillageGrid(),
+  initialGrid: GridMap = fixture.landEconomy?.wideWorld ? wideVillageGrid() :
+    fixture.landEconomy?.spatialGrid ? spatialVillageGrid() : defaultVillageGrid(),
   landInput?: LandEcology): VillageWorld {
   if (!Number.isSafeInteger(seed) || fixture.schemaVersion !== 1 ||
     !Number.isSafeInteger(fixture.informationDelayHours) || fixture.informationDelayHours < 1 ||
@@ -120,7 +122,8 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     (_, i) => i ? `grain_plot_${i + 1}` : "grain_plot").some((id) => !grid.sites[id]))
     throw Error("spatial crop cell missing");
   const land = structuredClone(landInput ?? newLandEcology(grid, f.resources.food.initial,
-    f.resources.food.capacity, f.landEconomy?.grainPlots ?? 1, !!f.landEconomy));
+    f.resources.food.capacity, f.landEconomy?.grainPlots ?? 1, !!f.landEconomy,
+    !!f.landEconomy?.wideWorld));
   checkLandEcology(land, grid);
   if (f.landEconomy?.spatialGrid && new Set(Object.values(land.plants)
     .map((p) => cellKey(p.cell))).size !== Object.keys(land.plants).length)
@@ -225,8 +228,7 @@ function startTravel(w: VillageWorld, actorId: VillageId, toId: string, decision
   if (actorId === "C" && mass > w.fixture.carryingCapacity.carrierTotalMass)
     return "carrier overloaded";
   const stepHours = 1 + Math.floor(mass / 20);
-  const duration = Math.max(1, path.slice(1).reduce((n, point) =>
-    n + stepHours * (w.grid.cost[cellKey(point)] ?? 1), 0));
+  const duration = routeRemainingHours(w, path, stepHours);
   const energyPerHour = 1 + Math.floor(mass / 10);
   if (w.people[actorId].energy < duration * energyPerHour) return "traveller exhausted";
   const transitId = from.startsWith("transit_") ? from : uid(w, "transit");
@@ -239,8 +241,9 @@ function startTravel(w: VillageWorld, actorId: VillageId, toId: string, decision
     { transitId, destinationId: toId, path, pathIndex: 0, edgeProgress: 0, stepHours });
 }
 function routeRemainingHours(w: VillageWorld, path: GridPoint[], stepHours: number) {
-  return Math.max(1, path.slice(1).reduce((n, point) =>
-    n + stepHours * (w.grid.cost[cellKey(point)] ?? 1), 0));
+  const cost = path.slice(1).reduce((n, point) =>
+    n + stepHours * (w.grid.cost[cellKey(point)] ?? 1), 0);
+  return Math.max(1, w.fixture.landEconomy?.wideWorld ? Math.ceil(cost / 24) : cost);
 }
 function redirectTravel(w: VillageWorld, actorId: VillageId, toId: string, causeId: string) {
   const p = w.processes[w.people[actorId].activeProcessId ?? ""];
@@ -427,7 +430,46 @@ function progressProcesses(w: VillageWorld) {
     }
     w.people[p.actorId].energy -= p.energyPerHour;
     p.progress++;
-    if (p.kind === "travel" && p.path && p.pathIndex! < p.path.length - 1) {
+    if (w.fixture.landEconomy?.wideWorld && p.kind === "travel" && p.path) {
+      let budget = 24;
+      while (budget > 0 && p.pathIndex! < p.path.length - 1) {
+        const next = p.path[p.pathIndex! + 1];
+        const roadCell = !Object.values(w.grid.sites).some((site) => sameCell(site, next));
+        const blocker = roadCell ? ids.find((other) => other !== p.actorId &&
+          sameCell(w.people[other].cell, next) &&
+          siteOf(w.physical, other).startsWith("transit_")) : undefined;
+        if (!traversable(w.grid, next) || blocker) {
+          const detour = findGridPath({ ...w.grid, blocked: blocker ?
+            [...w.grid.blocked, cellKey(next)] : w.grid.blocked },
+          w.people[p.actorId].cell, w.grid.sites[p.destinationId!]);
+          if (!detour) {
+            p.duration = Math.max(p.duration, p.progress + 1);
+            emit(w, "travel_waited", [p.actorId], [p.startEventId],
+              { reason: blocker ? "occupied road cell" : "route blocked",
+                destinationId: p.destinationId! });
+            break;
+          }
+          p.path = detour; p.pathIndex = 0; p.edgeProgress = 0;
+          p.duration = p.progress + routeRemainingHours(w, detour, p.stepHours!);
+          emit(w, "travel_replanned", [p.actorId], [p.startEventId],
+            { reason: blocker ? "occupied road cell" : "route blocked",
+              destinationId: p.destinationId!, x: w.people[p.actorId].cell.x,
+              y: w.people[p.actorId].cell.y });
+          continue;
+        }
+        const required = p.stepHours! * (w.grid.cost[cellKey(next)] ?? 1) - p.edgeProgress!;
+        const spent = Math.min(budget, required);
+        budget -= spent; p.edgeProgress! += spent;
+        if (p.edgeProgress === p.stepHours! * (w.grid.cost[cellKey(next)] ?? 1)) {
+          p.edgeProgress = 0; p.pathIndex!++;
+          w.people[p.actorId].cell = structuredClone(next);
+          emit(w, "travel_step", [p.actorId], [p.startEventId],
+            { x: next.x, y: next.y, destinationId: p.destinationId! });
+        }
+      }
+      if (p.pathIndex === p.path.length - 1) p.duration = p.progress;
+      else if (p.progress >= p.duration) p.duration = p.progress + 1;
+    } else if (p.kind === "travel" && p.path && p.pathIndex! < p.path.length - 1) {
       p.edgeProgress!++;
       const next = p.path[p.pathIndex! + 1];
       if (p.edgeProgress === p.stepHours! * (w.grid.cost[cellKey(next)] ?? 1)) {
