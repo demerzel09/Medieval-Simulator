@@ -8,6 +8,10 @@ const people: VillageId[] = ["S", "F", "C", "B1", "B2"];
 const plantNames: Record<string, string> = {
   grain: "穀物", wild_berry: "野生ベリー", fruit_tree: "果樹", herb: "野草", grass: "草",
 };
+const stageNames: Record<string, string> = {
+  bare: "未耕作", tilled: "耕作済み", seeded: "播種済み", growing: "成長中",
+  ripe: "収穫可能", regrowing: "再生中", flowering: "開花中",
+};
 const actionNames: Record<string, string> = {
   plot_tilled: "耕作", plot_sown: "播種", crop_harvested: "収穫", foraged: "採集",
   food_delivered: "食品納品", food_sold: "食品販売", ate: "食事", wood_burned: "薪使用",
@@ -152,7 +156,7 @@ function drawSpatialMap(canvas: HTMLCanvasElement, map: GridMap,
     const p = map.sites[id];
     ctx.fillStyle = id === "field" ? "#aa8c58" : "#3d4b43";
     ctx.fillRect(p.x * 32 + 2, p.y * 32 + 2, 28, 28);
-    ctx.fillStyle = "#fff0c5"; ctx.font = "bold 10px sans-serif";
+    ctx.fillStyle = "#fff0c5"; ctx.font = 'bold 10px "Noto Sans JP", sans-serif';
     ctx.fillText(label, p.x * 32 + 3, p.y * 32 + 29);
   }
   for (const plant of Object.values(snapshot.plants)) {
@@ -219,6 +223,8 @@ export default function VillageDebug() {
   const [speed, setSpeed] = useState(1);
   const [selected, setSelected] = useState<VillageId>("F");
   const [routeTo, setRouteTo] = useState("");
+  const [sideOpen, setSideOpen] = useState(true);
+  const [sideTab, setSideTab] = useState<"history" | "legend">("history");
   const [focusCell, setFocusCell] = useState<GridPoint>({ x: 15, y: 9 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -259,8 +265,14 @@ export default function VillageDebug() {
     findGridPath(gridNow, snapshot.positions[selected], gridNow.sites[routeTo]) : undefined,
   [gridNow, snapshot, selected, routeTo]);
   useEffect(() => {
-    if (gridNow && snapshot && canvasRef.current)
-      drawSpatialMap(canvasRef.current, gridNow, snapshot, selected, route);
+    if (!gridNow || !snapshot || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    drawSpatialMap(canvas, gridNow, snapshot, selected, route);
+    let active = true;
+    void document.fonts.load('700 10px "Noto Sans JP"', "市場森畑草原岩場峠").then(() => {
+      if (active) drawSpatialMap(canvas, gridNow, snapshot, selected, route);
+    });
+    return () => { active = false; };
   }, [gridNow, snapshot, selected, route]);
   const dayEvents = useMemo(() => recording?.events.filter((e) => e.day === day &&
     (e.hour < hour || e.hour === hour && visibleEventIds.has(e.id)) &&
@@ -275,6 +287,16 @@ export default function VillageDebug() {
   const plantList = Object.values(snapshot.plants);
   const localPlants = plantList.filter((p) => pointKey(p.cell) === pointKey(focusCell));
   const localAnimals = Object.values(snapshot.animals).filter((a) => pointKey(a.cell) === pointKey(focusCell));
+  const blocked = gridNow.blocked.includes(pointKey(focusCell));
+  const building = blocked && focusCell.x >= 6 && focusCell.x <= 8 &&
+    focusCell.y >= 3 && focusCell.y <= 5;
+  const terrain = blocked ? building ? "建物" : "岩・山" :
+    Math.max(Math.abs(focusCell.x - gridNow.sites.field.x),
+      Math.abs(focusCell.y - gridNow.sites.field.y)) <= 3 ? "畑" :
+    Math.max(Math.abs(focusCell.x - gridNow.sites.grove.x),
+      Math.abs(focusCell.y - gridNow.sites.grove.y)) <= 4 ? "森" :
+    Math.max(Math.abs(focusCell.x - gridNow.sites.meadow.x),
+      Math.abs(focusCell.y - gridNow.sites.meadow.y)) <= 4 ? "草原" : "平地";
   return <div className="e1-debug village-debug">
     <header className="e1-top"><div><p className="eyebrow">AUTONOMOUS VILLAGE · RECORDED LAND ECONOMY</p>
       <h1>土地経済90日 · 空間デバッグ</h1></div><div><a href="/">90日ゲーム</a></div></header>
@@ -300,13 +322,7 @@ export default function VillageDebug() {
       <button onClick={() => { setSpeed(1); setPlaying(true); }} disabled={cursorMinutes >= totalMinutes}>再生</button>
       <button onClick={() => setPlaying(false)} disabled={!playing}>停止</button>
       <button onClick={() => { setSpeed(4); setPlaying(true); }} disabled={cursorMinutes >= totalMinutes}>早送り ×4</button>
-      <span role="status">{playing ? speed === 4 ? "早送り中" : "再生中" : "停止中"} · {visibleFrame}/{eventsThisHour.length} Event</span>
-      <label>経路の行先 <select aria-label="経路の行先" value={routeTo}
-        onChange={(e) => setRouteTo(e.target.value)}><option value="">表示しない</option>
-        {Object.keys(recording.initialGrid.sites).map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
-      <label>人物 <select aria-label="土地経済の人物" value={selected}
-        onChange={(e) => setSelected(e.target.value as VillageId)}>{people.map((id) =>
-          <option key={id} value={id}>{id}</option>)}</select></label></div>
+      <span role="status">{playing ? speed === 4 ? "早送り中" : "再生中" : "停止中"} · {visibleFrame}/{eventsThisHour.length} Event</span></div>
     <div className="e1-stats"><span>食事 <b>{snapshot.totals.meals}/450</b></span>
       <span>穀物の食事 <b>{snapshot.totals.grainMeals}</b></span>
       <span>野生ベリーの食事 <b>{snapshot.totals.wildMeals}</b></span>
@@ -314,7 +330,7 @@ export default function VillageDebug() {
       <span>穀物収穫 <b>{snapshot.totals.harvestedGrain}</b></span>
       <span>薪使用 <b>{snapshot.totals.wood}/450</b></span>
       <span>動物 <b>{Object.keys(snapshot.animals).length}</b></span></div>
-    <main className="e1-layout"><section className="e1-map-panel">
+    <main className={`e1-layout${sideOpen ? "" : " village-side-collapsed"}`}><section className="e1-map-panel">
       <p>保存済みのEventを順に再生します。分単位の移動位置は、1時間内の通過セルを均等に割り当てた目安です。黄色い線は行先を選んだ場合の計算経路です。</p>
       <div className="village-canvas-scroll"><canvas ref={canvasRef} width={1280} height={768}
         role="img" aria-label="土地経済の1280×768ピクセル地図"
@@ -326,21 +342,83 @@ export default function VillageDebug() {
           const actor = people.find((id) => pointKey(snapshot.positions[id]) === pointKey(cell));
           if (actor) setSelected(actor);
         }} /></div>
-      <p className="e1-legend">32ピクセル×40列×24行。茶色の矩形は建物、灰色の矩形は岩・山。色付きの小さな人物と植物・動物は記録されたセルに描画しています。</p>
+      <p className="e1-legend">32ピクセル×40列×24行。色と記号の説明は右側の「凡例」タブで確認できます。</p>
       <h2>{day}日目の関連Event（{dayEvents.length}件）</h2>
       <div className="e1-action-log">{dayEvents.slice().reverse().slice(0, 120).map((e) =>
         <p key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b><br />
           <small>{e.id} ← {e.causes.join(", ") || "起点"} · {JSON.stringify(e.data)}</small></p>)}</div>
-    </section><aside className="e1-detail"><h2>{selected} の判断履歴</h2>
-      <p>現在のセル: {pointKey(snapshot.positions[selected])} · 経路 {route ? `${route.length - 1}セル` : "表示なし"} · この日ここまでの判断 {decisions.length}件</p>
-      <h3>選択セル {pointKey(focusCell)}</h3>
-      <p>{gridNow.blocked.includes(pointKey(focusCell)) ? "障害物" : "通行可能"} · {localPlants.map((p) => `${plantNames[p.species]} ${p.stage} ${p.available}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
-      {decisions.slice().reverse().map((d) => <div key={d.eventId} className="e1-row">
-        <b>{clock(d.hour)} · {d.chosen?.kind ?? "待機"}</b><br />
-        <small>観察地点 {d.knownContext.siteId} · 体力 {d.knownContext.energy} · 空腹 {d.knownContext.hunger}</small><br />
-        <small>到達刺激 {d.stimuli.map((s) => s.kind).join("、") || "なし"} · {d.eventId}</small>
-      </div>)}
-      <p>元記録: {recording.finalStateHash} · 判断 {recording.decisions.length}件 · Event {recording.events.length}件</p>
+    </section><aside className="e1-detail village-side" aria-label="人物の履歴と地図の凡例">
+      <button type="button" className="village-side-toggle" aria-expanded={sideOpen}
+        onClick={() => setSideOpen((open) => !open)}>
+        {sideOpen ? "履歴・凡例を閉じる" : "履歴・凡例を開く"}</button>
+      {sideOpen && <><div role="tablist" aria-label="地図の詳細" className="village-tabs"
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          event.preventDefault();
+          const next = sideTab === "history" ? "legend" : "history";
+          setSideTab(next);
+          document.getElementById(`village-${next}-tab`)?.focus();
+        }}>
+        <button type="button" role="tab" id="village-history-tab" aria-controls="village-side-panel"
+          aria-selected={sideTab === "history"} tabIndex={sideTab === "history" ? 0 : -1}
+          onClick={() => setSideTab("history")}>人物の履歴</button>
+        <button type="button" role="tab" id="village-legend-tab" aria-controls="village-side-panel"
+          aria-selected={sideTab === "legend"} tabIndex={sideTab === "legend" ? 0 : -1}
+          onClick={() => setSideTab("legend")}>凡例</button>
+      </div><div role="tabpanel" id="village-side-panel"
+        aria-labelledby={sideTab === "history" ? "village-history-tab" : "village-legend-tab"}>
+        {sideTab === "history" ? <>
+          <h2>{selected} の判断履歴</h2>
+          <div className="village-side-selectors">
+            <label>人物 <select aria-label="土地経済の人物" value={selected}
+              onChange={(e) => setSelected(e.target.value as VillageId)}>{people.map((id) =>
+                <option key={id} value={id}>{id}</option>)}</select></label>
+            <label>経路の行先 <select aria-label="経路の行先" value={routeTo}
+              onChange={(e) => setRouteTo(e.target.value)}><option value="">表示しない</option>
+              {Object.keys(recording.initialGrid.sites).map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
+          </div>
+          <p>現在のセル: {pointKey(snapshot.positions[selected])} · 経路 {route ? `${route.length - 1}セル` : "表示なし"} · この日ここまでの判断 {decisions.length}件</p>
+          <h3>選択セル {pointKey(focusCell)}</h3>
+          <p>{terrain} · {blocked ? "通行不可" : "通行可能"} · {localPlants.map((p) =>
+            `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
+          {decisions.slice().reverse().map((d) => <div key={d.eventId} className="e1-row">
+            <b>{clock(d.hour)} · {d.chosen?.kind ?? "待機"}</b><br />
+            <small>観察地点 {d.knownContext.siteId} · 体力 {d.knownContext.energy} · 空腹 {d.knownContext.hunger}</small><br />
+            <small>到達刺激 {d.stimuli.map((s) => s.kind).join("、") || "なし"} · {d.eventId}</small>
+          </div>)}
+          <p>元記録: {recording.finalStateHash} · 判断 {recording.decisions.length}件 · Event {recording.events.length}件</p>
+        </> : <>
+          <h2>地図の凡例</h2>
+          <p>1セルは32×32ピクセル。地面の色は土地の種類、セル内の形は植物や障害物を表します。</p>
+          <h3>地面と障害物</h3>
+          <ul className="village-legend-list">
+            <li><span className="village-swatch terrain-plain" />平地：濃い緑</li>
+            <li><span className="village-swatch terrain-forest" />森：深緑。野草や果樹が育つ</li>
+            <li><span className="village-swatch terrain-meadow" />草原：黄緑。草と動物がいる</li>
+            <li><span className="village-swatch terrain-field" />畑：茶色。区画ごとに作物が育つ</li>
+            <li><span className="village-swatch terrain-building" />建物：茶色い小さな矩形。通行不可</li>
+            <li><span className="village-swatch terrain-rock" />岩・山：灰色の小さな矩形。通行不可</li>
+          </ul>
+          <h3>植物と動物</h3>
+          <ul className="village-legend-list">
+            <li><span className="village-swatch plant-grain" />穀物：畑の茶色い区画。緑の芽から黄色い穂へ成長</li>
+            <li><span className="village-swatch plant-berry" />野生ベリー：緑の株と紫の実</li>
+            <li><span className="village-swatch plant-herb" />野草：緑の株と薄黄の葉</li>
+            <li><span className="village-swatch plant-tree" />果樹：茶色の幹と緑の冠、橙の実</li>
+            <li><span className="village-swatch plant-grass" />草：緑の株。動物の食べ物</li>
+            <li><span className="village-swatch animal-rabbit" />ウサギ：白い体と耳</li>
+          </ul>
+          <h3>移動と人物</h3>
+          <ul className="village-legend-list">
+            <li><span className="village-swatch route-line" />黄色い線：選択した人物から行先への計算経路</li>
+            <li><span className="village-swatch person-farmer" />人物：S 商人、F 農夫、C 運び手、B1・B2 木こり。色と文字で区別</li>
+            <li><span className="village-swatch person-selected" />薄黄色の枠：選択中の人物のセル</li>
+          </ul>
+          <h3>選択セル {pointKey(focusCell)}</h3>
+          <p>{terrain} · {blocked ? "通行不可" : "通行可能"} · {localPlants.map((p) =>
+            `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
+        </>}
+      </div></>}
     </aside></main>
   </div>;
 }
