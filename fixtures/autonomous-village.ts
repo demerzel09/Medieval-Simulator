@@ -2,7 +2,7 @@ import { autonomous90FeasibilityV1, type FeasibilityFixture } from "./autonomous
 
 export type VillageFixture = FeasibilityFixture & { informationDelayHours: number;
   landEconomy?: { grainPlots: number; initialSeeds: number; farmerGrainSkill: number;
-    spatialGrid?: true; wideWorld?: true } };
+    spatialGrid?: true; wideWorld?: true; exploreWildPlants?: true } };
 
 /** Execution fixture v1. Physical timing needs F's 4-coin float and an energy reserve. */
 export const autonomousVillageV1: VillageFixture = {

@@ -126,3 +126,21 @@ export const spatialLandEconomyVillageModel: VillageModel = { decide(input) {
   }
   return { ...ordinary, attempts: attempt ? [attempt] : [], wait: { at: input.at + (attempt ? 1 : 2) } };
 } };
+
+/** Local plant recognition chooses a short wild-food excursion without delaying the crop day. */
+export const exploringLandEconomyVillageModel: VillageModel = { decide(input) {
+  const ordinary = spatialLandEconomyVillageModel.decide(input);
+  if (input.actorId !== "F" || !input.knownContext.foragingSkill ||
+    input.knownContext.activeAction) return ordinary;
+  const c = input.knownContext;
+  if (c.day > 3 || c.siteId !== "grove" || c.hunger === 0 || c.ownFood > 0 || c.energy < 1 ||
+    ordinary.attempts[0]?.kind !== "forage" || ordinary.attempts[0].resource !== "food" ||
+    ordinary.attempts[0].quantity !== 1) return ordinary;
+  const candidates = c.visiblePlants.filter((p) => ["herb", "fruit_tree"].includes(p.species) &&
+    p.stage === "ripe" && p.available > 0 && p.siteId && p.cell)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (!candidates.length) return ordinary;
+  const target = candidates[(c.day - 1) % candidates.length];
+  return { ...ordinary, attempts: [{ kind: "forage_route", plantId: target.id }],
+    wait: { at: input.at + 1 } };
+} };

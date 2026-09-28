@@ -137,3 +137,11 @@ export function wideVillageGrid(): GridMap {
     grain_plot_3: { x: 35, y: 5 }, grain_plot_4: { x: 35, y: 6 },
   } };
 }
+
+/** Extra food patches are learned through the forager's local observation. */
+export function exploringVillageGrid(): GridMap {
+  const grid = wideVillageGrid();
+  return { ...grid, sites: { ...grid.sites,
+    herb_patch_2: { x: 12, y: 8 }, orchard_2: { x: 13, y: 16 },
+  } };
+}

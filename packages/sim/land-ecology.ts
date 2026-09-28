@@ -35,6 +35,10 @@ export function newLandEcology(grid: GridMap, wildFood: number, wildCapacity: nu
     grass_patch: patch("grass_patch", "grass", grid.sites.grass_patch ? "grass_patch" : "meadow",
       "ripe", 3, 3, 24, 3),
   };
+  if (grid.sites.herb_patch_2) plants.herb_patch_2 =
+    patch("herb_patch_2", "herb", "herb_patch_2", "ripe", 2, 3, 24, 1);
+  if (grid.sites.orchard_2) plants.orchard_2 =
+    patch("orchard_2", "fruit_tree", "orchard_2", "ripe", 2, 4, 48, 2);
   for (let i = 1; i <= grainPlots; i++) {
     const id = i === 1 ? "grain_plot" : `grain_plot_${i}`;
     if (i > 1) plants[id] = patch(id, "grain", grid.sites[id] ? id : "field", "bare", 0, 5, 72, 5);

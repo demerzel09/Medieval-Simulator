@@ -3,7 +3,7 @@ import type { VillageId } from "../../packages/ai/autonomous-world";
 import { findGridPath, type GridMap, type GridPoint } from "../../packages/sim/grid-path";
 import type { VillageRecording } from "../../packages/sim/village-recording";
 
-const recordingUrl = new URL("../../fixtures/recordings/autonomous-village-wide-90.v2.json.gz", import.meta.url).href;
+const recordingUrl = new URL("../../fixtures/recordings/autonomous-village-exploring-90.v2.json.gz", import.meta.url).href;
 const people: VillageId[] = ["S", "F", "C", "B1", "B2"];
 const plantNames: Record<string, string> = {
   grain: "穀物", wild_berry: "野生ベリー", fruit_tree: "果樹", herb: "野草", grass: "草",
@@ -12,6 +12,7 @@ const actionNames: Record<string, string> = {
   plot_tilled: "耕作", plot_sown: "播種", crop_harvested: "収穫", foraged: "採集",
   food_delivered: "食品納品", food_sold: "食品販売", ate: "食事", wood_burned: "薪使用",
   travel_step: "移動", arrived: "到着", travel_replanned: "経路再探索",
+  plant_discovered: "植物発見", plant_gathered: "植物採集",
   animal_born: "動物の出生", animal_died: "動物の死亡", season_changed: "季節変化",
 };
 const pointKey = (p: GridPoint) => `${p.x},${p.y}`;
@@ -33,12 +34,12 @@ async function readRecording(): Promise<VillageRecording> {
     await new Response(new Blob([bytes]).stream()
       .pipeThrough(new DecompressionStream("gzip"))).arrayBuffer() : bytes);
   const recording = JSON.parse(text) as VillageRecording;
-  if (recording.rulesetId !== "autonomous-village-wide-land-v4" || recording.untilHour !== 2160)
+  if (recording.rulesetId !== "autonomous-village-exploring-land-v5" || recording.untilHour !== 2160)
     throw Error("土地経済90日の記録ではありません");
   return recording;
 }
 
-function atHour(recording: VillageRecording, hour: number, eventFrame: number) {
+function atHour(recording: VillageRecording, hour: number, eventFrame: number, minuteOfHour: number) {
   const positions: Record<VillageId, GridPoint> = {
     S: recording.initialGrid.sites.market, F: recording.initialGrid.sites.grove,
     C: recording.initialGrid.sites.market, B1: recording.initialGrid.sites.home_B1,
@@ -48,10 +49,15 @@ function atHour(recording: VillageRecording, hour: number, eventFrame: number) {
     [p.id, { ...p, cell: { ...p.cell } }]));
   const animals = Object.fromEntries(Object.values(recording.initialLand.animals).map((a) =>
     [a.id, { ...a, cell: { ...a.cell } }]));
-  const totals = { grainMeals: 0, wildMeals: 0, harvestedGrain: 0, meals: 0, wood: 0 };
+  const totals = { grainMeals: 0, wildMeals: 0, gatheredMeals: 0,
+    harvestedGrain: 0, meals: 0, wood: 0 };
   let frame = 0;
+  let positionsAtHourStart: Record<VillageId, GridPoint> | undefined;
   for (const e of recording.events) {
     if (e.hour > hour) break;
+    if (e.hour === hour && !positionsAtHourStart)
+      positionsAtHourStart = Object.fromEntries(people.map((id) => [id, { ...positions[id] }])) as
+        Record<VillageId, GridPoint>;
     if (e.hour === hour && frame++ >= eventFrame) break;
     if (e.kind === "travel_step") {
       const actor = e.actors[0] as VillageId;
@@ -91,8 +97,17 @@ function atHour(recording: VillageRecording, hour: number, eventFrame: number) {
       totals.meals++;
       if (e.data.species === "grain") totals.grainMeals++;
       if (e.data.species === "wild_berry") totals.wildMeals++;
+      if (e.data.species === "herb" || e.data.species === "fruit_tree") totals.gatheredMeals++;
     }
     if (e.kind === "wood_burned") totals.wood++;
+  }
+  if (positionsAtHourStart) for (const id of people) {
+    const steps = recording.events.filter((e) => e.hour === hour && e.kind === "travel_step" &&
+      e.actors[0] === id);
+    const count = Math.floor(steps.length * minuteOfHour / 60);
+    if (steps.length) positions[id] = count ?
+      { x: Number(steps[count - 1].data.x), y: Number(steps[count - 1].data.y) } :
+      positionsAtHourStart[id];
   }
   return { positions, plants, animals, totals };
 }
@@ -198,13 +213,13 @@ function drawSpatialMap(canvas: HTMLCanvasElement, map: GridMap,
 export default function VillageDebug() {
   const [recording, setRecording] = useState<VillageRecording>();
   const [error, setError] = useState("");
-  const [cursorMinutes, setCursorMinutes] = useState(0);
+  const [cursorMinutes, setCursorMinutes] = useState(60);
   const [stepMinutes, setStepMinutes] = useState(5);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [selected, setSelected] = useState<VillageId>("C");
+  const [selected, setSelected] = useState<VillageId>("F");
   const [routeTo, setRouteTo] = useState("");
-  const [focusCell, setFocusCell] = useState<GridPoint>({ x: 34, y: 4 });
+  const [focusCell, setFocusCell] = useState<GridPoint>({ x: 15, y: 9 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
@@ -229,8 +244,8 @@ export default function VillageDebug() {
   const visibleFrame = Math.floor(eventsThisHour.length * minuteOfHour / 60);
   const visibleEventIds = useMemo(() => new Set(eventsThisHour.slice(0, visibleFrame)
     .map((e) => e.id)), [eventsThisHour, visibleFrame]);
-  const snapshot = useMemo(() => recording && atHour(recording, hour, visibleFrame),
-    [recording, hour, visibleFrame]);
+  const snapshot = useMemo(() => recording && atHour(recording, hour, visibleFrame, minuteOfHour),
+    [recording, hour, visibleFrame, minuteOfHour]);
   const gridNow = useMemo(() => {
     if (!recording) return undefined;
     const blocked = new Set(recording.initialGrid.blocked);
@@ -295,11 +310,12 @@ export default function VillageDebug() {
     <div className="e1-stats"><span>食事 <b>{snapshot.totals.meals}/450</b></span>
       <span>穀物の食事 <b>{snapshot.totals.grainMeals}</b></span>
       <span>野生ベリーの食事 <b>{snapshot.totals.wildMeals}</b></span>
+      <span>探索した植物の食事 <b>{snapshot.totals.gatheredMeals}</b></span>
       <span>穀物収穫 <b>{snapshot.totals.harvestedGrain}</b></span>
       <span>薪使用 <b>{snapshot.totals.wood}/450</b></span>
       <span>動物 <b>{Object.keys(snapshot.animals).length}</b></span></div>
     <main className="e1-layout"><section className="e1-map-panel">
-      <p>保存済みのEventを順に再生します。5〜60分の表示位置は1時間内のEvent順から割り当てた目安です。黄色い線は行先を選んだ場合の計算経路です。</p>
+      <p>保存済みのEventを順に再生します。分単位の移動位置は、1時間内の通過セルを均等に割り当てた目安です。黄色い線は行先を選んだ場合の計算経路です。</p>
       <div className="village-canvas-scroll"><canvas ref={canvasRef} width={1280} height={768}
         role="img" aria-label="土地経済の1280×768ピクセル地図"
         onClick={(event) => {

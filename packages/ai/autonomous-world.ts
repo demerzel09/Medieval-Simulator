@@ -19,7 +19,7 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   visibleSale?: { price: number; stock: number };
   visiblePlants: { id: string; species: string; stage: string; available: number;
     siteId?: string; cell?: { x: number; y: number } }[];
-  farmingSkills: Record<string, number> };
+  farmingSkills: Record<string, number>; foragingSkill?: number };
 export type VillageAttempt =
   | { kind: "post_food_order"; quantity: number; bid: number; carrierFee: number; salePrice: number }
   | { kind: "accept_carriage"; orderId: string } | { kind: "fund_carriage"; orderId: string }
@@ -34,6 +34,7 @@ export type VillageAttempt =
   | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" }
   | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string }
   | { kind: "harvest_plot"; plantId: string }
+  | { kind: "forage_route"; plantId: string }
   | { kind: "gather_plant"; plantId: string; quantity: number };
 export type VillageResponse = ActorResponse<VillageAttempt, VillageMemory, { at: number }>;
 export type VillageModel = PersonalityModel<ActorInput<VillageContext, VillageMemory, VillageStimulus>, VillageResponse>;
