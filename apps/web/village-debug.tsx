@@ -16,6 +16,12 @@ const actionNames: Record<string, string> = {
 };
 const pointKey = (p: GridPoint) => `${p.x},${p.y}`;
 const clock = (hour: number) => `${Math.floor((hour - 1) / 24) + 1}日目 ${String((hour - 1) % 24 + 1).padStart(2, "0")}時`;
+const totalMinutes = 90 * 24 * 60;
+const replayClock = (minutes: number) => {
+  const day = Math.min(90, Math.floor(minutes / 1440) + 1);
+  const minuteOfDay = minutes - (day - 1) * 1440;
+  return `${day}日目 ${String(Math.floor(minuteOfDay / 60)).padStart(2, "0")}:${String(minuteOfDay % 60).padStart(2, "0")}`;
+};
 
 async function readRecording(): Promise<VillageRecording> {
   const response = await fetch(recordingUrl);
@@ -117,9 +123,12 @@ function drawSpatialMap(canvas: HTMLCanvasElement, map: GridMap,
     ctx.strokeRect(px + .5, py + .5, 31, 31);
   }
   if (route) {
-    ctx.strokeStyle = "#ffd36a"; ctx.lineWidth = 3;
-    for (const p of route) ctx.strokeRect(p.x * 32 + 3, p.y * 32 + 3, 26, 26);
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#ffd36a"; ctx.lineWidth = 3; ctx.beginPath();
+    route.forEach((p, index) => {
+      if (index === 0) ctx.moveTo(p.x * 32 + 16, p.y * 32 + 16);
+      else ctx.lineTo(p.x * 32 + 16, p.y * 32 + 16);
+    });
+    ctx.stroke(); ctx.lineWidth = 1;
   }
   const names: Record<string, string> = { market: "市場", grove: "森", field: "畑",
     meadow: "草原", home_B1: "B1宅", home_B2: "B2宅",
@@ -189,12 +198,13 @@ function drawSpatialMap(canvas: HTMLCanvasElement, map: GridMap,
 export default function VillageDebug() {
   const [recording, setRecording] = useState<VillageRecording>();
   const [error, setError] = useState("");
-  const [day, setDay] = useState(1);
-  const [hourOfDay, setHourOfDay] = useState(1);
+  const [cursorMinutes, setCursorMinutes] = useState(0);
+  const [stepMinutes, setStepMinutes] = useState(5);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
   const [selected, setSelected] = useState<VillageId>("C");
-  const [routeTo, setRouteTo] = useState("field");
+  const [routeTo, setRouteTo] = useState("");
   const [focusCell, setFocusCell] = useState<GridPoint>({ x: 34, y: 4 });
-  const [eventFrame, setEventFrame] = useState(-1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     let active = true;
@@ -202,11 +212,23 @@ export default function VillageDebug() {
       .catch((cause: unknown) => { if (active) setError(String(cause)); });
     return () => { active = false; };
   }, []);
-  const hour = (day - 1) * 24 + hourOfDay;
+  useEffect(() => {
+    if (!playing || !recording || cursorMinutes >= totalMinutes) return;
+    const timer = window.setInterval(() => setCursorMinutes((current) =>
+      Math.min(totalMinutes, current + stepMinutes)), speed === 4 ? 100 : 400);
+    return () => window.clearInterval(timer);
+  }, [playing, recording, stepMinutes, speed, cursorMinutes >= totalMinutes]);
+  useEffect(() => { if (cursorMinutes >= totalMinutes) setPlaying(false); }, [cursorMinutes]);
+  const day = Math.min(90, Math.floor(cursorMinutes / 1440) + 1);
+  const hourOfDay = cursorMinutes === totalMinutes ? 24 :
+    Math.floor((cursorMinutes % 1440) / 60) + 1;
+  const minuteOfHour = cursorMinutes === totalMinutes ? 60 : cursorMinutes % 60;
+  const hour = Math.min(2160, Math.floor(cursorMinutes / 60) + 1);
   const eventsThisHour = useMemo(() => recording?.events.filter((e) => e.hour === hour) ?? [],
     [recording, hour]);
-  const visibleFrame = eventFrame < 0 ? eventsThisHour.length :
-    Math.min(eventFrame, eventsThisHour.length);
+  const visibleFrame = Math.floor(eventsThisHour.length * minuteOfHour / 60);
+  const visibleEventIds = useMemo(() => new Set(eventsThisHour.slice(0, visibleFrame)
+    .map((e) => e.id)), [eventsThisHour, visibleFrame]);
   const snapshot = useMemo(() => recording && atHour(recording, hour, visibleFrame),
     [recording, hour, visibleFrame]);
   const gridNow = useMemo(() => {
@@ -226,11 +248,13 @@ export default function VillageDebug() {
       drawSpatialMap(canvasRef.current, gridNow, snapshot, selected, route);
   }, [gridNow, snapshot, selected, route]);
   const dayEvents = useMemo(() => recording?.events.filter((e) => e.day === day &&
-    e.hour <= hour && (e.actors.includes(selected) ||
+    (e.hour < hour || e.hour === hour && visibleEventIds.has(e.id)) &&
+    (e.actors.includes(selected) ||
       ["crop_harvested", "plant_stage", "animal_born", "animal_died", "season_changed"].includes(e.kind))) ?? [],
-  [recording, day, hour, selected]);
+  [recording, day, hour, visibleEventIds, selected]);
   const decisions = useMemo(() => recording?.decisions.filter((d) => d.actorId === selected &&
-    d.hour > (day - 1) * 24 && d.hour <= hour) ?? [], [recording, day, hour, selected]);
+    d.hour > (day - 1) * 24 && (d.hour < hour || d.hour === hour &&
+      visibleEventIds.has(d.eventId))) ?? [], [recording, day, hour, visibleEventIds, selected]);
   if (error) return <main className="e1-debug"><h1>土地経済の記録を開けませんでした</h1><p role="alert">{error}</p></main>;
   if (!recording || !snapshot || !gridNow) return <main className="e1-debug"><p>90日記録を読み込んでいます…</p></main>;
   const plantList = Object.values(snapshot.plants);
@@ -240,16 +264,28 @@ export default function VillageDebug() {
     <header className="e1-top"><div><p className="eyebrow">AUTONOMOUS VILLAGE · RECORDED LAND ECONOMY</p>
       <h1>土地経済90日 · 空間デバッグ</h1></div><div><a href="/">90日ゲーム</a></div></header>
     <div className="e1-controls"><label>日 <input aria-label="土地経済の日" type="range" min="1" max="90" value={day}
-      onChange={(e) => { setDay(Number(e.target.value)); setEventFrame(-1); }} /></label>
-      <button onClick={() => { setDay(Math.max(1, day - 1)); setEventFrame(-1); }}>−1日</button>
-      <button onClick={() => { setDay(Math.min(90, day + 1)); setEventFrame(-1); }}>＋1日</button>
+      onChange={(e) => { setPlaying(false); setCursorMinutes((Number(e.target.value) - 1) * 1440); }} /></label>
+      <button onClick={() => { setPlaying(false); setCursorMinutes(Math.max(0, cursorMinutes - 1440)); }}>−1日</button>
+      <button onClick={() => { setPlaying(false); setCursorMinutes(Math.min(totalMinutes, cursorMinutes + 1440)); }}>＋1日</button>
       <label>時刻 <input aria-label="土地経済の時刻" type="range" min="1" max="24" value={hourOfDay}
-        onChange={(e) => { setHourOfDay(Number(e.target.value)); setEventFrame(-1); }} /></label>
-      <strong>{clock(hour)}</strong>
-      <label>時刻内の進行 <input aria-label="時刻内の進行" type="range" min="0"
-        max={eventsThisHour.length} value={visibleFrame}
-        onChange={(e) => setEventFrame(Number(e.target.value))} /></label>
-      <span>{visibleFrame}/{eventsThisHour.length} Event</span>
+        onChange={(e) => { setPlaying(false); setCursorMinutes((day - 1) * 1440 +
+          (Number(e.target.value) - 1) * 60); }} /></label>
+      <label>分 <input aria-label="土地経済の分" type="range" min="0" max="60" step={stepMinutes}
+        value={minuteOfHour} onChange={(e) => { setPlaying(false); setCursorMinutes(Math.min(totalMinutes,
+          (day - 1) * 1440 + (hourOfDay - 1) * 60 + Number(e.target.value))); }} /></label>
+      <strong aria-live="polite">{replayClock(cursorMinutes)}</strong>
+      <label>移動の刻み <select aria-label="移動の刻み" value={stepMinutes}
+        onChange={(e) => { const next = Number(e.target.value); setStepMinutes(next);
+          setCursorMinutes((current) => Math.floor(current / next) * next); }}>
+        <option value="5">5分</option><option value="15">15分</option>
+        <option value="30">30分</option><option value="60">1時間</option>
+      </select></label>
+      <button onClick={() => { setPlaying(false); setCursorMinutes(Math.min(totalMinutes,
+        cursorMinutes + stepMinutes)); }} disabled={cursorMinutes >= totalMinutes}>＋1刻み</button>
+      <button onClick={() => { setSpeed(1); setPlaying(true); }} disabled={cursorMinutes >= totalMinutes}>再生</button>
+      <button onClick={() => setPlaying(false)} disabled={!playing}>停止</button>
+      <button onClick={() => { setSpeed(4); setPlaying(true); }} disabled={cursorMinutes >= totalMinutes}>早送り ×4</button>
+      <span role="status">{playing ? speed === 4 ? "早送り中" : "再生中" : "停止中"} · {visibleFrame}/{eventsThisHour.length} Event</span>
       <label>経路の行先 <select aria-label="経路の行先" value={routeTo}
         onChange={(e) => setRouteTo(e.target.value)}><option value="">表示しない</option>
         {Object.keys(recording.initialGrid.sites).map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
@@ -263,7 +299,7 @@ export default function VillageDebug() {
       <span>薪使用 <b>{snapshot.totals.wood}/450</b></span>
       <span>動物 <b>{Object.keys(snapshot.animals).length}</b></span></div>
     <main className="e1-layout"><section className="e1-map-panel">
-      <p>保存済みの判断とEventを時刻順に表示します。時刻内の進行を動かすと、各セルを通る移動を1 Eventずつ確認できます。</p>
+      <p>保存済みのEventを順に再生します。5〜60分の表示位置は1時間内のEvent順から割り当てた目安です。黄色い線は行先を選んだ場合の計算経路です。</p>
       <div className="village-canvas-scroll"><canvas ref={canvasRef} width={1280} height={768}
         role="img" aria-label="土地経済の1280×768ピクセル地図"
         onClick={(event) => {
@@ -274,13 +310,13 @@ export default function VillageDebug() {
           const actor = people.find((id) => pointKey(snapshot.positions[id]) === pointKey(cell));
           if (actor) setSelected(actor);
         }} /></div>
-      <p className="e1-legend">32ピクセル×40列×24行。茶色の矩形は建物、灰色の矩形は岩・山。色付きの小さな人物と植物・動物は実際のセルに描画しています。</p>
+      <p className="e1-legend">32ピクセル×40列×24行。茶色の矩形は建物、灰色の矩形は岩・山。色付きの小さな人物と植物・動物は記録されたセルに描画しています。</p>
       <h2>{day}日目の関連Event（{dayEvents.length}件）</h2>
       <div className="e1-action-log">{dayEvents.slice().reverse().slice(0, 120).map((e) =>
         <p key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b><br />
           <small>{e.id} ← {e.causes.join(", ") || "起点"} · {JSON.stringify(e.data)}</small></p>)}</div>
     </section><aside className="e1-detail"><h2>{selected} の判断履歴</h2>
-      <p>現在のセル: {pointKey(snapshot.positions[selected])} · 経路 {route ? route.length - 1 : "なし"}セル · この日ここまでの判断 {decisions.length}件</p>
+      <p>現在のセル: {pointKey(snapshot.positions[selected])} · 経路 {route ? `${route.length - 1}セル` : "表示なし"} · この日ここまでの判断 {decisions.length}件</p>
       <h3>選択セル {pointKey(focusCell)}</h3>
       <p>{gridNow.blocked.includes(pointKey(focusCell)) ? "障害物" : "通行可能"} · {localPlants.map((p) => `${plantNames[p.species]} ${p.stage} ${p.available}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
       {decisions.slice().reverse().map((d) => <div key={d.eventId} className="e1-row">

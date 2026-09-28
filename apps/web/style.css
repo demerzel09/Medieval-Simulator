@@ -565,5 +565,7 @@ footer {
 .village-canvas-scroll { max-width: 100%; overflow: auto; border: 1px solid #718770; background: #182920; }
 .village-canvas-scroll canvas { display: block; width: 1280px; height: 768px; image-rendering: pixelated; cursor: crosshair; }
 .village-debug .e1-detail { max-height: 790px; overflow: auto; }
-.village-debug .e1-controls input[type="range"] { width: min(180px, 25vw); }
+.village-debug .e1-controls label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.village-debug .e1-controls input[type="range"] { flex: 0 0 auto; width: min(160px, 22vw); }
+.village-debug .e1-controls button { white-space: nowrap; }
 @media (max-width: 700px) { .village-cell { min-height: 82px; padding: 4px; } .village-cell span { font-size: 9px; } }
