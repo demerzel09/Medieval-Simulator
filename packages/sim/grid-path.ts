@@ -12,17 +12,19 @@ export function traversable(map: GridMap, p: GridPoint) {
   return inGrid(map, p) && !map.blocked.includes(cellKey(p));
 }
 const heuristic = (a: GridPoint, b: GridPoint) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
-type QueueEntry = { key: string; point: GridPoint; g: number; f: number };
+type QueueEntry = { key: string; point: GridPoint; g: number; f: number;
+  turns?: number; direction?: string };
 const before = (a: QueueEntry, b: QueueEntry) => a.f - b.f || a.g - b.g ||
   a.point.y - b.point.y || a.point.x - b.point.x;
 class MinQueue {
   private heap: QueueEntry[] = [];
+  constructor(private compare = before) {}
   get length() { return this.heap.length; }
   push(entry: QueueEntry) {
     const h = this.heap; h.push(entry);
     for (let i = h.length - 1; i > 0;) {
       const parent = Math.floor((i - 1) / 2);
-      if (before(h[parent], h[i]) <= 0) break;
+      if (this.compare(h[parent], h[i]) <= 0) break;
       [h[parent], h[i]] = [h[i], h[parent]]; i = parent;
     }
   }
@@ -33,8 +35,8 @@ class MinQueue {
       for (let i = 0;;) {
         const left = i * 2 + 1, right = left + 1;
         if (left >= h.length) break;
-        const next = right < h.length && before(h[right], h[left]) < 0 ? right : left;
-        if (before(h[i], h[next]) <= 0) break;
+        const next = right < h.length && this.compare(h[right], h[left]) < 0 ? right : left;
+        if (this.compare(h[i], h[next]) <= 0) break;
         [h[i], h[next]] = [h[next], h[i]]; i = next;
       }
     }
@@ -80,6 +82,49 @@ export function findGridPath(map: GridMap, start: GridPoint, goal: GridPoint): G
       parent.set(nextKey, key); g.set(nextKey, tentative);
       open.push({ key: nextKey, point: next, g: tentative,
         f: tentative + heuristic(next, goal) });
+    }
+  }
+  return undefined;
+}
+
+/** Octile A*: geometric step costs, no corner cutting, fewer turns on equal-cost routes. */
+export function findGridPathV2(map: GridMap, start: GridPoint, goal: GridPoint): GridPoint[] | undefined {
+  const blocked = new Set(map.blocked);
+  const passable = (p: GridPoint) => inGrid(map, p) && !blocked.has(cellKey(p));
+  if (!passable(start) || !passable(goal)) return undefined;
+  const estimate = (p: GridPoint) => {
+    const dx = Math.abs(p.x - goal.x), dy = Math.abs(p.y - goal.y);
+    return 10 * Math.max(dx, dy) + 4 * Math.min(dx, dy);
+  };
+  const startKey = cellKey(start), goalKey = cellKey(goal);
+  const score = new Map([[startKey, 0]]), turns = new Map([[startKey, 0]]);
+  const parent = new Map<string, string>();
+  const open = new MinQueue((a, b) => a.f - b.f || b.g - a.g ||
+    (a.turns ?? 0) - (b.turns ?? 0) || a.point.y - b.point.y || a.point.x - b.point.x);
+  open.push({ key: startKey, point: start, g: 0, f: estimate(start), turns: 0 });
+  while (open.length) {
+    const current = open.pop();
+    if (current.g !== score.get(current.key) || current.turns !== turns.get(current.key)) continue;
+    if (current.key === goalKey) {
+      const route: GridPoint[] = [];
+      for (let key: string | undefined = goalKey; key; key = parent.get(key)) {
+        const [x, y] = key.split(",").map(Number); route.push({ x, y });
+      }
+      return route.reverse();
+    }
+    for (const d of directions) {
+      const next = { x: current.point.x + d.x, y: current.point.y + d.y };
+      if (!passable(next) || d.x && d.y &&
+        (!passable({ x: current.point.x + d.x, y: current.point.y }) ||
+          !passable({ x: current.point.x, y: current.point.y + d.y }))) continue;
+      const key = cellKey(next), direction = `${d.x},${d.y}`;
+      const g = current.g + (d.x && d.y ? 14 : 10) * (map.cost[key] ?? 1);
+      const turnCount = (current.turns ?? 0) +
+        (current.direction && current.direction !== direction ? 1 : 0);
+      if (g > (score.get(key) ?? Infinity) ||
+        g === score.get(key) && turnCount >= (turns.get(key) ?? Infinity)) continue;
+      parent.set(key, current.key); score.set(key, g); turns.set(key, turnCount);
+      open.push({ key, point: next, g, f: g + estimate(next), turns: turnCount, direction });
     }
   }
   return undefined;
@@ -143,5 +188,26 @@ export function exploringVillageGrid(): GridMap {
   const grid = wideVillageGrid();
   return { ...grid, sites: { ...grid.sites,
     herb_patch_2: { x: 12, y: 8 }, orchard_2: { x: 13, y: 16 },
+  } };
+}
+
+/** Distinct harvest cells and enough crop plots for longer growth and fallow cycles. */
+export function ecologicalVillageGrid(): GridMap {
+  const grid = exploringVillageGrid();
+  return { ...grid, sites: { ...grid.sites,
+    berry_patch_1: { x: 14, y: 11 }, berry_patch_2: { x: 17, y: 10 },
+    berry_patch_3: { x: 18, y: 13 }, berry_patch_4: { x: 14, y: 15 },
+    herb_patch_3: { x: 13, y: 10 }, herb_patch_4: { x: 17, y: 8 },
+    herb_patch_5: { x: 18, y: 10 }, herb_patch_6: { x: 18, y: 15 },
+    herb_patch_7: { x: 15, y: 16 }, herb_patch_8: { x: 12, y: 12 },
+    grass_patch_2: { x: 36, y: 18 }, grass_patch_3: { x: 34, y: 18 },
+    grass_patch_4: { x: 37, y: 21 },
+    grass_patch_5: { x: 33, y: 17 }, grass_patch_6: { x: 35, y: 17 },
+    grass_patch_7: { x: 37, y: 17 }, grass_patch_8: { x: 33, y: 19 },
+    grass_patch_9: { x: 34, y: 20 }, grass_patch_10: { x: 36, y: 20 },
+    grain_plot_5: { x: 33, y: 3 }, grain_plot_6: { x: 34, y: 3 },
+    grain_plot_7: { x: 35, y: 3 }, grain_plot_8: { x: 36, y: 3 },
+    grain_plot_9: { x: 36, y: 4 }, grain_plot_10: { x: 37, y: 4 },
+    grain_plot_11: { x: 36, y: 5 }, grain_plot_12: { x: 37, y: 5 },
   } };
 }

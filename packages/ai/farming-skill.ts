@@ -144,3 +144,13 @@ export const exploringLandEconomyVillageModel: VillageModel = { decide(input) {
   return { ...ordinary, attempts: [{ kind: "forage_route", plantId: target.id }],
     wait: { at: input.at + 1 } };
 } };
+
+/** The ecological run also samples the fruit tree before the crop harvest starts. */
+export const ecologicalLandEconomyVillageModel: VillageModel = { decide(input) {
+  const ordinary = exploringLandEconomyVillageModel.decide(input);
+  if (input.actorId !== "F" || input.knownContext.day !== 3 ||
+    ordinary.attempts[0]?.kind !== "forage_route") return ordinary;
+  const fruit = input.knownContext.visiblePlants.find((p) => p.species === "fruit_tree" &&
+    p.stage === "ripe" && p.available > 0 && p.siteId === "orchard_2");
+  return fruit ? { ...ordinary, attempts: [{ kind: "forage_route", plantId: fruit.id }] } : ordinary;
+} };

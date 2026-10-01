@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("land economy recording opens from the browser route and shows timed person history", async ({ page }) => {
   await page.goto("/?village=land-economy");
-  await expect(page.getByRole("heading", { name: "土地経済90日 · 空間デバッグ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "土地経済90日 · 生態デバッグ" })).toBeVisible();
   await expect(page.getByText("穀物の食事")).toBeVisible();
   const map = page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" });
   await expect(map).toBeVisible();
@@ -19,7 +19,8 @@ test("land economy recording opens from the browser route and shows timed person
   await legendTab.click();
   await expect(page.getByRole("heading", { name: "地図の凡例" })).toBeVisible();
   await expect(page.getByText("畑：茶色。区画ごとに作物が育つ")).toBeVisible();
-  await expect(page.getByText("野草：緑の株と薄黄の葉")).toBeVisible();
+  await expect(page.getByText(/野草：薄黄の葉。採集後は葉が消え/)).toBeVisible();
+  await expect(page.getByText(/休止中の畑：縦の薄い筋/)).toBeVisible();
   await expect(page.getByText(/森 · 通行可能 · 野草/)).toBeVisible();
   await historyTab.click();
   await historyTab.press("ArrowRight");
@@ -82,4 +83,14 @@ test("land economy recording opens from the browser route and shows timed person
   await expect(page.getByRole("heading", { name: "C の判断履歴" })).toBeVisible();
   await page.getByLabel("経路の行先").selectOption("grain_plot_4");
   await expect(page.getByText(/経路 \d+セル/)).toBeVisible();
+  await page.getByLabel("土地経済の日").fill("1");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await minute.fill("55");
+  await map.click({ position: { x: 14 * 32 + 16, y: 11 * 32 + 16 } });
+  await expect(page.getByText(/野生ベリー 再生中 1/)).toBeVisible();
+  await page.getByLabel("土地経済の日").fill("4");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await minute.fill("55");
+  await map.click({ position: { x: 36 * 32 + 16, y: 4 * 32 + 16 } });
+  await expect(page.getByText(/穀物 休止中 0/)).toBeVisible();
 });

@@ -588,10 +588,13 @@ footer {
 .terrain-rock { background: #6b706e; box-shadow: inset 4px 4px #8d938d, inset -4px -5px #474e49; }
 .plant-grain { background: #513f2c; }
 .plant-grain::after { content: ""; position: absolute; left: 7px; top: 5px; width: 4px; height: 16px; background: #e6c75e; box-shadow: 7px 0 #e6c75e, 14px 0 #e6c75e; }
+.plant-fallow { background: #817967; }
+.plant-fallow::after { content: ""; position: absolute; left: 7px; top: 4px; height: 19px; border-left: 2px solid #c2b394; box-shadow: 7px 0 #c2b394, 14px 0 #c2b394; }
 .plant-berry::after, .plant-herb::after, .plant-grass::after { content: ""; position: absolute; left: 5px; top: 10px; width: 18px; height: 13px; background: #648e4f; }
 .plant-berry::before, .plant-herb::before { content: ""; position: absolute; z-index: 1; left: 9px; top: 9px; width: 5px; height: 5px; background: #c77bac; box-shadow: 10px 5px #c77bac; }
 .plant-herb::before { background: #c8ce81; box-shadow: 10px 5px #c8ce81; }
 .plant-herb::after, .plant-grass::after { background: #88aa5a; }
+.plant-grass::before { content: ""; position: absolute; z-index: 1; left: 8px; top: 5px; width: 2px; height: 13px; background: #c1d78b; box-shadow: 6px 2px #c1d78b, 12px 0 #c1d78b; }
 .plant-tree::before { content: ""; position: absolute; left: 12px; top: 13px; width: 5px; height: 13px; background: #6b4b30; }
 .plant-tree::after { content: ""; position: absolute; left: 6px; top: 4px; width: 17px; height: 15px; background: #4a9955; box-shadow: inset 5px 4px #efa864; }
 .animal-rabbit::before { content: ""; position: absolute; left: 7px; top: 14px; width: 17px; height: 10px; background: #e0d8bb; }

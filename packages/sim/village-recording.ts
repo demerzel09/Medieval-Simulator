@@ -10,7 +10,7 @@ import { advanceVillageWorld, checkVillageWorld, newVillageWorld, queueVillageCo
 export type VillageRecording = { formatVersion: 2; worldSchemaVersion: 2;
   rulesetId: "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2" |
     "autonomous-village-spatial-land-v3" | "autonomous-village-wide-land-v4" |
-    "autonomous-village-exploring-land-v5"; seed: number;
+    "autonomous-village-exploring-land-v5" | "autonomous-village-ecological-land-v6"; seed: number;
   fixture: VillageFixture; initialGrid: GridMap; initialLand: LandEcology; untilHour: number;
   commands: { id: string; actorId: VillageId; at: number; attempt: VillageAttempt }[];
   terrainCommands: { id: string; at: number; cell: GridPoint; blocked: boolean }[];
@@ -34,7 +34,8 @@ export function recordedVillageActorHistory(recording: VillageRecording, actorId
 export function captureVillageRecording(w: VillageWorld): VillageRecording {
   checkVillageWorld(w);
   return structuredClone({ formatVersion: 2, worldSchemaVersion: 2,
-    rulesetId: w.fixture.landEconomy?.exploreWildPlants ? "autonomous-village-exploring-land-v5" :
+    rulesetId: w.fixture.landEconomy?.physicalGrowth ? "autonomous-village-ecological-land-v6" :
+      w.fixture.landEconomy?.exploreWildPlants ? "autonomous-village-exploring-land-v5" :
       w.fixture.landEconomy?.wideWorld ? "autonomous-village-wide-land-v4" :
       w.fixture.landEconomy?.spatialGrid ? "autonomous-village-spatial-land-v3" :
       w.fixture.landEconomy ? "autonomous-village-land-economy-v2" :
@@ -48,7 +49,8 @@ export function captureVillageRecording(w: VillageWorld): VillageRecording {
 }
 export function replayVillageRecording(recording: VillageRecording): VillageWorld {
   if (recording.formatVersion !== 2 || recording.worldSchemaVersion !== 2 ||
-    recording.rulesetId !== (recording.fixture.landEconomy?.exploreWildPlants ?
+    recording.rulesetId !== (recording.fixture.landEconomy?.physicalGrowth ?
+      "autonomous-village-ecological-land-v6" : recording.fixture.landEconomy?.exploreWildPlants ?
       "autonomous-village-exploring-land-v5" : recording.fixture.landEconomy?.wideWorld ?
       "autonomous-village-wide-land-v4" : recording.fixture.landEconomy?.spatialGrid ?
       "autonomous-village-spatial-land-v3" : recording.fixture.landEconomy ?

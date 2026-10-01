@@ -14,4 +14,4 @@
 
 土地経済計画の順1〜4は完了しました。[90日収支の算術候補](baseline/LAND_ECONOMY_FEASIBILITY_V1.md)と[5人・90日の実走と対照](baseline/LAND_ECONOMY_V3_RESULT.md)を分けて記録しています。次の候補と未達は[STATUS](STATUS.md)を参照してください。
 
-画面と世界が同じセルを使い、生活拠点を地図に分散した現在の実装は[1280×768の全域版](baseline/WIDE_WORLD_V5_RESULT.md)。現在の画面には[食用植物の局所探索](baseline/PLANT_EXPLORATION_RESULT.md)も接続した。中央に集中した旧[空間版](baseline/SPATIAL_GRID_V4_RESULT.md)と旧5×5土地経済は再現用の別規則・記録として残しています。
+画面と世界が同じセルを使い、生活拠点を地図に分散した現在の実装は[1280×768の全域版](baseline/WIDE_WORLD_V5_RESULT.md)から始まった。現在の画面は[食用植物の局所探索](baseline/PLANT_EXPLORATION_RESULT.md)に[生育周期・畑の休止・分散採集](baseline/ECOLOGICAL_LAND_V6_RESULT.md)を加えた版を表示する。中央に集中した旧[空間版](baseline/SPATIAL_GRID_V4_RESULT.md)と旧5×5土地経済は再現用の別規則・記録として残しています。

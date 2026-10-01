@@ -3,7 +3,8 @@ import { ordinaryVillageModel, type VillageAttempt, type VillageContext, type Vi
   type VillageModel, type VillageResponse, type VillageRole, type VillageStimulus } from "../ai/autonomous-world";
 import { wakeActors } from "./actor-clock";
 import { hash } from "./core";
-import { cellKey, checkGridMap, defaultVillageGrid, exploringVillageGrid, findGridPath, inGrid,
+import { cellKey, checkGridMap, defaultVillageGrid, ecologicalVillageGrid, exploringVillageGrid,
+  findGridPath, findGridPathV2, inGrid,
   sameCell, spatialVillageGrid,
   wideVillageGrid,
   traversable, type GridMap, type GridPoint } from "./grid-path";
@@ -57,6 +58,8 @@ export type VillageWorld = { schemaVersion: 2; mode: "autonomous_village"; seed:
   eatenFood: number; spoiledFood: number; initialSeeds: number; seedsProduced: number; seedsUsed: number;
   harvestedWood: number; burnedWood: number; initialMoney: number };
 const ids: VillageId[] = ["S", "F", "C", "B1", "B2"];
+const routeFor = (w: VillageWorld, map: GridMap, start: GridPoint, goal: GridPoint) =>
+  (w.fixture.landEconomy?.physicalGrowth ? findGridPathV2 : findGridPath)(map, start, goal);
 const bag = (id: string) => `bag_${id}`;
 const wallet = (id: string) => `wallet_${id}`;
 const uid = (w: VillageWorld, prefix: string) => `${prefix}_${String(w.nextId++).padStart(6, "0")}`;
@@ -105,7 +108,8 @@ function transferUnit(t: PhysicalTransaction, lotId: string, quantity: number, u
   t.move(unit, parentId); t.changeOwner(unit, ownerId); return unit;
 }
 export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonomousVillageV1,
-  initialGrid: GridMap = fixture.landEconomy?.exploreWildPlants ? exploringVillageGrid() :
+  initialGrid: GridMap = fixture.landEconomy?.physicalGrowth ? ecologicalVillageGrid() :
+    fixture.landEconomy?.exploreWildPlants ? exploringVillageGrid() :
     fixture.landEconomy?.wideWorld ? wideVillageGrid() :
     fixture.landEconomy?.spatialGrid ? spatialVillageGrid() : defaultVillageGrid(),
   landInput?: LandEcology): VillageWorld {
@@ -126,19 +130,21 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     throw Error("spatial crop cell missing");
   const land = structuredClone(landInput ?? newLandEcology(grid, f.resources.food.initial,
     f.resources.food.capacity, f.landEconomy?.grainPlots ?? 1, !!f.landEconomy,
-    !!f.landEconomy?.wideWorld));
+    !!f.landEconomy?.wideWorld, !!f.landEconomy?.physicalGrowth));
   checkLandEcology(land, grid);
   if (f.landEconomy?.spatialGrid && new Set(Object.values(land.plants)
     .map((p) => cellKey(p.cell))).size !== Object.keys(land.plants).length)
     throw Error("spatial plants share a cell");
-  if (f.landEconomy && (land.rulesetVersion !== 2 ||
+  if (f.landEconomy && (land.rulesetVersion !== (f.landEconomy.physicalGrowth ? 3 : 2) ||
     Object.values(land.plants).filter((p) => p.species === "grain").length !==
       f.landEconomy.grainPlots ||
     Object.values(land.plants).some((p) => p.species === "grain" &&
       p.useRightHolderId !== "F"))) throw Error("land economy fixture mismatch");
-  if (land.plants.wild_berry.available !== f.resources.food.initial ||
-    land.plants.wild_berry.initialAvailable !== f.resources.food.initial ||
-    land.plants.wild_berry.grown || land.plants.wild_berry.personHarvested)
+  const berryPatches = Object.values(land.plants).filter((p) => p.species === "wild_berry");
+  if (berryPatches.reduce((n, p) => n + p.available, 0) !== f.resources.food.initial ||
+    berryPatches.reduce((n, p) => n + p.initialAvailable, 0) !== f.resources.food.initial ||
+    berryPatches.some((p) => p.grown || p.personHarvested) ||
+    !!f.landEconomy?.physicalGrowth !== (land.rulesetVersion === 3))
     throw Error("wild food fixture mismatch");
   const types: PhysicalState["types"] = {
     world: { id: "world", tags: ["world"], unitMass: 0, stackable: false, ownable: false,
@@ -149,7 +155,8 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     person: { id: "person", tags: ["person"], unitMass: 0, stackable: false, ownable: false,
       container: { acceptsTags: ["bag", "wallet"], maxContentsMass: 24 } },
     bag: { id: "bag", tags: ["bag"], unitMass: 0, stackable: false, ownable: true,
-      container: { acceptsTags: ["food", "wood", "seed"], maxContentsMass: 8 } },
+      container: { acceptsTags: ["food", "wood", "seed"],
+        maxContentsMass: f.landEconomy?.physicalGrowth ? 20 : 8 } },
     wallet: { id: "wallet", tags: ["wallet"], unitMass: 0, stackable: false, ownable: true,
       container: { acceptsTags: ["currency"], maxContentsMass: 24 } },
     store: { id: "store", tags: ["store"], unitMass: 0, stackable: false, ownable: true,
@@ -227,7 +234,7 @@ function startTravel(w: VillageWorld, actorId: VillageId, toId: string, decision
   const from = siteOf(w.physical, actorId);
   if (!w.grid.sites[toId] || (from === toId && !from.startsWith("transit_")))
     return "route unavailable";
-  const path = findGridPath(w.grid, w.people[actorId].cell, w.grid.sites[toId]);
+  const path = routeFor(w, w.grid, w.people[actorId].cell, w.grid.sites[toId]);
   if (!path) return "route unavailable";
   const mass = totalMass(w.physical, actorId);
   if (actorId === "C" && mass > w.fixture.carryingCapacity.carrierTotalMass)
@@ -253,7 +260,7 @@ function routeRemainingHours(w: VillageWorld, path: GridPoint[], stepHours: numb
 function redirectTravel(w: VillageWorld, actorId: VillageId, toId: string, causeId: string) {
   const p = w.processes[w.people[actorId].activeProcessId ?? ""];
   if (p?.kind !== "travel" || !w.grid.sites[toId]) return "traveller not on a route";
-  const path = findGridPath(w.grid, w.people[actorId].cell, w.grid.sites[toId]);
+  const path = routeFor(w, w.grid, w.people[actorId].cell, w.grid.sites[toId]);
   if (!path) return "route unavailable";
   p.path = path; p.pathIndex = 0; p.edgeProgress = 0; p.destinationId = toId;
   p.duration = p.progress + routeRemainingHours(w, path, p.stepHours!);
@@ -270,28 +277,31 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
     emit(w, "arrived", [id], [p.startEventId], { siteId: p.destinationId! });
   } else if (p.kind === "forage_route") {
     const plant = w.land.plants[p.plantId!];
-    if (!plant || plant.stage !== "ripe" || plant.available < 1) return "plant not ready";
+    const quantity = w.fixture.landEconomy?.physicalGrowth && plant?.species === "herb" ? 2 : 1;
+    if (!plant || plant.stage !== "ripe" || plant.available < quantity) return "plant not ready";
     const home = w.grid.sites.grove;
-    const out = findGridPath(w.grid, w.people[id].cell, plant.cell);
-    const back = findGridPath(w.grid, plant.cell, home);
+    const out = routeFor(w, w.grid, w.people[id].cell, plant.cell);
+    const back = routeFor(w, w.grid, plant.cell, home);
     if (!out || !back || out.slice(1).concat(back.slice(1)).reduce((cost, point) =>
       cost + (w.grid.cost[cellKey(point)] ?? 1), 0) > 24) return "foraging route blocked";
     const lotId = uid(w, "food");
     const reason = tx(w, id, [], (t) => t.add({ id: lotId, typeId: "food", parentId: bag(id),
-      ownerId: id, quantity: 1, causeEventId: p.startEventId }));
+      ownerId: id, quantity, causeEventId: p.startEventId }));
     if (reason) return reason;
     for (const point of out.slice(1)) {
       w.people[id].cell = structuredClone(point);
       emit(w, "travel_step", [id], [p.startEventId],
         { x: point.x, y: point.y, destinationId: plant.siteId });
     }
-    plant.available--; plant.personHarvested++;
-    if (!plant.available) plant.stage = "regrowing";
-    w.harvestedFood++; w.harvestedLandFood++;
+    plant.available -= quantity; plant.personHarvested += quantity;
+    if (w.fixture.landEconomy?.physicalGrowth || !plant.available) {
+      plant.stage = "regrowing"; plant.ageHours = 0;
+    }
+    w.harvestedFood += quantity; w.harvestedLandFood += quantity;
     w.foodLots[lotId] = { harvestedDay: dayAt(w.hour), originPlantId: plant.id,
       originSiteId: plant.siteId, species: plant.species };
     const gathered = emit(w, "plant_gathered", [id], [p.startEventId],
-      { plantId: plant.id, species: plant.species, quantity: 1, lotId, siteId: plant.siteId });
+      { plantId: plant.id, species: plant.species, quantity, lotId, siteId: plant.siteId });
     w.physical.objects[lotId].causeEventId = gathered.id;
     for (const point of back.slice(1)) {
       w.people[id].cell = structuredClone(point);
@@ -301,6 +311,15 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
   } else if (p.kind === "forage") {
     const resource = w.resources[p.resource!], quantity = p.quantity!;
     if (resource.available < quantity || resource.reserved < quantity) return "reserved resource unavailable";
+    const berry = p.resource === "food" && w.fixture.landEconomy?.physicalGrowth ?
+      Object.values(w.land.plants).filter((plant) => plant.species === "wild_berry" &&
+        plant.stage === "ripe" && plant.available >= quantity).sort((a, b) =>
+        a.id.localeCompare(b.id))[0] : undefined;
+    if (p.resource === "food" && w.fixture.landEconomy?.physicalGrowth && !berry)
+      return "no ripe berry stand";
+    const out = berry ? routeFor(w, w.grid, w.people[id].cell, berry.cell) : undefined;
+    const back = berry ? routeFor(w, w.grid, berry.cell, w.grid.sites.grove) : undefined;
+    if (berry && (!out || !back)) return "berry route blocked";
     const lotId = uid(w, p.resource!);
     const reason = tx(w, id, [], (t) => t.add({ id: lotId, typeId: p.resource!, parentId: bag(id),
       ownerId: id, quantity, causeEventId: p.startEventId }));
@@ -309,17 +328,31 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
     if (p.resource === "food") {
       w.harvestedFood += quantity;
       w.foodLots[lotId] = w.fixture.landEconomy ? { harvestedDay: dayAt(w.hour),
-        originPlantId: "wild_berry", originSiteId: "grove", species: "wild_berry" } :
+        originPlantId: berry?.id ?? "wild_berry", originSiteId: berry?.siteId ?? "grove",
+        species: "wild_berry" } :
         { harvestedDay: dayAt(w.hour) };
     }
     else w.harvestedWood += quantity;
     if (p.resource === "food") {
-      const berry = w.land.plants.wild_berry;
-      berry.available -= quantity; berry.personHarvested += quantity;
-      if (!berry.available) berry.stage = "regrowing";
+      const harvested = berry ?? w.land.plants.wild_berry;
+      if (out) for (const point of out.slice(1)) {
+        w.people[id].cell = structuredClone(point);
+        emit(w, "travel_step", [id], [p.startEventId],
+          { x: point.x, y: point.y, destinationId: harvested.siteId });
+      }
+      harvested.available -= quantity; harvested.personHarvested += quantity;
+      if (w.fixture.landEconomy?.physicalGrowth || !harvested.available) {
+        harvested.stage = "regrowing"; harvested.ageHours = 0;
+      }
     }
-    const event = emit(w, "foraged", [id], [p.startEventId], { resource: p.resource!, quantity, lotId });
+    const event = emit(w, "foraged", [id], [p.startEventId],
+      { resource: p.resource!, quantity, lotId, ...(berry ? { plantId: berry.id } : {}) });
     w.physical.objects[lotId].causeEventId = event.id;
+    if (back) for (const point of back.slice(1)) {
+      w.people[id].cell = structuredClone(point);
+      emit(w, "travel_step", [id], [event.id],
+        { x: point.x, y: point.y, destinationId: "grove" });
+    }
   } else if (p.kind === "tender_food") {
     if (!order || order.status !== "farmer_accepted" || !atSite(w, "C", "grove") ||
       !atSite(w, "F", "grove")) return "tender conditions changed";
@@ -399,8 +432,12 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
       });
       if (reason) return reason;
       plant.available -= quantity; plant.personHarvested += quantity;
-      plant.stage = p.kind === "harvest_plot" ? "bare" : plant.available ? "ripe" : "regrowing";
+      plant.stage = p.kind === "harvest_plot" ?
+        w.fixture.landEconomy?.physicalGrowth ? "fallow" : "bare" :
+        w.fixture.landEconomy?.physicalGrowth ? "regrowing" :
+          plant.available ? "ripe" : "regrowing";
       if (p.kind === "harvest_plot") { plant.ageHours = 0; w.seedsProduced++; }
+      else if (w.fixture.landEconomy?.physicalGrowth) plant.ageHours = 0;
       w.harvestedFood += quantity; w.harvestedLandFood += quantity;
       w.foodLots[lotId] = w.fixture.landEconomy ? { harvestedDay: dayAt(w.hour),
         originPlantId: plant.id, originSiteId: plant.siteId, species: plant.species } :
@@ -419,7 +456,7 @@ function progressProcesses(w: VillageWorld) {
     if (p.startedAt >= w.hour || p.progress >= p.duration) continue;
     if (p.kind === "travel" && p.path && p.pathIndex! < p.path.length - 1 &&
       !traversable(w.grid, p.path[p.pathIndex! + 1])) {
-      const path = findGridPath(w.grid, w.people[p.actorId].cell, w.grid.sites[p.destinationId!]);
+      const path = routeFor(w, w.grid, w.people[p.actorId].cell, w.grid.sites[p.destinationId!]);
       const terrainCause = w.terrainEventIds[cellKey(p.path[p.pathIndex! + 1])];
       if (!path) { emit(w, "travel_waited", [p.actorId],
         terrainCause ? [p.startEventId, terrainCause] : [p.startEventId],
@@ -439,7 +476,7 @@ function progressProcesses(w: VillageWorld) {
         sameCell(w.people[other].cell, next) &&
         siteOf(w.physical, other).startsWith("transit_")) : undefined;
       if (blocker) {
-        const detour = findGridPath({ ...w.grid,
+        const detour = routeFor(w, { ...w.grid,
           blocked: [...w.grid.blocked, cellKey(next)] }, w.people[p.actorId].cell,
         w.grid.sites[p.destinationId!]);
         if (detour) {
@@ -474,7 +511,7 @@ function progressProcesses(w: VillageWorld) {
           sameCell(w.people[other].cell, next) &&
           siteOf(w.physical, other).startsWith("transit_")) : undefined;
         if (!traversable(w.grid, next) || blocker) {
-          const detour = findGridPath({ ...w.grid, blocked: blocker ?
+          const detour = routeFor(w, { ...w.grid, blocked: blocker ?
             [...w.grid.blocked, cellKey(next)] : w.grid.blocked },
           w.people[p.actorId].cell, w.grid.sites[p.destinationId!]);
           if (!detour) {
@@ -593,15 +630,17 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
   }
   if (a.kind === "forage_route") {
     const plant = w.land.plants[a.plantId], skill = w.people[id].foragingSkill ?? 0;
+    const quantity = w.fixture.landEconomy?.physicalGrowth && plant?.species === "herb" ? 2 : 1;
     if (!w.fixture.landEconomy?.exploreWildPlants || id !== "F" || site !== "grove" ||
       !plant || !["fruit_tree", "herb"].includes(plant.species) || skill < 1 ||
       Math.max(Math.abs(plant.cell.x - w.people[id].cell.x),
         Math.abs(plant.cell.y - w.people[id].cell.y)) > skill ||
-      plant.stage !== "ripe" || plant.available < 1 ||
-      contentsQuantity(w.physical, bag(id), "food") >= w.fixture.carryingCapacity.farmerFood)
+      plant.stage !== "ripe" || plant.available < quantity ||
+      contentsQuantity(w.physical, bag(id), "food") + quantity >
+        w.fixture.carryingCapacity.farmerFood)
       return "foraging route unavailable";
-    const out = findGridPath(w.grid, w.people[id].cell, plant.cell);
-    const back = findGridPath(w.grid, plant.cell, w.people[id].cell);
+    const out = routeFor(w, w.grid, w.people[id].cell, plant.cell);
+    const back = routeFor(w, w.grid, plant.cell, w.people[id].cell);
     if (!out || !back || out.slice(1).concat(back.slice(1)).reduce((cost, point) =>
       cost + (w.grid.cost[cellKey(point)] ?? 1), 0) > 24)
       return "foraging route too long";
@@ -659,6 +698,9 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
       a.quantity > 5 || !w.fixture.access[`${a.resource}Harvesters`].includes(id)) return "harvest right denied";
     const r = w.resources[a.resource];
     if (r.available - r.reserved < a.quantity) return "resource unavailable";
+    if (a.resource === "food" && w.fixture.landEconomy?.physicalGrowth &&
+      !Object.values(w.land.plants).some((p) => p.species === "wild_berry" &&
+        p.stage === "ripe" && p.available >= a.quantity)) return "no ripe berry stand";
     if (contentsQuantity(w.physical, bag(id), a.resource) + a.quantity >
       (id === "F" ? w.fixture.carryingCapacity.farmerFood : w.fixture.carryingCapacity.woodcutterWood))
       return "harvest bag full";
@@ -735,11 +777,13 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
       ownObjects(w, bag(id), "food", id)[0] : ownObjects(w, bag(id), "food", id)[0];
     if (!lot || w.people[id].hunger < 1) return "meal unavailable";
     const origin = w.foodLots[lot.id];
-    const reason = tx(w, id, [], (t) => t.remove(lot.id, 1));
+    const quantity = w.fixture.landEconomy?.physicalGrowth && origin?.species === "herb" ? 2 : 1;
+    if (lot.quantity < quantity) return "insufficient nourishment";
+    const reason = tx(w, id, [], (t) => t.remove(lot.id, quantity));
     if (reason) return reason;
     if (!w.physical.objects[lot.id]) delete w.foodLots[lot.id];
-    w.people[id].hunger--; w.people[id].meals++; w.eatenFood++;
-    const event = emit(w, "ate", [id], [decisionId, lot.causeEventId], { quantity: 1,
+    w.people[id].hunger--; w.people[id].meals++; w.eatenFood += quantity;
+    const event = emit(w, "ate", [id], [decisionId, lot.causeEventId], { quantity,
       ...(origin?.originPlantId ? { originPlantId: origin.originPlantId,
         species: origin.species ?? "" } : {}) });
     result(w, id, a.kind, event); return undefined;
@@ -828,6 +872,7 @@ function growAndNeed(w: VillageWorld) {
   const day = dayAt(w.hour);
   if (day <= 1 || hourOfDay(w.hour) !== 1) return;
   for (const [kind, resource] of Object.entries(w.resources) as ["food" | "wood", VillageWorld["resources"]["food"]][]) {
+    if (kind === "food" && w.fixture.landEconomy?.physicalGrowth) continue;
     const amount = Math.min(resource.growthPerDay, resource.capacity - resource.available);
     if (amount) { resource.available += amount; resource.grown += amount;
       emit(w, "resource_grew", [], [], { kind, quantity: amount }); }
@@ -858,6 +903,13 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
     w.hour++;
     growAndNeed(w);
     for (const effect of advanceLandHour(w.land, w.grid, w.hour)) {
+      if (w.fixture.landEconomy?.physicalGrowth && effect.kind === "plant_grew" &&
+        w.land.plants[effect.plantId!]?.species === "wild_berry") {
+        w.resources.food.available += effect.quantity!;
+        w.resources.food.grown += effect.quantity!;
+        emit(w, "resource_grew", [], [], { kind: "food", plantId: effect.plantId!,
+          quantity: effect.quantity! });
+      }
       if (effect.kind === "animal_moved") {
         const animalId = effect.animalId!, transitId = uid(w, "animal_transit");
         const tileId = `tile_${effect.x}_${effect.y}`;
@@ -1030,9 +1082,11 @@ export function checkVillageWorld(w: VillageWorld) {
       r.reserved !== Object.values(w.processes).filter((p) => p.kind === "forage" && p.resource === kind)
         .reduce((n, p) => n + p.quantity!, 0) || r.reserved > r.available) throw Error("village resource conservation");
   }
-  if (w.land.plants.wild_berry.available !== w.resources.food.available ||
-    w.land.plants.wild_berry.grown !== w.resources.food.grown ||
-    w.land.plants.wild_berry.personHarvested !== w.harvestedFood - w.harvestedLandFood)
+  const berries = Object.values(w.land.plants).filter((p) => p.species === "wild_berry");
+  if (berries.reduce((n, p) => n + p.available, 0) !== w.resources.food.available ||
+    berries.reduce((n, p) => n + p.grown, 0) !== w.resources.food.grown ||
+    berries.reduce((n, p) => n + p.personHarvested, 0) !==
+      w.harvestedFood - w.harvestedLandFood)
     throw Error("village wild food mirror");
   const eventIds = new Set<string>();
   for (const event of w.events) {
@@ -1122,7 +1176,8 @@ export function villageSummary(w: VillageWorld) { return { day: w.hour ? dayAt(w
   ...(w.fixture.landEconomy ? { landEconomy: {
     cultivatedFood: Object.values(w.land.plants).filter((p) => p.species === "grain")
       .reduce((n, p) => n + p.personHarvested, 0),
-    wildFood: w.land.plants.wild_berry.personHarvested,
+    wildFood: Object.values(w.land.plants).filter((p) => p.species === "wild_berry")
+      .reduce((n, p) => n + p.personHarvested, 0),
     seedsHeld: contentsQuantity(w.physical, bag("F"), "seed"), seedsUsed: w.seedsUsed,
     seedsProduced: w.seedsProduced, season: w.land.season,
     animals: Object.keys(w.land.animals).length,
