@@ -58,6 +58,40 @@ describe("wild food and surplus market", () => {
       e.data.destinationId === "herb_patch")).toBe(true);
   });
 
+  it.each(["spoiled", "consumed", "seller left"] as const)(
+    "does not transfer money or resurrect a %s surplus offer", (condition) => {
+      const { w, lot, offerId } = offerWorld();
+      let buyAt: number;
+      if (condition === "spoiled") {
+        advanceVillageWorld(w, 68, idle);
+        expect(w.physical.objects[lot]).toBeUndefined();
+        buyAt = 74;
+      } else if (condition === "consumed") {
+        queueVillageCommand(w, { id: "eat-first", actorId: "B1", at: 25, attempt: { kind: "eat" } });
+        queueVillageCommand(w, { id: "eat-second", actorId: "B1", at: 26, attempt: { kind: "eat" } });
+        advanceVillageWorld(w, 21, idle);
+        expect(w.physical.objects[lot].quantity).toBe(1);
+        buyAt = 27;
+      } else {
+        queueVillageCommand(w, { id: "leave", actorId: "B1", at: 6,
+          attempt: { kind: "travel", siteId: "home_B1" } });
+        advanceVillageWorld(w, 3, idle);
+        expect(villageSummary(w).people.B1.site).toBe("home_B1");
+        buyAt = 9;
+      }
+      const inventoryItems = () => Object.fromEntries(Object.entries(w.physical.objects)
+        .filter(([, object]) => object.typeId === "food" || object.typeId === "currency"));
+      const inventory = structuredClone(inventoryItems());
+      queueVillageCommand(w, { id: "stale-buy", actorId: "S", at: buyAt,
+        attempt: { kind: "buy_surplus", offerId } });
+      advanceVillageWorld(w, 1, idle);
+      expect(inventoryItems()).toEqual(inventory);
+      expect(w.foodOffers![offerId].purchasedEventId).toBeUndefined();
+      expect(w.events.some((e) => e.kind === "surplus_sold")).toBe(false);
+      expect(w.events.some((e) => e.kind === "attempt_rejected" &&
+        e.data.reason === "surplus purchase unavailable")).toBe(true);
+    });
+
   it("replays the example without hiding competition or claiming the bread economy is complete", () => {
     const recording = JSON.parse(gunzipSync(readFileSync(
       "fixtures/recordings/autonomous-village-wild-food-90.v2.json.gz")).toString("utf8")) as VillageRecording;
