@@ -130,8 +130,8 @@ test("independent farms show crop ownership and grain storage", async ({ page })
 });
 
 
-test("wild gathering and surplus sales are available in the default recording", async ({ page }) => {
-  await page.goto("/?village=land-economy");
+test("the old round-trip gathering recording remains available", async ({ page }) => {
+  await page.goto("/?village=land-economy&wood=wild");
   await expect(page.getByLabel("表示する記録")).toHaveValue("wild");
   await expect(page.getByRole("note")).toContainText("全員が野草・ベリーを採集して直接食べられます");
   await page.getByLabel("土地経済の日").fill("90");
@@ -139,4 +139,20 @@ test("wild gathering and surplus sales are available in the default recording", 
   await page.getByLabel("土地経済の分").fill("60");
   await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
   await expect(page.locator(".e1-stats span").filter({ hasText: "余剰売買" }).locator("b")).toHaveText("17件");
+});
+
+
+test("the default scene keeps gatherers at real plant cells", async ({ page }) => {
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("local");
+  await expect(page.getByRole("note")).toContainText("森・畑の中心へ自動では戻りません");
+  await page.getByLabel("土地経済の人物").selectOption("S");
+  await page.getByLabel("土地経済の時刻").fill("8");
+  await page.getByLabel("土地経済の分").fill("60");
+  await expect(page.getByText(/現在のセル: 16,12/)).toHaveCount(0);
+  await page.getByLabel("土地経済の日").fill("90");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "余剰売買" }).locator("b")).toHaveText("6件");
 });

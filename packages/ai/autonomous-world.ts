@@ -12,7 +12,7 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number;
-  publicForaging?: true; edibleMeals?: number;
+  publicForaging?: true; spatialForaging?: true; edibleMeals?: number;
   ownFoodLots?: { id: string; quantity: number; species: string; mealQuantity: number; offered: boolean }[];
   visibleFoodOffers?: { id: string; sellerId: VillageId; quantity: number; price: number; species: string }[];
   woodEnabled?: false; foodResource?: number; woodResource?: number;

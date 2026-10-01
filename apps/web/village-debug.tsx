@@ -4,7 +4,7 @@ import { findGridPathV2, type GridMap, type GridPoint } from "../../packages/sim
 import type { VillageRecording } from "../../packages/sim/village-recording";
 
 const woodQuery = new URLSearchParams(window.location.search).get("wood");
-const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" ? woodQuery : "wild";
+const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" || woodQuery === "wild" ? woodQuery : "local";
 const legacyWood = recordMode === "legacy";
 const recordingUrl = legacyWood ?
   new URL("../../fixtures/recordings/autonomous-village-ecological-90.v2.json.gz", import.meta.url).href :
@@ -12,7 +12,9 @@ const recordingUrl = legacyWood ?
   new URL("../../fixtures/recordings/autonomous-village-wood-paused-90.v2.json.gz", import.meta.url).href :
   recordMode === "farms" ?
   new URL("../../fixtures/recordings/autonomous-village-owned-farms-90.v2.json.gz", import.meta.url).href :
-  new URL("../../fixtures/recordings/autonomous-village-wild-food-90.v2.json.gz", import.meta.url).href;
+  recordMode === "wild" ?
+  new URL("../../fixtures/recordings/autonomous-village-wild-food-90.v2.json.gz", import.meta.url).href :
+  new URL("../../fixtures/recordings/autonomous-village-local-work-90.v2.json.gz", import.meta.url).href;
 const people: VillageId[] = ["S", "F", "C", "B1", "B2"];
 const plantNames: Record<string, string> = {
   grain: "穀物", wild_berry: "野生ベリー", fruit_tree: "果樹", herb: "野草", grass: "草",
@@ -50,7 +52,7 @@ async function readRecording(): Promise<VillageRecording> {
   const recording = JSON.parse(text) as VillageRecording;
   if (recording.rulesetId !== (legacyWood ? "autonomous-village-ecological-land-v6" :
     recordMode === "paused" ? "autonomous-village-wood-paused-v7" :
-    recordMode === "farms" ? "autonomous-village-owned-farms-v8" : "autonomous-village-wild-food-market-v9") || recording.untilHour !== 2160)
+    recordMode === "farms" ? "autonomous-village-owned-farms-v8" : recordMode === "wild" ? "autonomous-village-wild-food-market-v9" : "autonomous-village-local-work-v10") || recording.untilHour !== 2160)
     throw Error("土地経済90日の記録ではありません");
   return recording;
 }
@@ -359,10 +361,10 @@ export default function VillageDebug() {
       <h1>土地経済90日 · 生態デバッグ</h1></div><div>
         <label>表示する記録 <select aria-label="表示する記録" value={recordMode}
           onChange={(e) => { const url = new URL(window.location.href);
-            if (e.target.value !== "wild") url.searchParams.set("wood", e.target.value);
+            if (e.target.value !== "local") url.searchParams.set("wood", e.target.value);
             else url.searchParams.delete("wood");
             window.location.assign(url.href); }}>
-          <option value="wild">直接採集・余剰の市場売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
+          <option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
         </select></label> <a href="/">90日ゲーム</a></div></header>
     {recordMode === "paused" && <p className="e1-map-panel" role="note">薪の採集・売買・燃料要求は停止中です。
       B1・B2の薪販売収入もなくなるため、食料代の不足と市場の資金不足が起きる対照記録です。
@@ -373,6 +375,9 @@ export default function VillageDebug() {
     {recordMode === "wild" && <p className="e1-map-panel" role="note">全員が野草・ベリーを採集して直接食べられます。
       余剰は市場で提示し、買い手が現金で購入します。採集には移動・体力と再生待ちが必要です。
       穀物は腐敗せず、薪・雇用・製パン・技能習得・転職は未導入です。</p>}
+    {recordMode === "local" && <p className="e1-map-panel" role="note">採集は植物のセルへ移動してから行い、
+      その場で食事・休息できます。森・畑の中心へ自動では戻りません。
+      作業対象がなければ生育・再生待ち、余剰の販売中は市場で買い手待ちになります。</p>}
     <div className="e1-controls"><label>日 <input aria-label="土地経済の日" type="range" min="1" max="90" value={day}
       onChange={(e) => { setPlaying(false); setCursorMinutes((Number(e.target.value) - 1) * 1440); }} /></label>
       <button onClick={() => { setPlaying(false); setCursorMinutes(Math.max(0, cursorMinutes - 1440)); }}>−1日</button>
@@ -401,9 +406,9 @@ export default function VillageDebug() {
       <span>野生ベリーの食事 <b>{snapshot.totals.wildMeals}</b></span>
       <span>探索した植物の食事 <b>{snapshot.totals.gatheredMeals}</b></span>
       <span>穀物収穫 <b>{snapshot.totals.harvestedGrain}</b></span>
-      {(recordMode === "farms" || recordMode === "wild") && <span>穀物保存 <b>腐敗なし</b></span>}
+      {(recordMode === "farms" || recordMode === "wild" || recordMode === "local") && <span>穀物保存 <b>腐敗なし</b></span>}
       <span>薪 <b>{legacyWood ? `使用 ${snapshot.totals.wood}/450` : "停止中"}</b></span>
-      {recordMode === "wild" && <span>余剰売買 <b>{snapshot.totals.surplusSales}件</b></span>}
+      {(recordMode === "wild" || recordMode === "local") && <span>余剰売買 <b>{snapshot.totals.surplusSales}件</b></span>}
       <span>動物 <b>{Object.keys(snapshot.animals).length}</b></span></div>
     <main className={`e1-layout${sideOpen ? "" : " village-side-collapsed"}`}><section className="e1-map-panel">
       <p>保存済みのEventを順に再生します。分単位の移動位置は、1時間内の通過セルを均等に割り当てた目安です。黄色い線は行先を選んだ場合の計算経路です。植物は色と高さで生育段階を示します。</p>
@@ -457,7 +462,8 @@ export default function VillageDebug() {
           {latestObservation && <p>最新の本人観察（{clock(latestObservation.hour)}）:
             所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger} ·
             体力 {latestObservation.knownContext.energy} ·
-            判断 {latestObservation.chosen?.kind ?? "待機"}</p>}
+            判断 {latestObservation.chosen?.kind ?? "待機"} ·
+            進行中 {latestObservation.knownContext.activeAction ?? "なし"}</p>}
           <h3>選択セル {pointKey(focusCell)}</h3>
           <p>{terrain} · {blocked ? "通行不可" : "通行可能"} · {localPlants.map((p) =>
             `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}${p.ownerId ? ` · 所有者 ${p.ownerId} · ${p.farmId}` : ""}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
@@ -472,7 +478,7 @@ export default function VillageDebug() {
         </> : <>
           <h2>地図の凡例</h2>
           <p>1セルは32×32ピクセル。地面の色は土地の種類、セル内の形は植物や障害物を表します。</p>
-          {(recordMode === "farms" || recordMode === "wild") && <p>畑の枠色：Fは黄、B1は青、B2は紫。各4区画で、所有者だけが作業できます。穀物は腐敗しません。</p>}
+          {(recordMode === "farms" || recordMode === "wild" || recordMode === "local") && <p>畑の枠色：Fは黄、B1は青、B2は紫。各4区画で、所有者だけが作業できます。穀物は腐敗しません。</p>}
           <h3>地面と障害物</h3>
           <ul className="village-legend-list">
             <li><span className="village-swatch terrain-plain" />平地：濃い緑</li>
@@ -501,7 +507,8 @@ export default function VillageDebug() {
           {latestObservation && <p>最新の本人観察（{clock(latestObservation.hour)}）:
             所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger} ·
             体力 {latestObservation.knownContext.energy} ·
-            判断 {latestObservation.chosen?.kind ?? "待機"}</p>}
+            判断 {latestObservation.chosen?.kind ?? "待機"} ·
+            進行中 {latestObservation.knownContext.activeAction ?? "なし"}</p>}
           <h3>選択セル {pointKey(focusCell)}</h3>
           <p>{terrain} · {blocked ? "通行不可" : "通行可能"} · {localPlants.map((p) =>
             `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}${p.ownerId ? ` · 所有者 ${p.ownerId} · ${p.farmId}` : ""}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>

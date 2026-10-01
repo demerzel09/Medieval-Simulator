@@ -5,7 +5,7 @@ import { autonomousVillageV1 } from "../../fixtures/autonomous-village";
 import { landEconomy90V1 } from "../../fixtures/land-economy-90";
 import { spatialLandEconomy90V1 } from "../../fixtures/land-economy-spatial";
 import { ecologicalLandEconomy90V1, exploringLandEconomy90V1,
-  wildFoodMarket90V1, ownedFarms90V1, woodPausedLandEconomy90V1, wideLandEconomy90V1 } from "../../fixtures/land-economy-wide";
+  localWork90V1, wildFoodMarket90V1, ownedFarms90V1, woodPausedLandEconomy90V1, wideLandEconomy90V1 } from "../../fixtures/land-economy-wide";
 import { ordinaryVillageModel, type VillageModel } from "../ai/autonomous-world";
 import { cultivatorVillageModel, ecologicalLandEconomyVillageModel, exploringLandEconomyVillageModel,
   landEconomyVillageModel, ownedFarmsVillageModel, wildFoodMarketVillageModel,
@@ -67,7 +67,7 @@ else if (scenario === "carrier-refuses") model = { decide(input) {
   return ordinaryVillageModel.decide(input);
 } };
 else if (scenario === "cultivation") model = cultivatorVillageModel;
-else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-ecology", "land-wood-paused", "land-owned-farms", "land-wild-food", "land-few-plots", "land-few-seeds", "land-poor-yield",
+else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-ecology", "land-wood-paused", "land-owned-farms", "land-wild-food", "land-local-work", "land-few-plots", "land-few-seeds", "land-poor-yield",
   "land-long-field", "land-road-blocked", "land-farmer-refuses", "land-no-skill",
   "land-late-information", "land-starvation"].includes(scenario)) {
   Object.assign(fixture, structuredClone(landEconomy90V1.world));
@@ -88,8 +88,8 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
       woodPausedLandEconomy90V1 : ecologicalLandEconomy90V1));
     grid = ecologicalVillageGrid();
   }
-  if (scenario === "land-owned-farms" || scenario === "land-wild-food") {
-    Object.assign(fixture, structuredClone(scenario === "land-wild-food" ? wildFoodMarket90V1 : ownedFarms90V1));
+  if (scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work") {
+    Object.assign(fixture, structuredClone(scenario === "land-local-work" ? localWork90V1 : scenario === "land-wild-food" ? wildFoodMarket90V1 : ownedFarms90V1));
     grid = ownedFarmsVillageGrid();
   }
   if (scenario === "land-few-plots") fixture.landEconomy!.grainPlots = 3;
@@ -102,8 +102,8 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
   }
   land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity,
     fixture.landEconomy?.grainPlots, true,
-    scenario === "land-wide" || scenario === "land-explore" || scenario === "land-ecology" || scenario === "land-wood-paused" || scenario === "land-owned-farms" || scenario === "land-wild-food",
-    scenario === "land-ecology" || scenario === "land-wood-paused" || scenario === "land-owned-farms" || scenario === "land-wild-food");
+    scenario === "land-wide" || scenario === "land-explore" || scenario === "land-ecology" || scenario === "land-wood-paused" || scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work",
+    scenario === "land-ecology" || scenario === "land-wood-paused" || scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work");
   if (scenario === "land-poor-yield") for (const patch of Object.values(land.plants))
     if (patch.species === "grain") patch.growthQuantity = 4;
   if (scenario === "land-starvation") for (const patch of Object.values(land.plants))
@@ -111,7 +111,7 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
       patch.initialAvailable = 0; patch.available = 0; patch.growthQuantity = 0;
       patch.stage = "regrowing";
     }
-  model = scenario === "land-wild-food" ? wildFoodMarketVillageModel :
+  model = scenario === "land-wild-food" || scenario === "land-local-work" ? wildFoodMarketVillageModel :
     scenario === "land-owned-farms" ? ownedFarmsVillageModel :
     scenario === "land-ecology" || scenario === "land-wood-paused" ? ecologicalLandEconomyVillageModel :
     scenario === "land-explore" ? exploringLandEconomyVillageModel :
@@ -132,7 +132,7 @@ else if (scenario === "no-grass") {
   grid.sites.field = { x: 4, y: 3 }; grid.sites.meadow = { x: 7, y: 3 };
   land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity);
 } else if (scenario !== "baseline") throw Error("unknown village scenario");
-const w = newVillageWorld(240924, fixture, grid, scenario === "land-owned-farms" || scenario === "land-wild-food" ? undefined : land);
+const w = newVillageWorld(240924, fixture, grid, scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work" ? undefined : land);
 if (scenario === "rerouted-carrier") {
   queueVillageCommand(w, { id: "carrier-route", actorId: "C", at: 1,
     attempt: { kind: "travel", siteId: "grove" } });

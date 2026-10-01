@@ -200,7 +200,9 @@ export const ownedFarmsVillageModel: VillageModel = { decide(input) {
       if (target) attempt = c.siteId === target.siteId ?
         grainSkillAction(target.stage, target.id, c.farmingSkills.grain ?? 0) :
         { kind: "travel", siteId: target.siteId! };
-      else if (c.siteId !== farm.siteId) attempt = { kind: "travel", siteId: farm.siteId };
+      else if (c.spatialForaging && !farm.plotIds.includes(c.siteId) && c.siteId !== "market")
+        attempt = { kind: "travel", siteId: farm.plotIds[0] };
+      else if (!c.spatialForaging && c.siteId !== farm.siteId) attempt = { kind: "travel", siteId: farm.siteId };
     }
     if (attempt?.kind === "travel") {
       const effort = (1 + Math.floor(c.carriedMass / 20)) * (1 + Math.floor(c.carriedMass / 10));
@@ -235,8 +237,12 @@ export const wildFoodMarketVillageModel: VillageModel = { decide(input) {
       if (crop) attempt = c.siteId === crop.siteId ? { kind: "harvest_plot", plantId: crop.id } :
         { kind: "travel", siteId: crop.siteId! };
       else if (offer) attempt = { kind: "buy_surplus", offerId: offer.id };
-      else if (wild && c.energy >= 1) attempt = { kind: "forage_route", plantId: wild.id,
-        quantity: wild.species === "herb" ? 2 : Math.min(3, wild.available) };
+      else if (wild && c.energy >= 1) {
+        const quantity = wild.species === "herb" ? 2 : Math.min(3, wild.available);
+        attempt = c.spatialForaging ? c.siteId === wild.siteId ?
+          { kind: "gather_plant", plantId: wild.id, quantity } : { kind: "travel", siteId: wild.siteId! } :
+          { kind: "forage_route", plantId: wild.id, quantity };
+      }
       else if (c.siteId !== "grove" && c.energy >= 6) attempt = { kind: "travel", siteId: "grove" };
       else if (!m.done.includes("rest")) attempt = { kind: "rest" };
     }
@@ -252,6 +258,9 @@ export const wildFoodMarketVillageModel: VillageModel = { decide(input) {
     return { ...base, attempts: [], wait: { at: input.at + 1 } };
   }
   if (!attempt && c.hourOfDay >= 17 && !m.done.includes("rest"))
-    attempt = c.ownFarm && c.siteId !== c.ownFarm.siteId ? { kind: "travel", siteId: c.ownFarm.siteId } : { kind: "rest" };
+    attempt = c.ownFarm && c.siteId === "market" && c.spatialForaging ?
+      { kind: "travel", siteId: c.ownFarm.plotIds[0] } :
+      c.ownFarm && c.siteId !== c.ownFarm.siteId && !c.spatialForaging ?
+        { kind: "travel", siteId: c.ownFarm.siteId } : { kind: "rest" };
   return attempt ? { ...base, attempts: [attempt], wait: { at: input.at + 1 } } : base;
 } };

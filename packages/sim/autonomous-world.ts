@@ -128,6 +128,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   if (fixture.woodEnabled === false && (fixture.resources.wood.initial !== 0 ||
     fixture.resources.wood.capacity !== 0 || fixture.resources.wood.growthPerDay !== 0 ||
     fixture.woodPerPersonPerDay !== 0)) throw Error("paused wood fixture contains wood supply or demand");
+  if (fixture.spatialForaging && !fixture.publicForaging) throw Error("spatial gathering requires public foraging");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   checkGridMap(grid);
@@ -485,7 +486,9 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
           plant.available ? "ripe" : "regrowing";
       if (p.kind === "harvest_plot") { plant.ageHours = 0; w.seedsProduced++; }
       else if (w.fixture.landEconomy?.physicalGrowth) plant.ageHours = 0;
-      w.harvestedFood += quantity; w.harvestedLandFood += quantity;
+      w.harvestedFood += quantity;
+      if (w.fixture.spatialForaging && plant.species === "wild_berry") w.resources.food.available -= quantity;
+      else w.harvestedLandFood += quantity;
       w.foodLots[lotId] = w.fixture.landEconomy ? { harvestedDay: dayAt(w.hour),
         originPlantId: plant.id, originSiteId: plant.siteId, species: plant.species } :
         { harvestedDay: dayAt(w.hour) };
@@ -679,6 +682,7 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     result(w, id, a.kind, event); return undefined;
   }
   if (a.kind === "forage_route") {
+    if (w.fixture.spatialForaging) return "travel to the plant before gathering";
     const plant = w.land.plants[a.plantId], skill = w.people[id].foragingSkill ?? 0;
     const mealQuantity = w.fixture.landEconomy?.physicalGrowth && plant?.species === "herb" ? 2 : 1;
     const quantity = w.fixture.publicForaging ? a.quantity ?? mealQuantity : mealQuantity;
@@ -704,8 +708,10 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     const plant = w.land.plants[a.plantId];
     if (!plant || site !== plant.siteId) return "plant worksite unavailable";
     if (a.kind === "gather_plant") {
-      if (id !== "F" || !["fruit_tree", "herb"].includes(plant.species) ||
+      if ((w.fixture.spatialForaging ? (w.people[id].foragingSkill ?? 0) < 1 : id !== "F") ||
+        !(w.fixture.spatialForaging ? ["wild_berry", "fruit_tree", "herb"] : ["fruit_tree", "herb"]).includes(plant.species) ||
         !Number.isSafeInteger(a.quantity) || a.quantity < 1 ||
+        w.fixture.spatialForaging && plant.species === "herb" && a.quantity % 2 !== 0 ||
         plant.stage !== "ripe" || plant.available < a.quantity) return "plant gathering denied";
       return startProcess(w, id, a.kind, a.quantity, 1, decisionId,
         { plantId: plant.id, quantity: a.quantity });
@@ -912,6 +918,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.spatialForaging ? { spatialForaging: true as const } : {}),
     ...(w.fixture.publicForaging ? { publicForaging: true as const,
       edibleMeals: ownLots.reduce((n, lot) => n + Math.floor(lot.quantity /
         (w.foodLots[lot.id]?.species === "herb" ? 2 : 1)), 0),

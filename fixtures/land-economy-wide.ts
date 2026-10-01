@@ -47,3 +47,8 @@ export const ownedFarms90V1: VillageFixture = {
 export const wildFoodMarket90V1: VillageFixture = {
   ...structuredClone(ownedFarms90V1), publicForaging: true,
 };
+
+/** Harvest work takes place at the plant cell, with no automatic trip back to a label. */
+export const localWork90V1: VillageFixture = {
+  ...structuredClone(wildFoodMarket90V1), spatialForaging: true,
+};

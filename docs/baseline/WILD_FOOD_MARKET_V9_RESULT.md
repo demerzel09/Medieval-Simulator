@@ -27,7 +27,7 @@ npm run autonomy:village -- replay fixtures/recordings/autonomous-village-wild-f
 npm run autonomy:village -- history fixtures/recordings/autonomous-village-wild-food-90.v2.json.gz C /tmp/wild-food-C.json
 ```
 
-同じF5の生態デバッグはこの版を標準表示する。「表示する記録」で所有畑v8、薪停止対照v7、旧生態v6と比較可能。余剰売買の成立数も表示する。
+現在のF5標準記録は[現地作業v10](LOCAL_WORK_V10_RESULT.md)。v9は「旧記録：往復採集・余剰売買」または `/?village=land-economy&wood=wild` で表示する。「表示する記録」で所有畑v8、薪停止対照v7、旧生態v6と比較可能。余剰売買の成立数も表示する。
 
 ## 検査と次の方針
 
