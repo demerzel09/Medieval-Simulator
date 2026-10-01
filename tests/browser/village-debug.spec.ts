@@ -113,8 +113,8 @@ test("the wood suspension control suspends wood and identifies the income shorta
 });
 
 
-test("independent farms are the default and show crop ownership and grain storage", async ({ page }) => {
-  await page.goto("/?village=land-economy");
+test("independent farms show crop ownership and grain storage", async ({ page }) => {
+  await page.goto("/?village=land-economy&wood=farms");
   await expect(page.getByLabel("表示する記録")).toHaveValue("farms");
   await expect(page.getByRole("note")).toContainText("農夫3人は90日食料を確保");
   await expect(page.getByText("腐敗なし", { exact: true })).toBeVisible();
@@ -127,4 +127,16 @@ test("independent farms are the default and show crop ownership and grain storag
   await page.getByLabel("土地経済の時刻").fill("24");
   await page.getByLabel("土地経済の分").fill("60");
   await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("274/450");
+});
+
+
+test("wild gathering and surplus sales are available in the default recording", async ({ page }) => {
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("wild");
+  await expect(page.getByRole("note")).toContainText("全員が野草・ベリーを採集して直接食べられます");
+  await page.getByLabel("土地経済の日").fill("90");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "余剰売買" }).locator("b")).toHaveText("17件");
 });

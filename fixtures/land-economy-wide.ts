@@ -42,3 +42,8 @@ export const ownedFarms90V1: VillageFixture = {
       plotIds: ["grain_plot_9", "grain_plot_10", "grain_plot_11", "grain_plot_12"] },
   ] },
 };
+
+/** Wild food can be gathered without money and surplus can be offered in person. */
+export const wildFoodMarket90V1: VillageFixture = {
+  ...structuredClone(ownedFarms90V1), publicForaging: true,
+};

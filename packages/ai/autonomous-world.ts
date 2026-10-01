@@ -11,7 +11,11 @@ export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageS
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
-  ownFood: number; ownWood: number; woodEnabled?: false; foodResource?: number; woodResource?: number;
+  ownFood: number; ownWood: number;
+  publicForaging?: true; edibleMeals?: number;
+  ownFoodLots?: { id: string; quantity: number; species: string; mealQuantity: number; offered: boolean }[];
+  visibleFoodOffers?: { id: string; sellerId: VillageId; quantity: number; price: number; species: string }[];
+  woodEnabled?: false; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;
     status: string }; fundedOrderId?: string; tenderedOrderId?: string;
   carriedFarmerFood: number; carriedSellerFood: number;
@@ -34,7 +38,9 @@ export type VillageAttempt =
   | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" }
   | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string }
   | { kind: "harvest_plot"; plantId: string }
-  | { kind: "forage_route"; plantId: string }
+  | { kind: "forage_route"; plantId: string; quantity?: number }
+  | { kind: "post_surplus_offer"; lotId: string; quantity: number; price: number }
+  | { kind: "buy_surplus"; offerId: string }
   | { kind: "gather_plant"; plantId: string; quantity: number };
 export type VillageResponse = ActorResponse<VillageAttempt, VillageMemory, { at: number }>;
 export type VillageModel = PersonalityModel<ActorInput<VillageContext, VillageMemory, VillageStimulus>, VillageResponse>;
