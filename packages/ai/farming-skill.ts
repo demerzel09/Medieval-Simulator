@@ -227,7 +227,7 @@ export const wildFoodMarketVillageModel: VillageModel = { decide(input) {
   else if (c.hunger > 0) {
     if (c.energy < 6 && !m.done.includes("rest")) attempt = { kind: "rest" };
     else {
-      const offer = c.visibleFoodOffers?.filter((o) => o.price <= c.ownCash && o.price <= 2)
+      const offer = c.visibleFoodOffers?.filter((o) => o.product !== "grain" && o.price <= c.ownCash && o.price <= 2)
         .sort((a, b) => a.price - b.price || a.id.localeCompare(b.id))[0];
       const wild = c.visiblePlants.filter((p) => ["herb", "wild_berry", "fruit_tree"].includes(p.species) &&
         p.stage === "ripe" && p.available >= (p.species === "herb" ? 2 : 1) && p.cell)
@@ -263,4 +263,33 @@ export const wildFoodMarketVillageModel: VillageModel = { decide(input) {
       c.ownFarm && c.siteId !== c.ownFarm.siteId && !c.spatialForaging ?
         { kind: "travel", siteId: c.ownFarm.siteId } : { kind: "rest" };
   return attempt ? { ...base, attempts: [attempt], wait: { at: input.at + 1 } } : base;
+} };
+
+/** Store harvested grain before converting it to perishable, edible bread. */
+export const breadStorageVillageModel: VillageModel = { decide(input) {
+  const base = wildFoodMarketVillageModel.decide(input), c = input.knownContext;
+  if (!c.breadEconomy || c.activeAction) return base;
+  const respond = (attempt: VillageAttempt | undefined) => ({ ...base,
+    attempts: attempt ? [attempt] : [], wait: { at: input.at + (attempt ? 1 : 2) } });
+  if ((c.grainCarried ?? 0) > 0) {
+    const lot = c.ownFoodLots!.find((lot) => lot.product === "grain")!;
+    const store = c.grainStores!.filter((store) => store.capacity - store.grain >= lot.quantity)
+      .sort((a, b) => Number(b.siteId === `home_${input.actorId}`) - Number(a.siteId === `home_${input.actorId}`))[0];
+    if (!store) return respond(undefined);
+    if (c.energy < 6 && !base.subjectiveUpdate!.done.includes("rest")) return respond({ kind: "rest" });
+    return respond(c.siteId === store.siteId ? { kind: "store_grain", lotId: lot.id, storeId: store.id } :
+      { kind: "travel", siteId: store.siteId });
+  }
+  if ((c.edibleMeals ?? 0) < 2) {
+    const store = c.grainStores!.filter((store) => store.grain > 0)
+      .sort((a, b) => Number(b.siteId === c.siteId) - Number(a.siteId === c.siteId))[0];
+    if (store) {
+      if (c.energy < (c.bakingHours ?? 2) + 2 && !base.subjectiveUpdate!.done.includes("rest"))
+        return respond({ kind: "rest" });
+      if (c.hunger > 0 && (c.edibleMeals ?? 0) > 0) return respond({ kind: "eat" });
+      return respond(c.siteId === store.siteId ? { kind: "bake_bread", lotId: store.lots[0].id } :
+        { kind: "travel", siteId: store.siteId });
+    }
+  }
+  return base;
 } };

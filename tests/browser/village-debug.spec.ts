@@ -142,8 +142,8 @@ test("the old round-trip gathering recording remains available", async ({ page }
 });
 
 
-test("the default scene keeps gatherers at real plant cells", async ({ page }) => {
-  await page.goto("/?village=land-economy");
+test("the previous scene keeps gatherers at real plant cells", async ({ page }) => {
+  await page.goto("/?village=land-economy&wood=local");
   await expect(page.getByLabel("表示する記録")).toHaveValue("local");
   await expect(page.getByRole("note")).toContainText("森・畑の中心へ自動では戻りません");
   await page.getByLabel("土地経済の人物").selectOption("S");
@@ -155,4 +155,19 @@ test("the default scene keeps gatherers at real plant cells", async ({ page }) =
   await page.getByLabel("土地経済の分").fill("60");
   await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
   await expect(page.locator(".e1-stats span").filter({ hasText: "余剰売買" }).locator("b")).toHaveText("6件");
+});
+
+
+test("the default scene stores raw grain and feeds processed bread", async ({ page }) => {
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("bread");
+  await expect(page.getByRole("note")).toContainText("穀物は直接食べられません");
+  await page.getByLabel("土地経済の日").fill("90");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "パンの食事" }).locator("b")).toHaveText("269");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "製パン" }).locator("b")).toHaveText("275");
+  await page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" }).click({ position: { x: 2 * 32 + 16, y: 4 * 32 + 16 } });
+  await expect(page.getByText(/穀物庫 B1: \d+単位 · 所有者 B1/)).toBeVisible();
 });

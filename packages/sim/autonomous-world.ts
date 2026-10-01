@@ -33,7 +33,7 @@ type FoodOffer = { id: string; sellerId: VillageId; lotId: string; quantity: num
 type SaleQuote = { id: string; day: number; price: number; postedEventId: string };
 type VillageProcess = { id: string; actorId: VillageId; kind: "travel" | "forage" | "tender_food" |
   "deliver_food" | "sell_wood" | "rest" | "till_plot" | "sow_plot" | "harvest_plot" |
-  "gather_plant" | "forage_route"; startedAt: number; duration: number; progress: number;
+  "gather_plant" | "forage_route" | "bake_bread"; lotId?: string; startedAt: number; duration: number; progress: number;
   energyPerHour: number; startEventId: string; transitId?: string; destinationId?: string;
   path?: GridPoint[]; pathIndex?: number; edgeProgress?: number; stepHours?: number;
   resource?: "food" | "wood"; quantity?: number; orderId?: string; buyerId?: VillageId;
@@ -52,13 +52,14 @@ export type VillageWorld = { schemaVersion: 2; mode: "autonomous_village"; seed:
     available: number; capacity: number; growthPerDay: number; reserved: number; initial: number; grown: number }>;
   foodOffers?: Record<string, FoodOffer>;
   foodLots: Record<string, { harvestedDay: number; originPlantId?: string;
-    originSiteId?: string; species?: string }>;
+    originSiteId?: string; species?: string; product?: "grain" | "bread"; producedDay?: number }>;
   orders: Record<string, FoodOrder>; woodBids: Record<string, WoodBid>; saleQuotes: Record<string, SaleQuote>;
   processes: Record<string, VillageProcess>; pending: { recipientId: VillageId; stimulus: VillageStimulus }[];
   commands: VillageCommand[]; terrainCommands: VillageTerrainCommand[];
   terrainEventIds: Record<string, string>; decisions: VillageDecisionRecord[];
   events: VillageEvent[]; harvestedFood: number; harvestedLandFood: number;
   eatenFood: number; spoiledFood: number; initialSeeds: number; seedsProduced: number; seedsUsed: number;
+  processedGrain?: number; bakedBread?: number;
   harvestedWood: number; burnedWood: number; initialMoney: number };
 const ids: VillageId[] = ["S", "F", "C", "B1", "B2"];
 const routeFor = (w: VillageWorld, map: GridMap, start: GridPoint, goal: GridPoint) =>
@@ -129,8 +130,13 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     fixture.resources.wood.capacity !== 0 || fixture.resources.wood.growthPerDay !== 0 ||
     fixture.woodPerPersonPerDay !== 0)) throw Error("paused wood fixture contains wood supply or demand");
   if (fixture.spatialForaging && !fixture.publicForaging) throw Error("spatial gathering requires public foraging");
+  if (fixture.breadEconomy && (!fixture.spatialForaging || !fixture.grainNonperishable ||
+    Object.values(fixture.breadEconomy).some((n) => !Number.isSafeInteger(n) || n < 1)))
+    throw Error("invalid bread fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
+  if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
+    home_S: { x: 3, y: 12 }, home_C: { x: 5, y: 12 } });
   checkGridMap(grid);
   for (const site of ["market", "grove", "home_B1", "home_B2", "field", "meadow"])
     if (!grid.sites[site]) throw Error("missing village site");
@@ -203,6 +209,8 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     currency: { id: "currency", tags: ["currency"], unitMass: 1, stackable: false, ownable: true },
     seed: { id: "seed", tags: ["seed"], unitMass: 1, stackable: true, ownable: true },
   };
+  if (f.breadEconomy) types.granary = { id: "granary", tags: ["store"], unitMass: 0,
+    stackable: false, ownable: true, container: { acceptsTags: ["food"], maxContentsMass: f.breadEconomy.storageCapacity } };
   const objects: PhysicalState["objects"] = {};
   const add = (id: string, typeId: string, parentId: string | null, ownerId?: string) => {
     objects[id] = { id, typeId, parentId, ownerId, quantity: 1, causeEventId: "initial" };
@@ -228,6 +236,10 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     const farm = farms?.find((farm) => farm.ownerId === id);
     if (farm) roles[id] = "farmer";
     add(id, "person", id === "F" ? "grove" : id.startsWith("B") ? `home_${id}` : "market");
+    if (f.breadEconomy) {
+      add(`granary_home_${id}`, "granary", `home_${id}`, id);
+      add(`granary_market_${id}`, "granary", "market", id);
+    }
     add(bag(id), "bag", id, id); add(wallet(id), "wallet", id, id);
     const initialSeeds = farm ? farm.initialSeeds : id === "F" ? f.landEconomy?.initialSeeds ?? 2 : 0;
     const seedId = farm ? `grain_seed_initial_${id}` : "grain_seed_initial";
@@ -253,6 +265,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     wood: { available: f.resources.wood.initial, capacity: f.resources.wood.capacity,
       growthPerDay: f.resources.wood.growthPerDay, reserved: 0, initial: f.resources.wood.initial, grown: 0 } },
     ...(f.publicForaging ? { foodOffers: {} } : {}),
+    ...(f.breadEconomy ? { processedGrain: 0, bakedBread: 0 } : {}),
     foodLots: {}, orders: {}, woodBids: {}, saleQuotes: {}, processes: {}, pending: [], commands: [],
     terrainCommands: [], terrainEventIds: {}, decisions: [], events: [],
     harvestedFood: 0, harvestedLandFood: 0, eatenFood: 0, spoiledFood: 0,
@@ -445,6 +458,22 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
       { quantity: 1, price: bid.price, lotId: lot.quantity > 1 ? unitId : lot.id });
     bid.filledEventId = event.id;
     send(w, buyerId, { kind: "result", action: "sell_wood", success: true, causeEventIds: [event.id] }, 0);
+  } else if (p.kind === "bake_bread") {
+    const lot = w.physical.objects[p.lotId!], meta = w.foodLots[p.lotId!];
+    if (!lot || !meta || meta.species !== "grain" || meta.product === "bread" ||
+      lot.ownerId !== id || siteOf(w.physical, lot.id) !== siteOf(w.physical, id)) return "grain unavailable";
+    const breadId = uid(w, "bread");
+    const reason = tx(w, id, [], (t) => {
+      t.remove(lot.id, 1);
+      t.add({ id: breadId, typeId: "food", parentId: bag(id), ownerId: id, quantity: 1, causeEventId: p.startEventId });
+    });
+    if (reason) return reason;
+    if (!w.physical.objects[lot.id]) delete w.foodLots[lot.id];
+    w.foodLots[breadId] = { ...meta, product: "bread", producedDay: dayAt(w.hour) };
+    w.processedGrain!++; w.bakedBread!++;
+    const event = emit(w, "bread_baked", [id], [p.startEventId, lot.causeEventId],
+      { grainLotId: lot.id, storeId: lot.parentId!, lotId: breadId, quantity: 1, originPlantId: meta.originPlantId!, siteId: siteOf(w.physical, id) });
+    w.physical.objects[breadId].causeEventId = event.id;
   } else if (p.kind === "rest") {
     w.people[id].energy = Math.min(w.fixture.body.maxEnergy, w.people[id].energy + w.fixture.restEnergyGain);
     emit(w, "rested", [id], [p.startEventId], { energy: w.people[id].energy });
@@ -834,11 +863,13 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
   if (a.kind === "eat") {
     const publicMeal = w.fixture.publicForaging ?
       [...(id === "S" ? ownObjects(w, "stock_S", "food", id) : []), ...ownObjects(w, bag(id), "food", id)]
-        .find((lot) => lot.quantity >= (w.foodLots[lot.id]?.species === "herb" ? 2 : 1)) : undefined;
+        .find((lot) => (!w.fixture.breadEconomy || w.foodLots[lot.id]?.species !== "grain" || w.foodLots[lot.id]?.product === "bread") &&
+          lot.quantity >= (w.foodLots[lot.id]?.species === "herb" ? 2 : 1)) : undefined;
     const lot = w.fixture.publicForaging ? publicMeal : id === "S" ? ownObjects(w, "stock_S", "food", "S")[0] ??
       ownObjects(w, bag(id), "food", id)[0] : ownObjects(w, bag(id), "food", id)[0];
     if (!lot || w.people[id].hunger < 1) return "meal unavailable";
     const origin = w.foodLots[lot.id];
+    if (w.fixture.breadEconomy && origin.species === "grain" && origin.product !== "bread") return "grain is not edible";
     const quantity = w.fixture.landEconomy?.physicalGrowth && origin?.species === "herb" ? 2 : 1;
     if (lot.quantity < quantity) return "insufficient nourishment";
     const reason = tx(w, id, [], (t) => t.remove(lot.id, quantity));
@@ -847,7 +878,7 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     w.people[id].hunger--; w.people[id].meals++; w.eatenFood += quantity;
     const event = emit(w, "ate", [id], [decisionId, lot.causeEventId], { quantity,
       ...(origin?.originPlantId ? { originPlantId: origin.originPlantId,
-        species: origin.species ?? "" } : {}) });
+        species: origin.species ?? "", ...(origin.product ? { product: origin.product } : {}) } : {}) });
     result(w, id, a.kind, event); return undefined;
   }
   if (a.kind === "post_surplus_offer") {
@@ -892,6 +923,25 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     result(w, id, a.kind, event); send(w, offer.sellerId, { kind: "result", action: "post_surplus_offer",
       success: true, causeEventIds: [event.id] }, 0); return undefined;
   }
+  if (a.kind === "store_grain") {
+    const lot = w.physical.objects[a.lotId], store = w.physical.objects[a.storeId], meta = w.foodLots[a.lotId];
+    if (!w.fixture.breadEconomy || !lot || !meta || meta.species !== "grain" || meta.product === "bread" ||
+      lot.ownerId !== id || lot.parentId !== bag(id) || store?.typeId !== "granary" ||
+      store.ownerId !== id || siteOf(w.physical, store.id) !== site) return "grain storage unavailable";
+    const reason = tx(w, id, [], (t) => t.move(lot.id, store.id));
+    if (reason) return reason;
+    const event = emit(w, "grain_stored", [id], [decisionId, lot.causeEventId],
+      { lotId: lot.id, storeId: store.id, siteId: site, quantity: lot.quantity });
+    result(w, id, a.kind, event); return undefined;
+  }
+  if (a.kind === "bake_bread") {
+    const lot = w.physical.objects[a.lotId], meta = w.foodLots[a.lotId];
+    if (!w.fixture.breadEconomy || !lot || !meta || meta.species !== "grain" || meta.product === "bread" ||
+      lot.ownerId !== id || siteOf(w.physical, lot.id) !== site ||
+      !(site === "market" || site === `home_${id}`) || w.physical.objects[lot.parentId!]?.typeId !== "granary")
+      return "grain must be stored at a home or market bakery";
+    return startProcess(w, id, a.kind, w.fixture.breadEconomy.bakeHours, 1, decisionId, { lotId: lot.id });
+  }
   if (a.kind === "burn_wood") {
     const lot = ownObjects(w, bag(id), "wood", id)[0];
     if (!lot || w.people[id].cold < 1) return "fuel unavailable";
@@ -918,19 +968,26 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.breadEconomy ? { breadEconomy: true as const, bakingHours: w.fixture.breadEconomy.bakeHours,
+      grainCarried: ownLots.filter((lot) => w.foodLots[lot.id].species === "grain" && w.foodLots[lot.id].product !== "bread")
+        .reduce((n, lot) => n + lot.quantity, 0),
+      grainStores: Object.values(w.physical.objects).filter((o) => o.typeId === "granary" && o.ownerId === id)
+        .map((store) => { const lots = ownObjects(w, store.id, "food", id); return { id: store.id,
+          siteId: siteOf(w.physical, store.id), capacity: w.fixture.breadEconomy!.storageCapacity,
+          grain: lots.reduce((n, lot) => n + lot.quantity, 0), lots: lots.map((lot) => ({ id: lot.id, quantity: lot.quantity })) }; }) } : {}),
     ...(w.fixture.spatialForaging ? { spatialForaging: true as const } : {}),
     ...(w.fixture.publicForaging ? { publicForaging: true as const,
-      edibleMeals: ownLots.reduce((n, lot) => n + Math.floor(lot.quantity /
-        (w.foodLots[lot.id]?.species === "herb" ? 2 : 1)), 0),
+      edibleMeals: ownLots.reduce((n, lot) => n + (w.fixture.breadEconomy && w.foodLots[lot.id].species === "grain" && w.foodLots[lot.id].product !== "bread" ? 0 : Math.floor(lot.quantity /
+        (w.foodLots[lot.id]?.species === "herb" ? 2 : 1))), 0),
       ownFoodLots: ownLots.map((lot) => ({ id: lot.id, quantity: lot.quantity,
-        species: w.foodLots[lot.id].species!, mealQuantity: w.foodLots[lot.id].species === "herb" ? 2 : 1,
+        species: w.foodLots[lot.id].species!, ...(w.fixture.breadEconomy ? { product: w.foodLots[lot.id].product ?? (w.foodLots[lot.id].species === "grain" ? "grain" as const : undefined) } : {}), mealQuantity: w.foodLots[lot.id].species === "herb" ? 2 : 1,
         offered: offers.some((offer) => offer.lotId === lot.id && !offer.purchasedEventId) })),
       visibleFoodOffers: siteId === "market" ? offers.filter((offer) => {
         const lot = w.physical.objects[offer.lotId];
         return !offer.purchasedEventId && offer.sellerId !== id && atSite(w, offer.sellerId, "market") &&
           lot?.ownerId === offer.sellerId && lot.quantity >= offer.quantity && siteOf(w.physical, lot.id) === "market";
       }).map((offer) => ({ id: offer.id, sellerId: offer.sellerId, quantity: offer.quantity,
-        price: offer.price, species: w.foodLots[offer.lotId].species! })) : [] } : {}),
+        price: offer.price, species: w.foodLots[offer.lotId].species!, ...(w.fixture.breadEconomy ? { product: w.foodLots[offer.lotId].product ?? (w.foodLots[offer.lotId].species === "grain" ? "grain" as const : undefined) } : {}) })) : [] } : {}),
     ...(w.fixture.woodEnabled === false ? { woodEnabled: false as const } : {}),
     cell: structuredClone(person.cell),
     ...(farmsForActor(w, id) ? { ownFarm: structuredClone(farmsForActor(w, id)) } : {}),
@@ -1006,8 +1063,9 @@ function growAndNeed(w: VillageWorld) {
     }
   }
   for (const [lotId, meta] of Object.entries(w.foodLots)) {
-    if (w.fixture.grainNonperishable && meta.species === "grain") continue;
-    if (day - meta.harvestedDay < w.fixture.foodShelfLifeDays) continue;
+    if (w.fixture.grainNonperishable && meta.species === "grain" && meta.product !== "bread") continue;
+    if (day - (meta.product === "bread" ? meta.producedDay! : meta.harvestedDay) <
+      (meta.product === "bread" ? w.fixture.breadEconomy!.shelfLifeDays : w.fixture.foodShelfLifeDays)) continue;
     const lot = w.physical.objects[lotId];
     if (!lot) { delete w.foodLots[lotId]; continue; }
     delete w.physical.objects[lotId]; delete w.foodLots[lotId]; w.spoiledFood += lot.quantity;
@@ -1190,7 +1248,7 @@ export function checkVillageWorld(w: VillageWorld) {
   const objects = Object.values(w.physical.objects);
   if (objects.filter((o) => o.typeId === "currency").length !== w.initialMoney ||
     objects.filter((o) => o.typeId === "food").reduce((n, o) => n + o.quantity, 0) !==
-      w.harvestedFood - w.eatenFood - w.spoiledFood ||
+      w.harvestedFood - w.eatenFood - w.spoiledFood - (w.processedGrain ?? 0) + (w.bakedBread ?? 0) ||
     objects.filter((o) => o.typeId === "wood").reduce((n, o) => n + o.quantity, 0) !==
       w.harvestedWood - w.burnedWood ||
     objects.filter((o) => o.typeId === "seed").reduce((n, o) => n + o.quantity, 0) !==
@@ -1218,6 +1276,17 @@ export function checkVillageWorld(w: VillageWorld) {
     berries.reduce((n, p) => n + p.personHarvested, 0) !==
       w.harvestedFood - w.harvestedLandFood)
     throw Error("village wild food mirror");
+  if (w.fixture.breadEconomy) {
+    const rawGrain = objects.filter((lot) => w.foodLots[lot.id]?.species === "grain" &&
+      w.foodLots[lot.id]?.product !== "bread").reduce((n, lot) => n + lot.quantity, 0);
+    const grainHarvest = Object.values(w.land.plants).filter((p) => p.species === "grain")
+      .reduce((n, p) => n + p.personHarvested, 0);
+    if (!Number.isSafeInteger(w.processedGrain) || w.processedGrain! < 0 ||
+      w.processedGrain !== w.bakedBread || rawGrain + w.processedGrain! !== grainHarvest ||
+      Object.values(w.foodLots).some((lot) => lot.product === "bread" &&
+        (!Number.isSafeInteger(lot.producedDay) || lot.producedDay! < lot.harvestedDay ||
+         lot.producedDay! > dayAt(w.hour)))) throw Error("grain and bread conservation");
+  }
   const eventIds = new Set<string>();
   for (const event of w.events) {
     if (eventIds.has(event.id) || event.causes.some((id) => !eventIds.has(id)) ||

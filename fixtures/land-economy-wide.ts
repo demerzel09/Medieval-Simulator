@@ -52,3 +52,9 @@ export const wildFoodMarket90V1: VillageFixture = {
 export const localWork90V1: VillageFixture = {
   ...structuredClone(wildFoodMarket90V1), spatialForaging: true,
 };
+
+/** Grain is a stored ingredient; only bread and gathered wild foods are edible. */
+export const breadStorage90V1: VillageFixture = {
+  ...structuredClone(localWork90V1),
+  breadEconomy: { bakeHours: 2, shelfLifeDays: 3, storageCapacity: 128 },
+};

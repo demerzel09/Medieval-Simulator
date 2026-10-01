@@ -12,9 +12,11 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number;
+  breadEconomy?: true; grainCarried?: number; bakingHours?: number;
+  grainStores?: { id: string; siteId: string; grain: number; capacity: number; lots: { id: string; quantity: number }[] }[];
   publicForaging?: true; spatialForaging?: true; edibleMeals?: number;
-  ownFoodLots?: { id: string; quantity: number; species: string; mealQuantity: number; offered: boolean }[];
-  visibleFoodOffers?: { id: string; sellerId: VillageId; quantity: number; price: number; species: string }[];
+  ownFoodLots?: { id: string; quantity: number; species: string; product?: "grain" | "bread"; mealQuantity: number; offered: boolean }[];
+  visibleFoodOffers?: { id: string; sellerId: VillageId; quantity: number; price: number; species: string; product?: "grain" | "bread" }[];
   woodEnabled?: false; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;
     status: string }; fundedOrderId?: string; tenderedOrderId?: string;
@@ -35,6 +37,8 @@ export type VillageAttempt =
   | { kind: "tender_food"; orderId: string; quantity: number }
   | { kind: "purchase_food"; orderId: string } | { kind: "deliver_food"; orderId: string }
   | { kind: "sell_wood"; buyerId: VillageId } | { kind: "buy_food" }
+  | { kind: "store_grain"; lotId: string; storeId: string }
+  | { kind: "bake_bread"; lotId: string }
   | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" }
   | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string }
   | { kind: "harvest_plot"; plantId: string }

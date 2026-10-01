@@ -10,8 +10,8 @@
 
 買主B1/B2の薪仕事と所得は人物間の因果で成立しました。[生活市場](baseline/LIVING_MARKET_EXPERIMENT.md)の90日結果はなお生活の安定に失敗し、中央給付や帳尻合わせで成功扱いしません。未実装の境界は[STATUS](STATUS.md)に記録します。
 
-次の実装順と受入条件は[土地の生産を90日の生活へつなぐ計画](baseline/LAND_ECONOMY_NEXT_PLAN.md)にまとめています。[自律する90日生活世界への旧計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)の段階0〜4は完了済みで、[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は当時の算術条件、[5人の自律生活世界](baseline/AUTONOMOUS_VILLAGE_RESULT.md)は実行・対照の結果です。[履歴・経路・土地の版2](baseline/VILLAGE_RECORDING_AND_LAND_V2.md)は、その後の記録再生、矩形グリッド、植物・動物の実装範囲を説明します。
+現在の実装順は[穀物・パン、技能獲得と職選択](baseline/FOOD_ECONOMY_SKILLS_PLAN.md)にまとめています。[土地の生産を90日の生活へつなぐ計画](baseline/LAND_ECONOMY_NEXT_PLAN.md)は完了済みの旧段階です。[自律する90日生活世界への旧計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)の段階0〜4は完了済みで、[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は当時の算術条件、[5人の自律生活世界](baseline/AUTONOMOUS_VILLAGE_RESULT.md)は実行・対照の結果です。[履歴・経路・土地の版2](baseline/VILLAGE_RECORDING_AND_LAND_V2.md)は、その後の記録再生、矩形グリッド、植物・動物の実装範囲を説明します。
 
 土地経済計画の順1〜4は完了しました。[90日収支の算術候補](baseline/LAND_ECONOMY_FEASIBILITY_V1.md)と[5人・90日の実走と対照](baseline/LAND_ECONOMY_V3_RESULT.md)を分けて記録しています。次の候補と未達は[STATUS](STATUS.md)を参照してください。
 
-画面と世界が同じセルを使い、生活拠点を地図に分散した現在の実装は[1280×768の全域版](baseline/WIDE_WORLD_V5_RESULT.md)から始まった。現在の画面は[食用植物の局所探索](baseline/PLANT_EXPLORATION_RESULT.md)に[生育周期・畑の休止・分散採集](baseline/ECOLOGICAL_LAND_V6_RESULT.md)を加えた版を表示する。中央に集中した旧[空間版](baseline/SPATIAL_GRID_V4_RESULT.md)と旧5×5土地経済は再現用の別規則・記録として残しています。
+画面と世界が同じセルを使い、生活拠点を地図に分散した現在の実装は[1280×768の全域版](baseline/WIDE_WORLD_V5_RESULT.md)から始まった。現在の画面は[穀物保存・パン加工v11](baseline/BREAD_STORAGE_V11_RESULT.md)を標準表示する。穀物は直接食べられず、家・市場へ保存後に加工し、パンには製造日基準の腐敗期限を設けた。[食用植物の局所探索](baseline/PLANT_EXPLORATION_RESULT.md)と[生育周期・畑の休止・分散採集](baseline/ECOLOGICAL_LAND_V6_RESULT.md)、所有畑・現地作業も引き継ぐ。中央に集中した旧[空間版](baseline/SPATIAL_GRID_V4_RESULT.md)と旧5×5土地経済は再現用の別規則・記録として残しています。

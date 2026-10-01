@@ -10,7 +10,7 @@ import { advanceVillageWorld, checkVillageWorld, newVillageWorld, queueVillageCo
 export type VillageRecording = { formatVersion: 2; worldSchemaVersion: 2;
   rulesetId: "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2" |
     "autonomous-village-spatial-land-v3" | "autonomous-village-wide-land-v4" |
-    "autonomous-village-exploring-land-v5" | "autonomous-village-ecological-land-v6" | "autonomous-village-wood-paused-v7" | "autonomous-village-owned-farms-v8" | "autonomous-village-wild-food-market-v9" | "autonomous-village-local-work-v10"; seed: number;
+    "autonomous-village-exploring-land-v5" | "autonomous-village-ecological-land-v6" | "autonomous-village-wood-paused-v7" | "autonomous-village-owned-farms-v8" | "autonomous-village-wild-food-market-v9" | "autonomous-village-local-work-v10" | "autonomous-village-bread-storage-v11"; seed: number;
   fixture: VillageFixture; initialGrid: GridMap; initialLand: LandEcology; untilHour: number;
   commands: { id: string; actorId: VillageId; at: number; attempt: VillageAttempt }[];
   terrainCommands: { id: string; at: number; cell: GridPoint; blocked: boolean }[];
@@ -34,7 +34,8 @@ export function recordedVillageActorHistory(recording: VillageRecording, actorId
 export function captureVillageRecording(w: VillageWorld): VillageRecording {
   checkVillageWorld(w);
   return structuredClone({ formatVersion: 2, worldSchemaVersion: 2,
-    rulesetId: w.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
+    rulesetId: w.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
+      w.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
       w.fixture.publicForaging ? "autonomous-village-wild-food-market-v9" :
       w.fixture.landEconomy?.farms ? "autonomous-village-owned-farms-v8" :
       w.fixture.woodEnabled === false ? "autonomous-village-wood-paused-v7" :
@@ -53,7 +54,8 @@ export function captureVillageRecording(w: VillageWorld): VillageRecording {
 }
 export function replayVillageRecording(recording: VillageRecording): VillageWorld {
   if (recording.formatVersion !== 2 || recording.worldSchemaVersion !== 2 ||
-    recording.rulesetId !== (recording.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
+    recording.rulesetId !== (recording.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
+      recording.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
       recording.fixture.publicForaging ? "autonomous-village-wild-food-market-v9" :
       recording.fixture.landEconomy?.farms ? "autonomous-village-owned-farms-v8" :
       recording.fixture.woodEnabled === false ? "autonomous-village-wood-paused-v7" :
