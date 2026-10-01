@@ -156,3 +156,56 @@ export const ecologicalLandEconomyVillageModel: VillageModel = { decide(input) {
     p.stage === "ripe" && p.available > 0 && p.siteId === "orchard_2");
   return fruit ? { ...ordinary, attempts: [{ kind: "forage_route", plantId: fruit.id }] } : ordinary;
 } };
+
+/** Each independent farmer works only the crops in their own locally observed field. */
+export const ownedFarmsVillageModel: VillageModel = { decide(input) {
+  const ordinary = ordinaryVillageModel.decide(input);
+  const c = input.knownContext, farm = c.ownFarm;
+  if (!farm) {
+    const chosen = ordinary.attempts[0];
+    if (input.actorId === "C" && chosen?.kind === "relay_order" && !c.visiblePeople?.includes("F"))
+      return { ...ordinary, attempts: [], wait: { at: input.at + 1 } };
+    if (chosen?.kind === "post_food_order" && c.ownCash < chosen.quantity * chosen.bid + chosen.carrierFee)
+      return { ...ordinary, attempts: [], wait: { at: input.at + 2 } };
+    return ordinary;
+  }
+  const m = ordinary.subjectiveUpdate!;
+  const emergencyCrop = c.hunger > 0 && c.ownFood === 0 ? c.visiblePlants.find((p) =>
+    p.species === "grain" && p.ownerId === input.actorId && p.stage === "ripe") : undefined;
+  let attempt: VillageAttempt | undefined;
+  if (!c.activeAction) {
+    if (c.hunger > 0 && c.ownFood > 0) attempt = { kind: "eat" };
+    else if (c.energy < 8 && !m.done.includes("rest")) attempt = { kind: "rest" };
+    else if (emergencyCrop) attempt = c.siteId === emergencyCrop.siteId ?
+      grainSkillAction(emergencyCrop.stage, emergencyCrop.id, c.farmingSkills.grain ?? 0) :
+      { kind: "travel", siteId: emergencyCrop.siteId! };
+    else if (input.actorId === "F" && c.siteId === "grove" && m.knownOrder &&
+      !m.done.includes("accept_food_order"))
+      attempt = { kind: "accept_food_order", orderId: m.knownOrder.id };
+    else if (input.actorId === "F" && c.siteId === "grove" && m.knownOrder &&
+      m.done.includes("accept_food_order") && !m.done.includes("tender_food") && c.ownFood >= 4)
+      attempt = { kind: "tender_food", orderId: m.knownOrder.id, quantity: 4 };
+    else if (input.actorId === "F" && c.hourOfDay >= 9 && c.hourOfDay <= 16 && c.siteId !== "grove")
+      attempt = { kind: "travel", siteId: "grove" };
+    else if (input.actorId === "F" && c.siteId === "grove" && c.hourOfDay >= 9 && c.hourOfDay <= 16) {
+      // Wait for the physically arriving carrier rather than reading a remote order.
+    } else if (c.hourOfDay >= 17) {
+      if (input.actorId === "F" && c.siteId === "grove") attempt = { kind: "travel", siteId: farm.siteId };
+      else if (!m.done.includes("rest")) attempt = { kind: "rest" };
+    } else {
+      const crops = c.visiblePlants.filter((p) => p.species === "grain" &&
+        p.ownerId === input.actorId && p.farmId === farm.id);
+      const target = (c.ownFood < 5 ? crops.find((p) => p.stage === "ripe") : undefined) ??
+        crops.find((p) => p.stage === "tilled") ?? crops.find((p) => p.stage === "bare");
+      if (target) attempt = c.siteId === target.siteId ?
+        grainSkillAction(target.stage, target.id, c.farmingSkills.grain ?? 0) :
+        { kind: "travel", siteId: target.siteId! };
+      else if (c.siteId !== farm.siteId) attempt = { kind: "travel", siteId: farm.siteId };
+    }
+    if (attempt?.kind === "travel") {
+      const effort = (1 + Math.floor(c.carriedMass / 20)) * (1 + Math.floor(c.carriedMass / 10));
+      if (c.energy < effort) attempt = !m.done.includes("rest") ? { kind: "rest" } : undefined;
+    }
+  }
+  return { ...ordinary, attempts: attempt ? [attempt] : [], wait: { at: input.at + (attempt ? 1 : 2) } };
+} };

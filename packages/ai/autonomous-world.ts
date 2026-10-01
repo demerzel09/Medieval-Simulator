@@ -9,7 +9,7 @@ export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | 
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
-  cell: { x: number; y: number }; visiblePeople?: VillageId[];
+  cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number; woodEnabled?: false; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;
@@ -18,7 +18,7 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   visibleWoodBids: { buyerId: VillageId; price: number }[];
   visibleSale?: { price: number; stock: number };
   visiblePlants: { id: string; species: string; stage: string; available: number;
-    siteId?: string; cell?: { x: number; y: number } }[];
+    ownerId?: string; farmId?: string; siteId?: string; cell?: { x: number; y: number } }[];
   farmingSkills: Record<string, number>; foragingSkill?: number };
 export type VillageAttempt =
   | { kind: "post_food_order"; quantity: number; bid: number; carrierFee: number; salePrice: number }

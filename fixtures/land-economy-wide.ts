@@ -28,3 +28,17 @@ export const woodPausedLandEconomy90V1: VillageFixture = {
     wood: { initial: 0, capacity: 0, growthPerDay: 0 } },
   woodPerPersonPerDay: 0,
 };
+
+/** Independent farm owners; grain keeps indefinitely and there are no employees. */
+export const ownedFarms90V1: VillageFixture = {
+  ...structuredClone(woodPausedLandEconomy90V1),
+  grainNonperishable: true,
+  landEconomy: { ...woodPausedLandEconomy90V1.landEconomy!, farms: [
+    { id: "farm_F", ownerId: "F", siteId: "field", initialSeeds: 4,
+      plotIds: ["grain_plot", "grain_plot_2", "grain_plot_3", "grain_plot_4"] },
+    { id: "farm_B1", ownerId: "B1", siteId: "field_B1", initialSeeds: 4,
+      plotIds: ["grain_plot_5", "grain_plot_6", "grain_plot_7", "grain_plot_8"] },
+    { id: "farm_B2", ownerId: "B2", siteId: "field_B2", initialSeeds: 4,
+      plotIds: ["grain_plot_9", "grain_plot_10", "grain_plot_11", "grain_plot_12"] },
+  ] },
+};

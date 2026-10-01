@@ -211,3 +211,15 @@ export function ecologicalVillageGrid(): GridMap {
     grain_plot_11: { x: 36, y: 5 }, grain_plot_12: { x: 37, y: 5 },
   } };
 }
+
+/** Three separate fields, each with four crop cells and its own farmer. */
+export function ownedFarmsVillageGrid(): GridMap {
+  const grid = ecologicalVillageGrid();
+  return { ...grid, sites: { ...grid.sites,
+    field_B1: { x: 4, y: 6 }, field_B2: { x: 5, y: 19 },
+    grain_plot_5: { x: 3, y: 5 }, grain_plot_6: { x: 4, y: 5 },
+    grain_plot_7: { x: 3, y: 6 }, grain_plot_8: { x: 4, y: 7 },
+    grain_plot_9: { x: 4, y: 18 }, grain_plot_10: { x: 5, y: 18 },
+    grain_plot_11: { x: 4, y: 19 }, grain_plot_12: { x: 5, y: 20 },
+  } };
+}

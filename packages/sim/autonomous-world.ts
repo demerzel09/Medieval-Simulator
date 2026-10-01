@@ -4,7 +4,7 @@ import { ordinaryVillageModel, type VillageAttempt, type VillageContext, type Vi
 import { wakeActors } from "./actor-clock";
 import { hash } from "./core";
 import { cellKey, checkGridMap, defaultVillageGrid, ecologicalVillageGrid, exploringVillageGrid,
-  findGridPath, findGridPathV2, inGrid,
+  findGridPath, findGridPathV2, inGrid, ownedFarmsVillageGrid,
   sameCell, spatialVillageGrid,
   wideVillageGrid,
   traversable, type GridMap, type GridPoint } from "./grid-path";
@@ -60,6 +60,7 @@ export type VillageWorld = { schemaVersion: 2; mode: "autonomous_village"; seed:
 const ids: VillageId[] = ["S", "F", "C", "B1", "B2"];
 const routeFor = (w: VillageWorld, map: GridMap, start: GridPoint, goal: GridPoint) =>
   (w.fixture.landEconomy?.physicalGrowth ? findGridPathV2 : findGridPath)(map, start, goal);
+const farmsForActor = (w: VillageWorld, id: VillageId) => w.fixture.landEconomy?.farms?.find((f) => f.ownerId === id);
 const bag = (id: string) => `bag_${id}`;
 const wallet = (id: string) => `wallet_${id}`;
 const uid = (w: VillageWorld, prefix: string) => `${prefix}_${String(w.nextId++).padStart(6, "0")}`;
@@ -108,7 +109,8 @@ function transferUnit(t: PhysicalTransaction, lotId: string, quantity: number, u
   t.move(unit, parentId); t.changeOwner(unit, ownerId); return unit;
 }
 export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonomousVillageV1,
-  initialGrid: GridMap = fixture.landEconomy?.physicalGrowth ? ecologicalVillageGrid() :
+  initialGrid: GridMap = fixture.landEconomy?.farms ? ownedFarmsVillageGrid() :
+    fixture.landEconomy?.physicalGrowth ? ecologicalVillageGrid() :
     fixture.landEconomy?.exploreWildPlants ? exploringVillageGrid() :
     fixture.landEconomy?.wideWorld ? wideVillageGrid() :
     fixture.landEconomy?.spatialGrid ? spatialVillageGrid() : defaultVillageGrid(),
@@ -134,6 +136,33 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   const land = structuredClone(landInput ?? newLandEcology(grid, f.resources.food.initial,
     f.resources.food.capacity, f.landEconomy?.grainPlots ?? 1, !!f.landEconomy,
     !!f.landEconomy?.wideWorld, !!f.landEconomy?.physicalGrowth));
+  const farms = f.landEconomy?.farms;
+  if (farms) {
+    const cropIds = Object.values(land.plants).filter((p) => p.species === "grain").map((p) => p.id);
+    const assigned = farms.flatMap((farm) => farm.plotIds);
+    if (!f.grainNonperishable || !f.landEconomy?.spatialGrid || !farms.length ||
+      new Set(farms.map((farm) => farm.ownerId)).size !== farms.length ||
+      new Set(farms.map((farm) => farm.id)).size !== farms.length ||
+      assigned.length !== cropIds.length || new Set(assigned).size !== assigned.length ||
+      assigned.some((id) => !cropIds.includes(id)) ||
+      farms.reduce((n, farm) => n + farm.initialSeeds, 0) !== f.landEconomy.initialSeeds ||
+      farms.some((farm) => !farm.id || !["F", "B1", "B2"].includes(farm.ownerId) ||
+        !grid.sites[farm.siteId] || !farm.plotIds.length ||
+        !Number.isSafeInteger(farm.initialSeeds) || farm.initialSeeds < 0))
+      throw Error("invalid farm ownership fixture");
+    for (const farm of farms) for (const [index, id] of farm.plotIds.entries()) {
+      const crop = land.plants[id];
+      if (!landInput) {
+        crop.ownerId = farm.ownerId; crop.useRightHolderId = farm.ownerId; crop.farmId = farm.id;
+        // Existing standing crops bridge the six-day growth cycle, without granting food to bags.
+        crop.stage = index === 0 ? "ripe" : index === 1 ? "growing" : "bare";
+        crop.available = index === 0 ? 5 : 0; crop.initialAvailable = crop.available;
+        crop.ageHours = index === 1 ? 5 * 24 : 0;
+      }
+      if (crop.ownerId !== farm.ownerId || crop.useRightHolderId !== farm.ownerId || crop.farmId !== farm.id)
+        throw Error("farm ownership mismatch");
+    }
+  }
   checkLandEcology(land, grid);
   if (f.landEconomy?.spatialGrid && new Set(Object.values(land.plants)
     .map((p) => cellKey(p.cell))).size !== Object.keys(land.plants).length)
@@ -142,7 +171,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     Object.values(land.plants).filter((p) => p.species === "grain").length !==
       f.landEconomy.grainPlots ||
     Object.values(land.plants).some((p) => p.species === "grain" &&
-      p.useRightHolderId !== "F"))) throw Error("land economy fixture mismatch");
+      p.useRightHolderId !== (farms?.find((farm) => farm.plotIds.includes(p.id))?.ownerId ?? "F")))) throw Error("land economy fixture mismatch");
   const berryPatches = Object.values(land.plants).filter((p) => p.species === "wild_berry");
   if (berryPatches.reduce((n, p) => n + p.available, 0) !== f.resources.food.initial ||
     berryPatches.reduce((n, p) => n + p.initialAvailable, 0) !== f.resources.food.initial ||
@@ -192,16 +221,20 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     B1: "woodcutter", B2: "woodcutter" };
   const people = {} as VillageWorld["people"];
   for (const id of ids) {
+    const farm = farms?.find((farm) => farm.ownerId === id);
+    if (farm) roles[id] = "farmer";
     add(id, "person", id === "F" ? "grove" : id.startsWith("B") ? `home_${id}` : "market");
     add(bag(id), "bag", id, id); add(wallet(id), "wallet", id, id);
-    if (id === "F" && (f.landEconomy?.initialSeeds ?? 2) > 0)
-      objects.grain_seed_initial = { id: "grain_seed_initial", typeId: "seed",
-        parentId: bag(id), ownerId: id, quantity: f.landEconomy?.initialSeeds ?? 2, causeEventId: "initial" };
+    const initialSeeds = farm ? farm.initialSeeds : id === "F" ? f.landEconomy?.initialSeeds ?? 2 : 0;
+    const seedId = farm ? `grain_seed_initial_${id}` : "grain_seed_initial";
+    if (initialSeeds > 0)
+      objects[seedId] = { id: seedId, typeId: "seed",
+        parentId: bag(id), ownerId: id, quantity: initialSeeds, causeEventId: "initial" };
     for (let i = 0; i < f.initialCash[id]; i++) add(`coin_${id}_${i}`, "currency", wallet(id), id);
     const initialSite = id === "F" ? "grove" : id.startsWith("B") ? `home_${id}` : "market";
     people[id] = { id, role: roles[id], nextWakeAt: 1, hunger: 1, cold: f.woodEnabled === false ? 0 : 1, energy: f.body.initialEnergy,
       cell: structuredClone(grid.sites[initialSite]),
-      farmingSkills: id === "F" ? { grain: f.landEconomy?.farmerGrainSkill ?? 1 } : {},
+      farmingSkills: id === "F" || farm ? { grain: f.landEconomy?.farmerGrainSkill ?? 1 } : {},
       ...(f.landEconomy?.exploreWildPlants && id === "F" ?
         { foragingSkill: 4, seenPlantIds: [] } : {}),
       memory: { day: 0, done: [], beliefs: { foodBid: f.prices.foodBid, foodRetail: f.prices.foodRetail,
@@ -410,6 +443,8 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
     p.kind === "gather_plant") {
     const plant = w.land.plants[p.plantId!];
     if (!plant || !atSite(w, id, plant.siteId)) return "plant worksite changed";
+    if (plant.ownerId && plant.ownerId !== id || plant.useRightHolderId && plant.useRightHolderId !== id)
+      return "land use right denied";
     if (p.kind === "till_plot") {
       if (plant.stage !== "bare") return "plot no longer bare";
       plant.stage = "tilled";
@@ -667,7 +702,7 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     }
     const skill = w.people[id].farmingSkills[plant.species] ?? 0;
     if (plant.species !== "grain" || skill < 1) return "crop skill denied";
-    if (plant.useRightHolderId && plant.useRightHolderId !== id) return "land use right denied";
+    if (plant.ownerId && plant.ownerId !== id || plant.useRightHolderId && plant.useRightHolderId !== id) return "land use right denied";
     if (a.kind === "till_plot" && plant.stage === "bare")
       return startProcess(w, id, a.kind, skill >= 2 ? 1 : 2, 1, decisionId, { plantId: plant.id });
     if (a.kind === "sow_plot" && plant.stage === "tilled" &&
@@ -821,6 +856,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
     ...(w.fixture.woodEnabled === false ? { woodEnabled: false as const } : {}),
     cell: structuredClone(person.cell),
+    ...(farmsForActor(w, id) ? { ownFarm: structuredClone(farmsForActor(w, id)) } : {}),
     activeAction: person.activeProcessId ? w.processes[person.activeProcessId]?.kind : undefined,
     hunger: person.hunger, cold: person.cold, energy: person.energy,
     carriedMass: totalMass(w.physical, id),
@@ -841,6 +877,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
           (w.fixture.landEconomy?.exploreWildPlants ? person.foragingSkill ?? 1 : 1) :
         p.siteId === siteId)
       .map((p) => ({ id: p.id, species: p.species, stage: p.stage, available: p.available,
+        ...(p.ownerId ? { ownerId: p.ownerId, farmId: p.farmId } : {}),
         ...(w.fixture.landEconomy?.spatialGrid ? { siteId: p.siteId,
           cell: structuredClone(p.cell) } : {}) })),
     farmingSkills: structuredClone(person.farmingSkills),
@@ -892,6 +929,7 @@ function growAndNeed(w: VillageWorld) {
     }
   }
   for (const [lotId, meta] of Object.entries(w.foodLots)) {
+    if (w.fixture.grainNonperishable && meta.species === "grain") continue;
     if (day - meta.harvestedDay < w.fixture.foodShelfLifeDays) continue;
     const lot = w.physical.objects[lotId];
     if (!lot) { delete w.foodLots[lotId]; continue; }
@@ -1066,6 +1104,12 @@ export function checkVillageWorld(w: VillageWorld) {
     throw Error("animal physical location");
   for (const animal of Object.values(w.physical.objects).filter((o) => o.typeId === "animal"))
     if (!w.land.animals[animal.id]) throw Error("orphan physical animal");
+  for (const farm of w.fixture.landEconomy?.farms ?? []) for (const id of farm.plotIds) {
+    const crop = w.land.plants[id], initial = w.initialLand.plants[id];
+    if (!crop || !initial || crop.ownerId !== farm.ownerId || crop.useRightHolderId !== farm.ownerId ||
+      crop.farmId !== farm.id || initial.ownerId !== farm.ownerId || initial.useRightHolderId !== farm.ownerId ||
+      initial.farmId !== farm.id) throw Error("farm ownership invariant");
+  }
   const objects = Object.values(w.physical.objects);
   if (objects.filter((o) => o.typeId === "currency").length !== w.initialMoney ||
     objects.filter((o) => o.typeId === "food").reduce((n, o) => n + o.quantity, 0) !==

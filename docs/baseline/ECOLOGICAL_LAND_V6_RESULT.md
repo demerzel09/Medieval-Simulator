@@ -2,7 +2,7 @@
 
 更新: 2026-10-01。画面で野生ベリーが森の単一在庫に見え、畑を収穫直後に再播種できた問題を、別fixture `land-ecology` と規則版 `autonomous-village-ecological-land-v6` で修正した。[旧植物探索版](PLANT_EXPLORATION_RESULT.md)の記録は変更せず再実行できる。
 
-現在の標準画面は[薪停止の対照v7](WOOD_PAUSED_V7_RESULT.md)。以下は固定薪資源を残したv6の保存結果。
+現在の標準画面は[所有畑版v8](OWNED_FARMS_V8_RESULT.md)。[薪停止対照v7](WOOD_PAUSED_V7_RESULT.md)も記録選択で表示可能。以下は固定薪資源を残したv6の保存結果。
 
 ## 世界法則
 

@@ -7,7 +7,7 @@ export type PlantStage = "bare" | "tilled" | "seeded" | "growing" | "ripe" | "re
 export type PlantPatch = { id: string; species: PlantSpecies; siteId: string; cell: GridPoint;
   stage: PlantStage; ageHours: number; available: number; capacity: number;
   growHours: number; growthQuantity: number; initialAvailable: number; grown: number;
-  fallowHours?: number;
+  fallowHours?: number; ownerId?: string; farmId?: string;
   personHarvested: number; animalEaten: number; useRightHolderId?: string };
 export type WildAnimal = { id: string; species: "rabbit"; cell: GridPoint; ageHours: number;
   lifeStage: "juvenile" | "adult"; hunger: number; diet: PlantSpecies[];

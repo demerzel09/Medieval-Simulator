@@ -96,8 +96,8 @@ test("land economy recording opens from the browser route and shows timed person
 });
 
 
-test("the default ecology debugger suspends wood and identifies the income shortage", async ({ page }) => {
-  await page.goto("/?village=land-economy");
+test("the wood suspension control suspends wood and identifies the income shortage", async ({ page }) => {
+  await page.goto("/?village=land-economy&wood=paused");
   await expect(page.getByRole("heading", { name: "土地経済90日 · 生態デバッグ" })).toBeVisible();
   await expect(page.getByLabel("表示する記録")).toHaveValue("paused");
   await expect(page.getByRole("note")).toContainText("90日間の正常稼働を示す記録ではありません");
@@ -110,4 +110,21 @@ test("the default ecology debugger suspends wood and identifies the income short
   await expect(page.getByLabel("表示する記録")).toHaveValue("legacy");
   await expect(page.getByRole("note")).toHaveCount(0);
   await expect(page.locator(".e1-stats span").filter({ hasText: "薪" }).locator("b")).toContainText("使用");
+});
+
+
+test("independent farms are the default and show crop ownership and grain storage", async ({ page }) => {
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("farms");
+  await expect(page.getByRole("note")).toContainText("農夫3人は90日食料を確保");
+  await expect(page.getByText("腐敗なし", { exact: true })).toBeVisible();
+  const map = page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" });
+  await map.click({ position: { x: 3 * 32 + 16, y: 5 * 32 + 16 } });
+  await expect(page.getByText(/所有者 B1 · farm_B1/)).toBeVisible();
+  await page.getByRole("tab", { name: "凡例" }).click();
+  await expect(page.getByText(/Fは黄、B1は青、B2は紫/)).toBeVisible();
+  await page.getByLabel("土地経済の日").fill("90");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("274/450");
 });
