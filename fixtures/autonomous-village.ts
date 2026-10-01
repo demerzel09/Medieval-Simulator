@@ -1,6 +1,6 @@
 import { autonomous90FeasibilityV1, type FeasibilityFixture } from "./autonomous-90";
 
-export type VillageFixture = FeasibilityFixture & { informationDelayHours: number;
+export type VillageFixture = FeasibilityFixture & { informationDelayHours: number; woodEnabled?: false;
   landEconomy?: { grainPlots: number; initialSeeds: number; farmerGrainSkill: number;
     spatialGrid?: true; wideWorld?: true; exploreWildPlants?: true; physicalGrowth?: true } };
 

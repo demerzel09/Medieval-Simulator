@@ -11,7 +11,7 @@ export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageS
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
   cell: { x: number; y: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
-  ownFood: number; ownWood: number; foodResource?: number; woodResource?: number;
+  ownFood: number; ownWood: number; woodEnabled?: false; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;
     status: string }; fundedOrderId?: string; tenderedOrderId?: string;
   carriedFarmerFood: number; carriedSellerFood: number;
@@ -51,7 +51,7 @@ export const ordinaryVillageModel: VillageModel = {
         !m.done.includes(stimulus.action))
         m.done.push(stimulus.action);
     }
-    const done = (key: string) => m.done.includes(key);
+    const done = (key: string) => key === "post_wood_bid" && c.woodEnabled === false || m.done.includes(key);
     let attempt: VillageAttempt | undefined;
     if (!c.activeAction) {
       if (c.hunger > 0 && c.ownFood > 0) attempt = { kind: "eat" };
@@ -94,6 +94,15 @@ export const ordinaryVillageModel: VillageModel = {
         else if (c.siteId === "market" && c.hunger > 0 && c.visibleSale &&
           c.visibleSale.stock > 0 && c.ownCash >= c.visibleSale.price &&
           c.visibleSale.price <= m.beliefs.foodRetail) attempt = { kind: "buy_food" };
+      } else if (c.woodEnabled === false) {
+        // No forest work without a physical wood source. Savings alone cannot support this role.
+        if (c.hunger > 0 && c.ownCash >= m.beliefs.foodRetail && c.siteId !== "market")
+          attempt = { kind: "travel", siteId: "market" };
+        else if (c.siteId === "market" && c.hunger > 0 && c.visibleSale &&
+          c.visibleSale.stock > 0 && c.ownCash >= c.visibleSale.price &&
+          c.visibleSale.price <= m.beliefs.foodRetail) attempt = { kind: "buy_food" };
+        else if (c.siteId === "market" && c.hunger === 0)
+          attempt = { kind: "travel", siteId: `home_${input.actorId}` };
       } else {
         if (c.siteId.startsWith("home_") && !done("forage")) attempt = { kind: "travel", siteId: "grove" };
         else if (c.siteId === "market" && !done("forage") && c.ownWood === 0)

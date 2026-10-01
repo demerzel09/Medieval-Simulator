@@ -19,3 +19,12 @@ export const ecologicalLandEconomy90V1: VillageFixture = {
   landEconomy: { ...exploringLandEconomy90V1.landEconomy!, grainPlots: 12,
     initialSeeds: 12, physicalGrowth: true },
 };
+
+/** Wood suspension control: no replacement income or synthetic food funding. */
+export const woodPausedLandEconomy90V1: VillageFixture = {
+  ...structuredClone(ecologicalLandEconomy90V1),
+  woodEnabled: false,
+  resources: { ...structuredClone(ecologicalLandEconomy90V1.resources),
+    wood: { initial: 0, capacity: 0, growthPerDay: 0 } },
+  woodPerPersonPerDay: 0,
+};

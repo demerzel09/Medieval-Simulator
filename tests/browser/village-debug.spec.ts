@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("land economy recording opens from the browser route and shows timed person history", async ({ page }) => {
-  await page.goto("/?village=land-economy");
+  await page.goto("/?village=land-economy&wood=legacy");
   await expect(page.getByRole("heading", { name: "土地経済90日 · 生態デバッグ" })).toBeVisible();
   await expect(page.getByText("穀物の食事")).toBeVisible();
   const map = page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" });
@@ -93,4 +93,21 @@ test("land economy recording opens from the browser route and shows timed person
   await minute.fill("55");
   await map.click({ position: { x: 36 * 32 + 16, y: 4 * 32 + 16 } });
   await expect(page.getByText(/穀物 休止中 0/)).toBeVisible();
+});
+
+
+test("the default ecology debugger suspends wood and identifies the income shortage", async ({ page }) => {
+  await page.goto("/?village=land-economy");
+  await expect(page.getByRole("heading", { name: "土地経済90日 · 生態デバッグ" })).toBeVisible();
+  await expect(page.getByLabel("表示する記録")).toHaveValue("paused");
+  await expect(page.getByRole("note")).toContainText("90日間の正常稼働を示す記録ではありません");
+  await expect(page.locator(".e1-stats span").filter({ hasText: "薪" }).locator("b")).toHaveText("停止中");
+  await page.getByLabel("土地経済の人物").selectOption("B1");
+  await page.getByLabel("土地経済の日").fill("10");
+  await expect(page.getByText(/現在のセル: 2,4/)).toBeVisible();
+  await expect(page.getByText(/所持金 0/).first()).toBeVisible();
+  await page.getByLabel("表示する記録").selectOption("legacy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("legacy");
+  await expect(page.getByRole("note")).toHaveCount(0);
+  await expect(page.locator(".e1-stats span").filter({ hasText: "薪" }).locator("b")).toContainText("使用");
 });

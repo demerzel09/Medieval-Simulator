@@ -34,7 +34,8 @@ export const landEconomyVillageModel: VillageModel = { decide(input) {
     return { ...ordinary, attempts: [], wait: { at: input.at + 1 } };
   if (input.actorId !== "F") return ordinary;
   const c = input.knownContext, m = ordinary.subjectiveUpdate!;
-  const done = (action: VillageAttempt["kind"]) => m.done.includes(action);
+  const done = (action: VillageAttempt["kind"]) =>
+    action === "post_wood_bid" && c.woodEnabled === false || m.done.includes(action);
   let attempt: VillageAttempt | undefined;
   if (!c.activeAction) {
     if (c.hunger > 0 && c.ownFood > 0) attempt = { kind: "eat" };
@@ -83,7 +84,8 @@ export const spatialLandEconomyVillageModel: VillageModel = { decide(input) {
   const ordinary = landEconomyVillageModel.decide(input);
   if (input.actorId !== "F") return ordinary;
   const c = input.knownContext, m = ordinary.subjectiveUpdate!;
-  const done = (action: VillageAttempt["kind"]) => m.done.includes(action);
+  const done = (action: VillageAttempt["kind"]) =>
+    action === "post_wood_bid" && c.woodEnabled === false || m.done.includes(action);
   let attempt: VillageAttempt | undefined;
   if (!c.activeAction) {
     if (c.hunger > 0 && c.ownFood > 0) attempt = { kind: "eat" };

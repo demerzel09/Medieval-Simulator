@@ -2,6 +2,8 @@
 
 更新: 2026-10-01。画面で野生ベリーが森の単一在庫に見え、畑を収穫直後に再播種できた問題を、別fixture `land-ecology` と規則版 `autonomous-village-ecological-land-v6` で修正した。[旧植物探索版](PLANT_EXPLORATION_RESULT.md)の記録は変更せず再実行できる。
 
+現在の標準画面は[薪停止の対照v7](WOOD_PAUSED_V7_RESULT.md)。以下は固定薪資源を残したv6の保存結果。
+
 ## 世界法則
 
 - 野生ベリー20個を4つの別セルの株に5個ずつ置いた。Fは初日から3日目まで、取引用の4個を毎日別の株まで往復して採る。採集Eventは株IDと食品ロットの産地を持つ。採った株は残りが1個でも7日間は再採集できず、回復時に5個へ戻る。森の在庫表示は4株の合計で、株の増加Eventからのみ増える。
@@ -19,7 +21,7 @@ npm run autonomy:village -- replay fixtures/recordings/autonomous-village-ecolog
 
 seed 240924で5人全員が90日毎日1食・薪1を確保し、拒否・作業失敗は0。450食に使った食品は452単位で、穀物435、ベリー12、野草4、果実1。野草2食に各2単位を使った。食品の収穫/消費は各452、薪の採集/使用は各450。末日のウサギは8匹、出生11・老齢死5。規則版v6の記録を再実行し、最終状態とEventハッシュが一致した。
 
-F5「自律: 土地経済90日の生態デバッグ画面」または `/?village=land-economy` は[新しい90日記録](../../fixtures/recordings/autonomous-village-ecological-90.v2.json.gz)を表示する。分単位の表示位置は1世界時間内に記録された通過セルを均等配置した目安で、simの判断と植物の生育は世界時間単位で進む。
+F5「自律: 土地経済90日の生態デバッグ画面」で「旧記録：固定薪資源あり」を選択、または `/?village=land-economy&wood=legacy` は[新しい90日記録](../../fixtures/recordings/autonomous-village-ecological-90.v2.json.gz)を表示する。分単位の表示位置は1世界時間内に記録された通過セルを均等配置した目安で、simの判断と植物の生育は世界時間単位で進む。
 
 ## 残る範囲
 
