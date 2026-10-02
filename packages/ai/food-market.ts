@@ -9,8 +9,10 @@ export function beginFoodMarketVisit(m: AnticipationMemory, c: VillageContext, a
   state.visit ??= { purpose, startedAt: at, fulfilled: false };
   if (c.siteId === "market") state.visit.arrivedAt ??= at;
 }
-function endVisit(m: AnticipationMemory, at: number) {
+function endVisit(m: AnticipationMemory, at: number, foodPlanning = false) {
   const state = m.foodMarket!;
+  if (foodPlanning && state.retryPurpose !== state.visit?.purpose) state.failures = 0;
+  if (foodPlanning) state.retryPurpose = state.visit?.purpose;
   if (!state.visit?.fulfilled) {
     state.failures = Math.min(4, (state.failures ?? 0) + 1);
     state.retryAt = at + 24 * 2 ** (state.failures - 1);
@@ -25,7 +27,7 @@ export function observeFoodMarketVisit(c: VillageContext, m: AnticipationMemory,
     state.visit.purpose === "grain-sale" && s.saleRevenue !== undefined && s.occurredAt >= state.visit.startedAt ||
     state.visit.purpose === "food-buy" && s.action === "buy_surplus" && s.occurredAt >= state.visit.startedAt)) state.visit.fulfilled = true;
   if (c.siteId === "market") state.visit.arrivedAt ??= at;
-  else if (state.visit.arrivedAt !== undefined) endVisit(m, at);
+  else if (state.visit.arrivedAt !== undefined) endVisit(m, at, c.foodPlanning);
 }
 /** Initial food trade policy. It uses own stock and delivered local offers; no synthetic buyers or income. */
 export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actorId: string, at: number): Choice | undefined {
@@ -129,7 +131,7 @@ export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actor
     if (c.experienceLearning) {
       if (!c.foodJourneys) state.visitStartedAt ??= at;
       if (at - (c.foodJourneys ? state.visit!.arrivedAt! : state.visitStartedAt!) >= 6) {
-        if (c.foodJourneys) endVisit(m, at);
+        if (c.foodJourneys) endVisit(m, at, c.foodPlanning);
         else { state.retryAt = at + 24; delete state.visitStartedAt; }
         return undefined;
       }
@@ -141,7 +143,7 @@ export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actor
     if (c.foodJourneys) beginFoodMarketVisit(m, c, at, "food-buy");
     else state.visitStartedAt ??= at;
     if (at - (c.foodJourneys ? state.visit!.arrivedAt! : state.visitStartedAt!) < 6) return { reason: "wait for an actual edible-food offer" };
-    if (c.foodJourneys) endVisit(m, at);
+    if (c.foodJourneys) endVisit(m, at, c.foodPlanning);
     else { state.retryAt = at + 24; delete state.visitStartedAt; }
     return undefined; // Failed visit: gather food or work, then reconsider after new information/time.
   }

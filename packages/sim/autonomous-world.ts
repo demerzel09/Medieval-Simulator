@@ -172,6 +172,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   if (fixture.bulkTransport && (!fixture.homeStorage || !fixture.landEconomy?.wideWorld || Object.values(fixture.bulkTransport).some((n) => !Number.isSafeInteger(n) || n < 1))) throw Error("invalid bulk transport fixture");
   if (fixture.experienceLearning && (!fixture.bulkTransport || !fixture.predictionLedger)) throw Error("invalid experience learning fixture");
   if (fixture.foodJourneys && (!fixture.experienceLearning || !fixture.foodMarket)) throw Error("invalid food journeys fixture");
+  if (fixture.foodPlanning && !fixture.foodJourneys) throw Error("invalid food planning fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
@@ -1111,6 +1112,10 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
     ...(w.fixture.foodJourneys ? { foodJourneys: true as const } : {}),
+    ...(w.fixture.foodPlanning ? { foodPlanning: true as const,
+      visiblePlantWork: Object.values(w.processes).filter((p) => p.kind === "gather_plant" &&
+        Math.max(Math.abs(w.people[p.actorId].cell.x - person.cell.x), Math.abs(w.people[p.actorId].cell.y - person.cell.y)) <= (person.foragingSkill ?? 1))
+        .map((p) => ({ actorId: p.actorId, plantId: p.plantId!, quantity: p.quantity! })) } : {}),
     ...(w.fixture.experienceLearning ? { experienceLearning: true as const, carriedInventory: villagePersonStatus(w, id).carried.items.map((item) => ({
       id: item.id, kind: item.kind, quantity: item.quantity, mass: item.mass, edible: !["grain", "wood", "seed"].includes(item.kind),
       ...(item.expiresDay === undefined ? {} : { expiresDay: item.expiresDay }) })) } : {}),
@@ -1123,7 +1128,8 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
       }) } : {}),
     ...(w.fixture.homeStorage && siteId === `home_${id}` ? { homeStorage: (() => {
       const home = villagePersonStatus(w, id).home;
-      return { cash: home.cash, ...(w.fixture.experienceLearning ? { freeMass: w.fixture.homeStorage!.capacity - totalMass(w.physical, `home_chest_${id}`) } : {}), items: home.items.map(({ id, kind, quantity }) => ({ id, kind, quantity })) };
+      return { cash: home.cash, ...(w.fixture.experienceLearning ? { freeMass: w.fixture.homeStorage!.capacity - totalMass(w.physical, `home_chest_${id}`) } : {}), items: home.items.map(({ id, kind, quantity, expiresDay }) => ({ id, kind, quantity,
+        ...(w.fixture.foodPlanning && expiresDay !== undefined ? { expiresDay } : {}) })) };
     })() } : {}),
     ...(w.fixture.foodMarket ? { foodMarket: { bakingSkill: person.bakingSkills!.bread,
       grainBatchQuantity: w.fixture.foodMarket.grainBatchQuantity, grainBatchPrice: w.fixture.foodMarket.grainBatchPrice,
@@ -1146,13 +1152,18 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
         (w.foodLots[lot.id]?.species === "herb" ? 2 : 1))), 0),
       ownFoodLots: ownLots.map((lot) => ({ id: lot.id, quantity: lot.quantity,
         species: w.foodLots[lot.id].species!, ...(w.fixture.breadEconomy ? { product: w.foodLots[lot.id].product ?? (w.foodLots[lot.id].species === "grain" ? "grain" as const : undefined) } : {}), mealQuantity: w.foodLots[lot.id].species === "herb" ? 2 : 1,
-        offered: offers.some((offer) => offer.lotId === lot.id && !offer.purchasedEventId) })),
+        offered: offers.some((offer) => offer.lotId === lot.id && !offer.purchasedEventId),
+        ...(w.fixture.foodPlanning && !(w.foodLots[lot.id].species === "grain" && w.foodLots[lot.id].product !== "bread") ? {
+          expiresDay: w.foodLots[lot.id].product === "bread" ? w.foodLots[lot.id].producedDay! + w.fixture.breadEconomy!.shelfLifeDays :
+            w.foodLots[lot.id].harvestedDay + w.fixture.foodShelfLifeDays } : {}) })),
       visibleFoodOffers: siteId === "market" ? offers.filter((offer) => {
         const lot = w.physical.objects[offer.lotId];
         return !offer.purchasedEventId && offer.sellerId !== id && atSite(w, offer.sellerId, "market") &&
           lot?.ownerId === offer.sellerId && lot.quantity >= offer.quantity && siteOf(w.physical, lot.id) === "market";
       }).map((offer) => ({ id: offer.id, sellerId: offer.sellerId, quantity: offer.quantity,
-        price: offer.price, species: w.foodLots[offer.lotId].species!, ...(w.fixture.breadEconomy ? { product: w.foodLots[offer.lotId].product ?? (w.foodLots[offer.lotId].species === "grain" ? "grain" as const : undefined) } : {}) })) : [] } : {}),
+        price: offer.price, species: w.foodLots[offer.lotId].species!, ...(w.fixture.breadEconomy ? { product: w.foodLots[offer.lotId].product ?? (w.foodLots[offer.lotId].species === "grain" ? "grain" as const : undefined) } : {}),
+        ...(w.fixture.foodPlanning && !(w.foodLots[offer.lotId].species === "grain" && w.foodLots[offer.lotId].product !== "bread") ? {
+          expiresDay: (() => { const meta = w.foodLots[offer.lotId]; return meta.product === "bread" ? meta.producedDay! + w.fixture.breadEconomy!.shelfLifeDays : meta.harvestedDay + w.fixture.foodShelfLifeDays; })() } : {}) })) : [] } : {}),
     ...(w.fixture.woodEnabled === false ? { woodEnabled: false as const } : {}),
     cell: structuredClone(person.cell),
     ...(farmsForActor(w, id) ? { ownFarm: structuredClone(farmsForActor(w, id)) } : {}),

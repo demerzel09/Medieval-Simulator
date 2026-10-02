@@ -17,11 +17,13 @@ export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageS
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
   experienceLearning?: true;
   foodJourneys?: true;
+  foodPlanning?: true;
+  visiblePlantWork?: { actorId: VillageId; plantId: string; quantity: number }[];
   carriedInventory?: { id: string; kind: string; quantity: number; mass: number; edible: boolean; expiresDay?: number }[];
   predictionLedger?: true;
   bulkTransport?: import("../sim/load-movement").LoadTransport & { bagFreeMass: number; plantingReserve: number; maxEnergy: number };
   fieldGrainStores?: { id: string; siteId: string; cell: { x: number; y: number }; grain: number; lots: { id: string; quantity: number }[] }[];
-  homeStorage?: { freeMass?: number; cash: number; items: { id: string; kind: string; quantity: number }[] };
+  homeStorage?: { freeMass?: number; cash: number; items: { id: string; kind: string; quantity: number; expiresDay?: number }[] };
   foodMarket?: { bakingSkill: number; grainBatchQuantity: number; grainBatchPrice: number; breadPrice: number };
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
@@ -32,7 +34,7 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   grainStores?: { id: string; siteId: string; grain: number; capacity: number; lots: { id: string; quantity: number }[] }[];
   publicForaging?: true; spatialForaging?: true; edibleMeals?: number;
   ownFoodLots?: { id: string; quantity: number; species: string; product?: "grain" | "bread"; mealQuantity: number; offered: boolean; expiresDay?: number }[];
-  visibleFoodOffers?: { id: string; sellerId: VillageId; quantity: number; price: number; species: string; product?: "grain" | "bread" }[];
+  visibleFoodOffers?: { id: string; sellerId: VillageId; quantity: number; price: number; species: string; product?: "grain" | "bread"; expiresDay?: number }[];
   woodEnabled?: false; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;
     status: string }; fundedOrderId?: string; tenderedOrderId?: string;

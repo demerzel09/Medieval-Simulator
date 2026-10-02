@@ -3,6 +3,7 @@ import { autonomous90FeasibilityV1, type FeasibilityFixture } from "./autonomous
 export type VillageFixture = FeasibilityFixture & { informationDelayHours: number; predictionLedger?: true; needs?: import("../packages/sim/needs-body").NeedsConfig; woodEnabled?: false; grainNonperishable?: true; publicForaging?: true; spatialForaging?: true; breadEconomy?: { bakeHours: number; shelfLifeDays: number; storageCapacity: number };
   experienceLearning?: true;
   foodJourneys?: true;
+  foodPlanning?: true;
   bulkTransport?: import("../packages/sim/load-movement").LoadTransport;
   homeStorage?: { capacity: number };
   foodMarket?: { initialBakingSkills: Record<"S" | "F" | "C" | "B1" | "B2", number>;

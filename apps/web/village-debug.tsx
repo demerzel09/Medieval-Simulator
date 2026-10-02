@@ -8,12 +8,13 @@ import type { VillageRecording } from "../../packages/sim/village-recording";
 import type { ActionLearningMemory } from "../../packages/ai/action-learning";
 
 const woodQuery = new URLSearchParams(window.location.search).get("wood");
-const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" || woodQuery === "wild" || woodQuery === "local" || woodQuery === "bread" || woodQuery === "needs" || woodQuery === "market" || woodQuery === "home" || woodQuery === "load" || woodQuery === "learn" ? woodQuery : "journey";
-const foodMarketRecord = ["market", "home", "load", "learn", "journey"].includes(recordMode);
-const loadRecord = ["load", "learn", "journey"].includes(recordMode);
+const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" || woodQuery === "wild" || woodQuery === "local" || woodQuery === "bread" || woodQuery === "needs" || woodQuery === "market" || woodQuery === "home" || woodQuery === "load" || woodQuery === "learn" || woodQuery === "journey" ? woodQuery : "plan";
+const foodMarketRecord = ["market", "home", "load", "learn", "journey", "plan"].includes(recordMode);
+const loadRecord = ["load", "learn", "journey", "plan"].includes(recordMode);
 const processedFood = recordMode === "bread" || recordMode === "needs" || foodMarketRecord;
 const legacyWood = recordMode === "legacy";
-const recordingUrl = recordMode === "journey" ?
+const recordingUrl = recordMode === "plan" ?
+  new URL("../../fixtures/recordings/autonomous-village-food-planning-90.v2.json.gz", import.meta.url).href : recordMode === "journey" ?
   new URL("../../fixtures/recordings/autonomous-village-food-journeys-90.v2.json.gz", import.meta.url).href : recordMode === "learn" ?
   new URL("../../fixtures/recordings/autonomous-village-experience-learning-90.v2.json.gz", import.meta.url).href : recordMode === "load" ?
   new URL("../../fixtures/recordings/autonomous-village-bulk-transport-90.v2.json.gz", import.meta.url).href : recordMode === "home" ?
@@ -68,7 +69,7 @@ async function readRecording(): Promise<VillageRecording> {
     await new Response(new Blob([bytes]).stream()
       .pipeThrough(new DecompressionStream("gzip"))).arrayBuffer() : bytes);
   const recording = JSON.parse(text) as VillageRecording;
-  if (recording.rulesetId !== (recordMode === "journey" ? "autonomous-village-food-journeys-v18" : recordMode === "learn" ? "autonomous-village-experience-learning-v17" : recordMode === "load" ? "autonomous-village-bulk-transport-v16" : recordMode === "home" ? "autonomous-village-home-storage-v15" : recordMode === "market" ? "autonomous-village-food-market-v14" : legacyWood ? "autonomous-village-ecological-land-v6" :
+  if (recording.rulesetId !== (recordMode === "plan" ? "autonomous-village-food-planning-v19" : recordMode === "journey" ? "autonomous-village-food-journeys-v18" : recordMode === "learn" ? "autonomous-village-experience-learning-v17" : recordMode === "load" ? "autonomous-village-bulk-transport-v16" : recordMode === "home" ? "autonomous-village-home-storage-v15" : recordMode === "market" ? "autonomous-village-food-market-v14" : legacyWood ? "autonomous-village-ecological-land-v6" :
     recordMode === "paused" ? "autonomous-village-wood-paused-v7" :
     recordMode === "farms" ? "autonomous-village-owned-farms-v8" : recordMode === "wild" ? "autonomous-village-wild-food-market-v9" : recordMode === "local" ? "autonomous-village-local-work-v10" : recordMode === "bread" ? "autonomous-village-bread-storage-v11" : "autonomous-village-anticipatory-needs-v12") || recording.untilHour !== 2160)
     throw Error("土地経済90日の記録ではありません");
@@ -76,6 +77,16 @@ async function readRecording(): Promise<VillageRecording> {
 }
 
 const reasonLabels: Record<string, string> = {
+  "store unnecessary cargo before seeking edible food": "食料探しの前に、不要な重い荷物を家へ預ける",
+  "recover effort before a known food acquisition journey": "観察した食料の確保と帰宅に必要な体力を先に回復する",
+  "obtain food before sleep using an observed unoccupied plant": "次の食事と睡眠に間に合う、採集作業が重なっていない植物を選ぶ",
+  "retrieve remembered edible home reserve before sleep": "期限と帰宅時間を見込み、家に記憶した食料を取り出す",
+  "buy observed food before the next sleep and meal deadline": "次の睡眠・食事まで使える、現地の食品を購入する",
+  "check known market for food; current offers are unconfirmed": "食料確保のため既知の市場を再確認する（現在の提示は未確認）",
+  "sleep before a food journey that would exceed the available working window": "採集と帰宅まで起きていられるよう、出発前に睡眠を取る",
+  "wait in shelter for a safer food acquisition window": "食料確保の行程が危険なため、屋内で条件の改善を待つ",
+  "recover or return to shelter before an unsafe food acquisition journey": "危険な採集行程の前に、体力を回復するか家へ戻る",
+  "carry edible food to shelter before another exposed meal decision": "食事中の冷え込みを見込み、食料を持って家へ戻る",
   "buy locally observed food while retaining a safe shelter journey": "帰宅までの寒さ・眠気・体力を見込み、現地の食品を先に買う",
   "offer carried sale grain while retaining a safe shelter journey": "帰宅する余裕を残し、市場へ運んだ穀物を売り出す",
   "prepare selected owned crop before loading sowing grain": "播種用の穀物を積む前に、選んだ自分の区画を耕す",
@@ -592,10 +603,10 @@ export default function VillageDebug() {
     <header className="e1-top"><div><h1>土地経済90日 · 生態デバッグ</h1></div><div>
         <label>表示する記録 <select aria-label="表示する記録" value={recordMode}
           onChange={(e) => { const url = new URL(window.location.href);
-            if (e.target.value !== "journey") url.searchParams.set("wood", e.target.value);
+            if (e.target.value !== "plan") url.searchParams.set("wood", e.target.value);
             else url.searchParams.delete("wood");
             window.location.assign(url.href); }}>
-          <option value="journey">農作業の目的・市場の再訪・パン購入</option><option value="learn">旧記録：経験学習・運搬・食事時計</option><option value="load">旧記録：収穫20・畑の保管・荷重と運搬</option><option value="home">旧記録：人物ステータス・自宅保管・食品市場</option><option value="market">旧記録：穀物売却・市場製パン・パン購入</option><option value="needs">旧記録：自宅製パン・欲求と経験</option><option value="bread">旧記録：穀物保存・パン加工</option><option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
+          <option value="plan">食料の期限・採集競合・睡眠と行程比較</option><option value="journey">旧記録：農作業の目的・市場の再訪・パン購入</option><option value="learn">旧記録：経験学習・運搬・食事時計</option><option value="load">旧記録：収穫20・畑の保管・荷重と運搬</option><option value="home">旧記録：人物ステータス・自宅保管・食品市場</option><option value="market">旧記録：穀物売却・市場製パン・パン購入</option><option value="needs">旧記録：自宅製パン・欲求と経験</option><option value="bread">旧記録：穀物保存・パン加工</option><option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
         </select></label> <a href="/">90日ゲーム</a></div></header>
     {!legacyWood && <details className="village-specification" role="note">
       <summary>記録の条件・仕様 <span>{processedFood ? "穀物＝原料・腐敗なし / パン＝3日期限 / 薪停止" : "土地・食料・作業の条件"}</span></summary>
@@ -749,6 +760,18 @@ export default function VillageDebug() {
             先の寒さ {latestObservation.response.subjectiveUpdate.anticipation.reasoning.forecastCold.toFixed(1)} ·
             記憶 {latestObservation.response.subjectiveUpdate.anticipation.experiences.length}件</p>}
           {anticipation?.cropPlan && <p>農作業の目的：{anticipation.cropPlan.siteId} を耕作・播種</p>}
+          {anticipation?.foodPlanning?.evaluation && <details aria-label="食料行程の比較">
+            <summary>食料行程の比較 · {compactClock(anticipation.foodPlanning.evaluation.at)}の見込み · 次の需要まで{Math.max(0, anticipation.foodPlanning.evaluation.needAt - hour)}時間 ·
+              期限内の携帯食料{anticipation.foodPlanning.evaluation.usableMeals}食</summary>
+            <table className="village-log-table"><thead><tr><th>行先・根拠</th><th>確保 / 帰路</th><th>寒さ / 眠気</th><th>判断</th></tr></thead>
+              <tbody>{anticipation.foodPlanning.evaluation.candidates.map((p, index) => <tr key={`${p.kind}:${p.siteId}`}>
+                <td>{p.siteId}<br /><small>{p.source === "observed" ? "現地観察" : p.source === "remembered" ? "本人の記憶" : "食品は未確認"}</small></td>
+                <td>{p.foodHours.toFixed(1)}h / {p.returnHours.toFixed(1)}h</td>
+                <td>{p.cold.toFixed(1)} / {p.debt.toFixed(1)}</td>
+                <td>{index === anticipation.foodPlanning!.evaluation!.selected ? "選択" : p.exclusion === "occupied" ? "他人が採集中" :
+                  p.exclusion === "body" ? "身体の余裕不足" : p.exclusion === "expiry" ? "期限不足" : "候補"}</td>
+              </tr>)}</tbody></table>
+          </details>}
           {recording.fixture.foodJourneys && anticipation?.foodMarket && <p>市場：
             {anticipation.foodMarket.visit ? `${anticipation.foodMarket.visit.purpose === "grain-sale" ? "穀物売却" : "食品購入"}の訪問中` :
               anticipation.foodMarket.retryAt > hour ? `再訪まで${anticipation.foodMarket.retryAt - hour}時間` : "再検討可能"}

@@ -94,3 +94,6 @@ export const experienceLearning90V1: VillageFixture = { ...structuredClone(bulkT
 
 /** Preserve cultivation intent and observed market visit outcomes across shelter interruptions. */
 export const foodJourneys90V1: VillageFixture = { ...structuredClone(experienceLearning90V1), foodJourneys: true };
+
+/** Compare food acquisition with the next meal, shelter and sleep; observe local gathering work. */
+export const foodPlanning90V1: VillageFixture = { ...structuredClone(foodJourneys90V1), foodPlanning: true };

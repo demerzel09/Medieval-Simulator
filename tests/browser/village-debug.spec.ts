@@ -285,9 +285,29 @@ test("v16 grain comparison shows load-dependent walking and actual field invento
   await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("8 / 24");
 });
 
-test("v18 default shows F's real grain sale, bread purchase and cultivation purpose", async ({ page }) => {
-  test.setTimeout(120000);
+test("v19 default shows observed food journey choices and preserves the v18 comparison", async ({ page }) => {
+  test.setTimeout(180000);
   await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("plan", { timeout: 60000 });
+  const r = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-food-planning-90.v2.json.gz")).toString());
+  const choice = r.decisions.find((d: { actorId: string; response: { subjectiveUpdate: { anticipation: { foodPlanning?: { evaluation?: { selected?: number } } } } } }) =>
+    d.actorId === "F" && d.response.subjectiveUpdate.anticipation.foodPlanning?.evaluation?.selected !== undefined);
+  await page.getByLabel("土地経済の日").fill(String(Math.floor((choice.hour - 1) / 24) + 1));
+  await page.getByLabel("土地経済の時刻").fill(String((choice.hour - 1) % 24 + 1));
+  await page.getByLabel("土地経済の分").fill("60");
+  const comparison = page.getByLabel("食料行程の比較");
+  await expect(comparison.locator("summary")).toContainText("次の需要まで");
+  await comparison.locator("summary").click();
+  await expect(comparison).toContainText("選択");
+  await expect(comparison).toContainText("現地観察");
+  await page.screenshot({ path: "/tmp/medieval-village-food-planning.png", fullPage: true });
+  await page.getByLabel("表示する記録").selectOption("journey");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("journey", { timeout: 60000 });
+});
+
+test("v18 comparison shows F's real grain sale, bread purchase and cultivation purpose", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto("/?village=land-economy&wood=journey");
   await expect(page.getByLabel("表示する記録")).toHaveValue("journey", { timeout: 30000 });
   await expect(page.getByRole("region", { name: "経験からの見込み" })).toBeVisible();
   const r = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-food-journeys-90.v2.json.gz")).toString());
