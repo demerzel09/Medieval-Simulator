@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
+import type { VillageEvent } from "../../packages/sim/autonomous-world";
+
+async function clickCell(map: Locator, x: number, y: number) {
+  const box = (await map.boundingBox())!;
+  await map.click({ position: { x: (x + .5) / 40 * box.width, y: (y + .5) / 24 * box.height } });
+}
 
 test("person and home status follow recorded cash, items, weight and physical needs", async ({ page }) => {
   test.setTimeout(120000);
@@ -20,9 +26,7 @@ test("person and home status follow recorded cash, items, weight and physical ne
   await page.getByLabel("土地経済の分").fill("60");
   const storedCash = page.getByRole("region", { name: "S の家の保管品" }).locator("dl div").filter({ hasText: "所持金" }).locator("dd");
   await expect(storedCash).toHaveText(/^[1-9]\d*$/);
-  await page.getByRole("tab", { name: "人物の履歴" }).click();
   await expect(page.getByRole("region", { name: "人物の最近の売買" })).toContainText("パン");
-  await page.getByRole("tab", { name: "ステータス" }).click();
   await page.screenshot({ path: "/tmp/medieval-v15-status.png", fullPage: true });
   await page.getByLabel("土地経済の日").fill("1");
   await page.getByLabel("土地経済の時刻").fill("1");
@@ -67,29 +71,28 @@ test("land economy recording opens from the browser route and shows timed person
   await expect(map).toHaveAttribute("width", "1280");
   await expect(map).toHaveAttribute("height", "768");
   await expect(page.getByText("32ピクセル×40列×24行")).toBeVisible();
-  await map.click({ position: { x: 15 * 32 + 16, y: 9 * 32 + 16 } });
+  await clickCell(map, 15, 9);
   await expect(page.getByRole("heading", { name: "選択セル 15,9" })).toBeVisible();
   await expect(page.getByText(/野草 .* \d+ · 動物なし/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "F の判断履歴" })).toBeVisible();
-  const historyTab = page.getByRole("tab", { name: "人物の履歴" });
-  const legendTab = page.getByRole("tab", { name: "凡例" });
-  await expect(historyTab).toHaveAttribute("aria-selected", "true");
-  await legendTab.click();
+  await expect(page.getByRole("heading", { name: "F のステータス" })).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "履歴・凡例を閉じる" })).toHaveCount(0);
+  const legend = page.getByRole("button", { name: "凡例を引き出す" });
+  await expect(legend).toHaveAttribute("aria-expanded", "false");
+  await legend.click();
   await expect(page.getByRole("heading", { name: "地図の凡例" })).toBeVisible();
   await expect(page.getByText("畑：茶色。区画ごとに作物が育つ")).toBeVisible();
   await expect(page.getByText(/野草：薄黄の葉。採集後は葉が消え/)).toBeVisible();
   await expect(page.getByText(/休止中の畑：縦の薄い筋/)).toBeVisible();
   await expect(page.getByText(/森 · 通行可能 · 野草/)).toBeVisible();
-  await historyTab.click();
-  await historyTab.press("ArrowRight");
-  await expect(legendTab).toHaveAttribute("aria-selected", "true");
-  await legendTab.press("ArrowLeft");
-  await expect(historyTab).toHaveAttribute("aria-selected", "true");
-  const collapse = page.getByRole("button", { name: "履歴・凡例を閉じる" });
-  await collapse.click();
-  await expect(page.getByRole("button", { name: "履歴・凡例を開く" })).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByLabel("土地経済の人物")).toHaveCount(0);
-  await page.getByRole("button", { name: "履歴・凡例を開く" }).click();
+  await page.getByRole("button", { name: "凡例をしまう" }).click();
+  await expect(legend).toHaveAttribute("aria-expanded", "false");
+  await legend.focus();
+  await legend.press("Enter");
+  await expect(legend).toHaveAttribute("aria-expanded", "true");
+  await legend.press("Escape");
+  await expect(legend).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByLabel("土地経済の人物")).toBeVisible();
   await expect(page.getByText(/経路 表示なし/)).toBeVisible();
   await page.getByLabel("経路の行先").selectOption("herb_patch");
@@ -144,12 +147,12 @@ test("land economy recording opens from the browser route and shows timed person
   await page.getByLabel("土地経済の日").fill("1");
   await page.getByLabel("土地経済の時刻").fill("24");
   await minute.fill("55");
-  await map.click({ position: { x: 14 * 32 + 16, y: 11 * 32 + 16 } });
+  await clickCell(map, 14, 11);
   await expect(page.getByText(/野生ベリー 再生中 1/)).toBeVisible();
   await page.getByLabel("土地経済の日").fill("4");
   await page.getByLabel("土地経済の時刻").fill("24");
   await minute.fill("55");
-  await map.click({ position: { x: 36 * 32 + 16, y: 4 * 32 + 16 } });
+  await clickCell(map, 36, 4);
   await expect(page.getByText(/穀物 休止中 0/)).toBeVisible();
 });
 
@@ -177,9 +180,9 @@ test("independent farms show crop ownership and grain storage", async ({ page })
   await expect(page.getByRole("note")).toContainText("農夫3人は90日食料を確保");
   await expect(page.getByText("腐敗なし", { exact: true })).toBeVisible();
   const map = page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" });
-  await map.click({ position: { x: 3 * 32 + 16, y: 5 * 32 + 16 } });
+  await clickCell(map, 3, 5);
   await expect(page.getByText(/所有者 B1 · farm_B1/)).toBeVisible();
-  await page.getByRole("tab", { name: "凡例" }).click();
+  await page.getByRole("button", { name: "凡例を引き出す" }).click();
   await expect(page.getByText(/Fは黄、B1は青、B2は紫/)).toBeVisible();
   await page.getByLabel("土地経済の日").fill("90");
   await page.getByLabel("土地経済の時刻").fill("24");
@@ -226,7 +229,7 @@ test("the previous scene stores raw grain and feeds processed bread", async ({ p
   await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
   await expect(page.locator(".e1-stats span").filter({ hasText: "パンの食事" }).locator("b")).toHaveText("269");
   await expect(page.locator(".e1-stats span").filter({ hasText: "製パン" }).locator("b")).toHaveText("275");
-  await page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" }).click({ position: { x: 2 * 32 + 16, y: 4 * 32 + 16 } });
+  await clickCell(page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" }), 2, 4);
   await expect(page.getByText(/穀物庫 B1: \d+単位 · 所有者 B1/)).toBeVisible();
 });
 
@@ -241,8 +244,8 @@ test("the previous needs scene exposes the basis of anticipatory decisions", asy
   await expect(page.getByText(/判断理由：/)).toBeVisible();
   await page.getByLabel("土地経済の時刻").fill("10");
   await page.getByLabel("土地経済の分").fill("60");
-  await expect(page.getByText(/進行中 睡眠/)).toBeVisible();
-  await page.getByRole("tab", { name: "凡例" }).click();
+  await expect(page.locator(".village-person-location")).toContainText("進行中 睡眠");
+  await page.getByRole("button", { name: "凡例を引き出す" }).click();
   await expect(page.getByText(/帰宅時刻は固定せず/)).toBeVisible();
   await page.getByLabel("土地経済の日").fill("90");
   await page.getByLabel("土地経済の時刻").fill("24");
@@ -296,6 +299,92 @@ test("v17 default shows actual time since eating and matched personal experience
   await expect(page.getByRole("region", { name: "人物の身体ステータス" })).toContainText(`食事からの経過 ${status.body.mealHours}時間`);
   await expect(page.getByRole("region", { name: "経験からの見込み" })).toContainText(`対応した結果 ${last.response.subjectiveUpdate.anticipation.learning.totals.matched}件`);
   await page.screenshot({ path: "/tmp/medieval-v17-experience.png", fullPage: true });
-  await page.getByRole("tab", { name: "人物の履歴" }).click();
-  await expect(page.getByRole("tabpanel")).toContainText("判断理由");
+  await expect(page.getByRole("region", { name: "人物の行動ログ", exact: true })).toContainText("判断理由");
+
+  // Find a five-minute frame that includes gathering but precedes eating and the hourly checkpoint.
+  const moments = (r.events as VillageEvent[]).filter((e) => e.kind === "plant_gathered" && e.actors[0] === "F")
+    .map((event) => {
+      const hourEvents = (r.events as VillageEvent[]).filter((e) => e.hour === event.hour);
+      const index = hourEvents.findIndex((e) => e.id === event.id);
+      const minute = Math.ceil((index + 1) / hourEvents.length * 12) * 5;
+      const before = Math.floor(hourEvents.length * (minute - 5) / 60);
+      const after = Math.floor(hourEvents.length * minute / 60);
+      return { event, minute, hourEvents, before, after };
+    }).find(({ minute, hourEvents, before, after }) => minute <= 55 &&
+      !hourEvents.some((e) => e.kind === "travel_step" && e.actors[0] === "F") &&
+      !hourEvents.slice(before, after).some((e) => e.actors[0] === "F" && ["ate", "person_status"].includes(e.kind)))!;
+  expect(moments).toBeTruthy();
+  const { event, minute } = moments;
+  const plant = r.initialLand.plants[event.data.plantId];
+  const map = page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" });
+  const carried = page.getByRole("region", { name: "携帯中の所持品" });
+  const lot = carried.locator("tbody tr").filter({ hasText: String(event.data.lotId) });
+  await page.getByLabel("土地経済の日").fill(String(Math.floor((event.hour - 1) / 24) + 1));
+  await page.getByLabel("土地経済の時刻").fill(String((event.hour - 1) % 24 + 1));
+  await page.getByLabel("土地経済の分").fill(String(minute - 5));
+  await clickCell(map, plant.cell.x, plant.cell.y);
+  await expect(lot).toHaveCount(0);
+  const position = (await page.locator(".village-person-location").textContent())!.split(" · ")[0];
+  const pixels = () => map.evaluate((canvas: HTMLCanvasElement, cell: { x: number; y: number }) =>
+    [...canvas.getContext("2d")!.getImageData(cell.x * 32, cell.y * 32, 32, 32).data], plant.cell);
+  const beforePixels = await pixels();
+  const beforeMass = Number((await carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd").textContent())!.split("/")[0]);
+  await page.getByLabel("土地経済の分").fill(String(minute));
+  await expect(lot.locator("td").nth(1)).toHaveText(String(event.data.quantity));
+  await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText(`${beforeMass + Number(event.data.quantity)} / 24`);
+  await expect(page.locator(".village-person-location")).toContainText(position);
+  expect(await pixels()).not.toEqual(beforePixels);
+  await page.screenshot({ path: "/tmp/medieval-village-gather-status.png", fullPage: true });
+  await expect(page.getByRole("region", { name: "人物の行動ログ", exact: true })).toContainText("再生中");
+});
+
+test("inspector panes resize together with the map and the independent legend pulls from the edge", async ({ page }) => {
+  await page.goto("/?village=land-economy&wood=legacy");
+  const separator = page.getByRole("separator", { name: "地図と人物パネルの幅" });
+  await expect(separator).toBeVisible();
+  const side = page.getByRole("complementary", { name: "人物のステータスと行動ログ" });
+  const status = page.getByRole("region", { name: "人物のステータス", exact: true });
+  const log = page.getByRole("region", { name: "人物の行動ログ", exact: true });
+  const map = page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" });
+  const personBox = (await page.getByLabel("土地経済の人物").boundingBox())!;
+  const routeBox = (await page.getByLabel("経路の行先").boundingBox())!;
+  expect(Math.abs(personBox.y - routeBox.y)).toBeLessThan(2);
+  const statusBox = (await status.boundingBox())!;
+  const logBox = (await log.boundingBox())!;
+  expect(Math.abs(statusBox.y - logBox.y)).toBeLessThan(2);
+  expect(logBox.x).toBeGreaterThan(statusBox.x + statusBox.width);
+  const sideBefore = (await side.boundingBox())!;
+  const mapBefore = (await map.boundingBox())!;
+  const dividerBox = (await separator.boundingBox())!;
+  await page.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + 80);
+  await page.mouse.down();
+  await page.mouse.move(dividerBox.x - 100, dividerBox.y + 80, { steps: 8 });
+  await page.mouse.up();
+  expect((await side.boundingBox())!.width).toBeGreaterThan(sideBefore.width + 90);
+  expect((await map.boundingBox())!.width).toBeLessThan(mapBefore.width - 90);
+  await expect(map).toHaveAttribute("width", "1280");
+  await expect(map).toHaveAttribute("height", "768");
+  await clickCell(map, 15, 9);
+  await expect(page.getByRole("heading", { name: "選択セル 15,9" })).toBeVisible();
+  await separator.press("ArrowRight");
+  expect((await side.boundingBox())!.width).toBeLessThan(sideBefore.width + 90);
+
+  const legend = page.getByRole("button", { name: "凡例を引き出す" });
+  const handle = (await legend.boundingBox())!;
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x - 340, handle.y + handle.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect(legend).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("heading", { name: "地図の凡例" })).toBeVisible();
+  await expect(status).toBeVisible();
+  await expect(log).toBeVisible();
+  await page.screenshot({ path: "/tmp/medieval-village-resizable.png", fullPage: true });
+  await legend.press("Escape");
+  await expect(legend).toHaveAttribute("aria-expanded", "false");
+  await page.setViewportSize({ width: 800, height: 900 });
+  await expect(separator).toBeHidden();
+  await clickCell(map, 36, 4);
+  await expect(page.getByRole("heading", { name: "選択セル 36,4" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(800);
 });

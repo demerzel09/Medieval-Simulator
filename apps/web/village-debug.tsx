@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { VillageStatusReplay } from "./village-status-replay";
 import type { VillageId } from "../../packages/ai/autonomous-world";
 import { findGridPathV2, type GridMap, type GridPoint } from "../../packages/sim/grid-path";
 import { bodilyDiscomfort, type InventoryStatus, type PersonStatus } from "../../packages/sim/village-status";
@@ -168,7 +169,9 @@ function StatusCards({ status, person, day, transport, realMealClock }: { status
   const needs = bodilyDiscomfort(status.body);
   return <div className="village-status-stack">
     <small>状態の記録：{status.hour === 0 ? "開始時" : clock(status.hour)}</small>
-    <dl className="village-status-values"><div><dt>現金合計（携帯＋保管）</dt><dd>{status.carried.cash + status.home.cash + status.market.cash}</dd></div></dl>
+    <p className="village-cash-total">現金合計（携帯＋保管） <b>{status.carried.cash + status.home.cash + status.market.cash}</b></p>
+    <InventoryCard title="携帯中の所持品" inventory={status.carried} day={day} owner={person} />
+    {transport && <p aria-label="運搬負荷">歩行速度：無荷物時の{Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · 移動中の体力消費：{loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
     <section className="village-status-card" aria-label="人物の身体ステータス"><h3>{person} の身体</h3>
       <dl className="village-status-values"><div><dt>体力</dt><dd>{status.body.energy} / {status.body.maxEnergy}</dd></div>
         <div><dt>気温</dt><dd>{status.body.temperature}℃</dd></div><div><dt>空腹</dt><dd>{status.body.hunger}</dd></div>
@@ -179,8 +182,6 @@ function StatusCards({ status, person, day, transport, realMealClock }: { status
         <div className="village-need-meter discomfort" key={label}><span>{label}</span><b>{value}%</b><progress aria-label={label} value={value} max={100} /></div>)}
       <small>快・不快は身体の負担の目安。不快は4項目の最大値、快適さは100−不快。</small>
     </section>
-    <InventoryCard title="携帯中の所持品" inventory={status.carried} day={day} owner={person} />
-    {transport && <p aria-label="運搬負荷">歩行速度：無荷物時の{Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · 移動中の体力消費：{loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
     {status.field && <InventoryCard title="畑の保管品" inventory={status.field} day={day} owner={person} />}
     <InventoryCard title={`${person} の家の保管品`} inventory={status.home} day={day} owner={person} />
     {(status.market.items.length > 0 || status.market.cash > 0) && <InventoryCard title="市場の保管品" inventory={status.market} day={day} owner={person} />}
@@ -188,7 +189,8 @@ function StatusCards({ status, person, day, transport, realMealClock }: { status
 }
 
 function atHour(recording: VillageRecording, hour: number, eventFrame: number, minuteOfHour: number) {
-  const statuses: Partial<Record<VillageId, PersonStatus>> = {};
+  const statusReplay = new VillageStatusReplay(recording.fixture);
+  const statuses = statusReplay.statuses;
   const activeActions: Partial<Record<VillageId, string>> = {};
   const bodies: Partial<Record<VillageId, { temperature: number; cold: number; sleepDebt: number; sheltered: boolean }>> = {};
   const positions: Record<VillageId, GridPoint> = {
@@ -218,7 +220,7 @@ function atHour(recording: VillageRecording, hour: number, eventFrame: number, m
       positionsAtHourStart = Object.fromEntries(people.map((id) => [id, { ...positions[id] }])) as
         Record<VillageId, GridPoint>;
     if (e.hour === hour && frame++ >= eventFrame) break;
-    if (e.kind === "person_status") statuses[e.actors[0] as VillageId] = JSON.parse(String(e.data.status)) as PersonStatus;
+    statusReplay.apply(e);
     if (e.kind === "body_changed") bodies[e.actors[0] as VillageId] = {
       temperature: Number(e.data.temperature), cold: Number(e.data.cold), sleepDebt: Number(e.data.sleepDebt),
       sheltered: e.data.sheltered === 1 };
@@ -447,10 +449,23 @@ export default function VillageDebug() {
   const [speed, setSpeed] = useState(1);
   const [selected, setSelected] = useState<VillageId>("F");
   const [routeTo, setRouteTo] = useState("");
-  const [sideOpen, setSideOpen] = useState(true);
-  const [sideTab, setSideTab] = useState<"history" | "legend" | "status">((recordMode === "home" || recordMode === "load" || recordMode === "learn") ? "status" : "history");
+  const [sideWidth, setSideWidth] = useState(() => Math.max(640, Math.min(760, window.innerWidth * .43)));
+  const [layoutWidth, setLayoutWidth] = useState(window.innerWidth - 32);
+  const [resizing, setResizing] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [legendWidth, setLegendWidth] = useState(360);
+  const legendDrag = useRef<{ x: number; width: number; moved: boolean } | undefined>(undefined);
+  const layoutRef = useRef<HTMLElement>(null);
   const [focusCell, setFocusCell] = useState<GridPoint>({ x: 15, y: 9 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (!layoutRef.current) return;
+    const observer = new ResizeObserver(([entry]) => setLayoutWidth(entry.contentRect.width));
+    observer.observe(layoutRef.current);
+    return () => observer.disconnect();
+  }, [recording]);
+  const clampSideWidth = (width: number) => Math.max(560, Math.min(layoutWidth - 332, width));
+  const displayedSideWidth = clampSideWidth(sideWidth);
   useEffect(() => {
     let active = true;
     void readRecording().then((value) => { if (active) setRecording(value); })
@@ -588,8 +603,10 @@ export default function VillageDebug() {
       {(recordMode === "wild" || recordMode === "local" || processedFood) && <span>余剰売買 <b>{snapshot.totals.surplusSales}件</b></span>}
       {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") && <><span>穀物売買 <b>{snapshot.totals.grainSales}件</b></span><span>パン売買 <b>{snapshot.totals.breadSales}件</b></span></>}
       <span>動物 <b>{Object.keys(snapshot.animals).length}</b></span></div>
-    <main className={`e1-layout${sideOpen ? "" : " village-side-collapsed"}`}><section className="e1-map-panel">
-      <p>保存済みのEventを順に再生します。分単位の移動位置は、1時間内の通過セルを均等に割り当てた目安です。黄色い線は行先を選んだ場合の計算経路です。植物は色と高さで生育段階を示します。</p>
+    <main ref={layoutRef} className={`e1-layout village-resizable-layout${resizing ? " is-resizing" : ""}`}
+      style={{ gridTemplateColumns: `minmax(0, 1fr) 12px ${displayedSideWidth}px` }}>
+      <section className="e1-map-panel">
+        <p className="village-map-description">保存済みのEventを順に再生します。分単位の移動は1時間内の通過セルから補間した目安です。黄色い線は計算経路、植物の色と高さは生育段階です。</p>
       <div className="village-canvas-scroll"><canvas ref={canvasRef} width={1280} height={768}
         role="img" aria-label="土地経済の1280×768ピクセル地図"
         onClick={(event) => {
@@ -600,48 +617,51 @@ export default function VillageDebug() {
           const actor = people.find((id) => pointKey(snapshot.positions[id]) === pointKey(cell));
           if (actor) setSelected(actor);
         }} /></div>
-      <p className="e1-legend">32ピクセル×40列×24行。色と記号の説明は右側の「凡例」タブで確認できます。</p>
-      <h2>{day}日目の関連Event（{dayEvents.length}件）</h2>
-      <div className="e1-action-log">{dayEvents.slice().reverse().slice(0, 120).map((e) =>
-        <p key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b><br />
-          <small>{e.id} ← {e.causes.join(", ") || "起点"} · {JSON.stringify(e.data)}</small></p>)}</div>
-    </section><aside className="e1-detail village-side" aria-label="人物の履歴と地図の凡例">
-      <button type="button" className="village-side-toggle" aria-expanded={sideOpen}
-        onClick={() => setSideOpen((open) => !open)}>
-        {sideOpen ? "履歴・凡例を閉じる" : "履歴・凡例を開く"}</button>
-      {sideOpen && <><div role="tablist" aria-label="地図の詳細" className="village-tabs"
+        <p className="e1-legend">32ピクセル×40列×24行。表示は地図の幅に合わせて拡縮します。右端の「凡例」をクリック、または左へ引くと説明を開けます。</p>
+      </section>
+      <div role="separator" aria-label="地図と人物パネルの幅" aria-orientation="vertical"
+        aria-valuemin={560} aria-valuemax={Math.max(560, Math.floor(layoutWidth - 332))}
+        aria-valuenow={Math.round(displayedSideWidth)} tabIndex={0} className="village-divider"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); setResizing(true);
+        }}
+        onPointerMove={(event) => {
+          if (!event.currentTarget.hasPointerCapture(event.pointerId) || !layoutRef.current) return;
+          const rect = layoutRef.current.getBoundingClientRect();
+          const padding = parseFloat(getComputedStyle(layoutRef.current).paddingRight);
+          setSideWidth(clampSideWidth(rect.right - padding - event.clientX - 6));
+        }}
+        onPointerUp={(event) => { event.currentTarget.releasePointerCapture(event.pointerId); setResizing(false); }}
+        onLostPointerCapture={() => setResizing(false)}
         onKeyDown={(event) => {
-          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-          event.preventDefault();
-          const tabs: ("history" | "status" | "legend")[] = (recordMode === "home" || recordMode === "load" || recordMode === "learn") ? ["history", "status", "legend"] : ["history", "legend"];
-          const next = tabs[(tabs.indexOf(sideTab) + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-          setSideTab(next);
-          document.getElementById(`village-${next}-tab`)?.focus();
-        }}>
-        <button type="button" role="tab" id="village-history-tab" aria-controls="village-side-panel"
-          aria-selected={sideTab === "history"} tabIndex={sideTab === "history" ? 0 : -1}
-          onClick={() => setSideTab("history")}>人物の履歴</button>
-        {(recordMode === "home" || recordMode === "load" || recordMode === "learn") && <button type="button" role="tab" id="village-status-tab" aria-controls="village-side-panel"
-          aria-selected={sideTab === "status"} tabIndex={sideTab === "status" ? 0 : -1}
-          onClick={() => setSideTab("status")}>ステータス</button>}
-        <button type="button" role="tab" id="village-legend-tab" aria-controls="village-side-panel"
-          aria-selected={sideTab === "legend"} tabIndex={sideTab === "legend" ? 0 : -1}
-          onClick={() => setSideTab("legend")}>凡例</button>
-      </div><div role="tabpanel" id="village-side-panel"
-        aria-labelledby={`village-${sideTab}-tab`}>
-        {sideTab === "history" ? <>
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.preventDefault(); setSideWidth(clampSideWidth(displayedSideWidth + (event.key === "ArrowLeft" ? 32 : -32)));
+          } else if (event.key === "Home") { event.preventDefault(); setSideWidth(640); }
+        }} />
+      <aside className="e1-detail village-side" aria-label="人物のステータスと行動ログ">
+        <div className="village-side-selectors">
+          <label>人物 <select aria-label="土地経済の人物" value={selected}
+            onChange={(e) => setSelected(e.target.value as VillageId)}>
+            {people.map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
+          <label>経路の行先 <select aria-label="経路の行先" value={routeTo} onChange={(e) => setRouteTo(e.target.value)}>
+            <option value="">表示しない</option>{Object.keys(recording.initialGrid.sites).map((id) =>
+              <option key={id} value={id}>{id}</option>)}</select></label>
+        </div>
+        <p className="village-person-location">現在のセル: {pointKey(snapshot.positions[selected])} · 経路 {route ? `${route.length - 1}セル` : "表示なし"} ·
+          進行中 {activityLabels[snapshot.activeActions[selected] ?? ""] ?? "待機"}</p>
+        <div className="village-inspector-panes">
+          <section className="village-inspector-pane" aria-label="人物のステータス">
+            <h2>{selected} のステータス</h2>
+            {snapshot.statuses[selected] ? <StatusCards status={snapshot.statuses[selected]!} person={selected} day={day}
+              transport={recording.fixture.bulkTransport} realMealClock={!!recording.fixture.experienceLearning} /> :
+              <p>この旧記録には物品・身体のステータス記録がありません。行動ログの本人観察を参照できます。</p>}
+            {recording.fixture.experienceLearning && <ExperienceCard memory={latestObservation?.response.subjectiveUpdate?.anticipation?.learning} />}
+          </section>
+          <section className="village-inspector-pane" aria-label="人物の行動ログ">
           <h2>{selected} の判断履歴</h2>
           {selectedFarm && <p>所有する畑: {selectedFarm.id} · {selectedFarm.plotIds.length}区画 · 穀物は腐敗なし</p>}
           {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") && <p>製パン技能：{recording.fixture.foodMarket!.initialBakingSkills[selected]} · 市場で加工</p>}
-          <div className="village-side-selectors">
-            <label>人物 <select aria-label="土地経済の人物" value={selected}
-              onChange={(e) => setSelected(e.target.value as VillageId)}>{people.map((id) =>
-                <option key={id} value={id}>{id}</option>)}</select></label>
-            <label>経路の行先 <select aria-label="経路の行先" value={routeTo}
-              onChange={(e) => setRouteTo(e.target.value)}><option value="">表示しない</option>
-              {Object.keys(recording.initialGrid.sites).map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
-          </div>
-          <p>現在のセル: {pointKey(snapshot.positions[selected])} · 経路 {route ? `${route.length - 1}セル` : "表示なし"} · この日ここまでの判断 {decisions.length}件</p>
           {snapshot.statuses[selected] && <p>所持金 {snapshot.statuses[selected]!.carried.cash} · 携帯重量 {snapshot.statuses[selected]!.carried.mass}/{snapshot.statuses[selected]!.carried.capacity} · 快適さ {bodilyDiscomfort(snapshot.statuses[selected]!.body).comfort}%</p>}
           {!snapshot.statuses[selected] && latestObservation && <p>最新の本人観察（{clock(latestObservation.hour)}）:
             所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger} ·
@@ -651,7 +671,6 @@ export default function VillageDebug() {
           {!snapshot.statuses[selected] && snapshot.bodies[selected] && <p>表示時点の身体：気温 {snapshot.bodies[selected]!.temperature}℃ ·
             寒さ {snapshot.bodies[selected]!.cold} · 睡眠不足 {snapshot.bodies[selected]!.sleepDebt} ·
             {snapshot.bodies[selected]!.sheltered ? "自宅の屋内" : "屋外"}</p>}
-          {snapshot.statuses[selected] && <p>進行中：{activityLabels[snapshot.statuses[selected]!.body.activity] ?? "待機"}</p>}
           {latestObservation?.response.subjectiveUpdate?.anticipation?.reasoning && <p>
             判断理由：{reasonLabels[latestObservation.response.subjectiveUpdate.anticipation.reasoning.reason] ?? latestObservation.response.subjectiveUpdate.anticipation.reasoning.reason}<br />
             対処の見込み {latestObservation.response.subjectiveUpdate.anticipation.reasoning.leadHours.toFixed(1)}時間 ·
@@ -675,18 +694,45 @@ export default function VillageDebug() {
             <small>到達刺激 {d.stimuli.map((s) => s.kind).join("、") || "なし"} · {d.eventId}</small>
           </div>)}
           <p>元記録: {recording.finalStateHash} · 判断 {recording.decisions.length}件 · Event {recording.events.length}件</p>
-        </> : sideTab === "status" ? <>
-          <h2>{selected} のステータス</h2>
-          <div className="village-side-selectors">
-            <label>人物 <select aria-label="土地経済の人物" value={selected} onChange={(e) => setSelected(e.target.value as VillageId)}>
-              {people.map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
-            <label>経路の行先 <select aria-label="経路の行先" value={routeTo} onChange={(e) => setRouteTo(e.target.value)}>
-              <option value="">表示しない</option>{Object.keys(recording.initialGrid.sites).map((id) => <option key={id} value={id}>{id}</option>)}</select></label>
-          </div>
-          <p>現在のセル: {pointKey(snapshot.positions[selected])} · {activityLabels[snapshot.statuses[selected]?.body.activity ?? ""] ?? "待機"}</p>
-          {snapshot.statuses[selected] && <StatusCards status={snapshot.statuses[selected]!} person={selected} day={day} transport={recording.fixture.bulkTransport} realMealClock={!!recording.fixture.experienceLearning} />}
-          {recording.fixture.experienceLearning && <ExperienceCard memory={latestObservation?.response.subjectiveUpdate?.anticipation?.learning} />}
-        </> : <>
+            <h3>{day}日目の関連Event（{dayEvents.length}件）</h3>
+            {dayEvents.slice().reverse().slice(0, 120).map((e) =>
+              <p key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b><br />
+                <small>{e.id} ← {e.causes.join(", ") || "起点"} · {JSON.stringify(e.data)}</small></p>)}
+          </section>
+        </div>
+      </aside>
+    </main>
+    <aside className={`village-legend-drawer${legendOpen ? " is-open" : ""}`} style={{ width: legendWidth }}
+      aria-label="独立した地図の凡例" onKeyDown={(event) => {
+        if (event.key === "Escape") { setLegendOpen(false); document.getElementById("village-legend-pull")?.focus(); }
+      }}>
+      <button type="button" id="village-legend-pull" className="village-legend-pull" aria-expanded={legendOpen}
+        aria-controls="village-legend-content" aria-label="凡例を引き出す" title="クリックで開閉・左へドラッグで引き出す"
+        onClick={(event) => {
+          if (event.detail === 0 || !legendDrag.current?.moved) setLegendOpen((open) => !open);
+          legendDrag.current = undefined;
+        }}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          legendDrag.current = { x: event.clientX, width: legendOpen ? legendWidth : 0, moved: false };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const drag = legendDrag.current;
+          if (!drag || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+          const delta = drag.x - event.clientX;
+          if (Math.abs(delta) < 4 && !drag.moved) return;
+          drag.moved = true;
+          const extent = drag.width + delta;
+          setLegendOpen(extent > 100);
+          setLegendWidth(Math.max(280, Math.min(window.innerWidth - 40, 600, extent)));
+        }}
+        onPointerUp={(event) => { event.currentTarget.releasePointerCapture(event.pointerId); }}
+        onPointerCancel={() => { legendDrag.current = undefined; }}>
+        凡例
+      </button>
+      <div id="village-legend-content" className="village-legend-content" inert={!legendOpen} aria-hidden={!legendOpen}>
+        <button type="button" className="village-legend-dismiss" onClick={() => setLegendOpen(false)}>凡例をしまう</button>
           <h2>地図の凡例</h2>
           {(recordMode === "needs" || (recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn")) && <p>家：本人の家では保温と睡眠回復が有利です。帰宅時刻は固定せず、予測と身体の必要から選びます。屋外睡眠も可能です。人物の横の「Z」は睡眠中です。</p>}
           {processedFood && <p>黄茶色の箱と数字：家・市場・畑の穀物庫と保存量。穀物は原料で直接食べられません。パンは製造日から3日で腐敗します。</p>}
@@ -714,19 +760,10 @@ export default function VillageDebug() {
           <h3>移動と人物</h3>
           <ul className="village-legend-list">
             <li><span className="village-swatch route-line" />黄色い線：選択した人物から行先への計算経路</li>
-            <li><span className="village-swatch person-farmer" />人物：S 商人、F 農夫、C 運び手、B1・B2 木こり。色と文字で区別</li>
+            <li><span className="village-swatch person-farmer" />人物：S 商人、F 農夫、C 運び手、B1・B2 {legacyWood ? "木こり" : "農夫"}。色と文字で区別</li>
             <li><span className="village-swatch person-selected" />薄黄色の枠：選択中の人物のセル</li>
           </ul>
-          {latestObservation && <p>最新の本人観察（{clock(latestObservation.hour)}）:
-            所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger} ·
-            体力 {latestObservation.knownContext.energy} ·
-            判断 {latestObservation.chosen?.kind ?? "待機"} ·
-            進行中 {latestObservation.knownContext.activeAction ?? "なし"}</p>}
-          <h3>選択セル {pointKey(focusCell)}</h3>
-          <p>{terrain} · {blocked ? "通行不可" : "通行可能"} · {localPlants.map((p) =>
-            `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}${p.ownerId ? ` · 所有者 ${p.ownerId} · ${p.farmId}` : ""}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
-        </>}
-      </div></>}
-    </aside></main>
+      </div>
+    </aside>
   </div>;
 }
