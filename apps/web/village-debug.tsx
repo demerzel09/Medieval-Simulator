@@ -113,7 +113,7 @@ const reasonLabels: Record<string, string> = {
 const activityLabels: Record<string, string> = { sleep: "睡眠", rest: "休憩", travel: "移動", bake_bread: "製パン",
   gather_plant: "採集", till_plot: "耕作", sow_plot: "播種", harvest_plot: "収穫" };
 
-const itemNames: Record<string, string> = { ...plantNames, bread: "パン", seed: "穀物の種", wood: "薪" };
+const itemNames: Record<string, string> = { ...plantNames, bread: "パン", seed: "播種用の穀物", wood: "薪" };
 function InventoryCard({ title, inventory, day, owner }: { title: string; inventory: InventoryStatus; day: number; owner: string }) {
   return <section className="village-status-card" aria-label={title}>
     <h3>{title}</h3><dl className="village-status-values">

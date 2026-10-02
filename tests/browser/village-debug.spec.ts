@@ -8,7 +8,7 @@ test("person and home status follow recorded cash, items, weight and physical ne
   const home = page.getByRole("region", { name: "F の家の保管品" });
   await expect(carried).toContainText("所持金");
   await expect(carried).toContainText("総重量 / 容量");
-  await expect(carried).toContainText("穀物の種");
+  await expect(carried).toContainText("播種用の穀物");
   await expect(home).toContainText("所有者 F");
   await expect(page.getByRole("progressbar", { name: "身体の快適さ" })).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "不快", exact: true })).toBeVisible();
