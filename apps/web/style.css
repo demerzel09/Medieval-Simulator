@@ -663,7 +663,9 @@ footer {
 .village-specification > summary span { margin-left: 10px; color: #b8c8b4; }
 .village-debug .village-specification .e1-map-panel { margin: 4px 0; padding: 4px 6px; border-radius: 2px; }
 .village-debug .village-resizable-layout { flex: 1; min-height: 0; overflow: hidden; padding: 6px 8px; align-items: stretch; grid-template-rows: minmax(0, 1fr); }
-.village-debug .village-resizable-layout > .e1-map-panel { min-height: 0; overflow: auto; padding: 5px; border-radius: 3px; }
+.village-debug .village-resizable-layout > .e1-map-panel { display: flex; flex-direction: column; min-height: 0; overflow: auto; padding: 5px; border-radius: 3px; }
+.village-debug .village-canvas-scroll { display: flex; align-items: center; justify-content: center; flex: 1; min-height: 140px; }
+.village-debug .village-canvas-scroll canvas { width: auto; height: auto; max-width: 100%; max-height: 100%; flex: 0 1 auto; }
 .village-debug .village-side { height: auto; min-height: 0; position: static; padding: 5px; border-radius: 3px; }
 .village-divider { min-height: 0; }
 .village-side-selectors { gap: 10px; }
@@ -674,20 +676,37 @@ footer {
 .village-inspector-pane h3 { margin: 6px 0 3px; font-size: 12px; }
 .village-inspector-pane .e1-row { padding: 4px 0; }
 .village-inspector-pane small { font-size: 11px; }
-.village-status-stack { gap: 5px; margin: 5px 0; }
+.village-status-stack { gap: 1px; margin: 2px 0; }
+.village-status-context { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 11px; }
 .village-status-card { padding: 5px 6px; border-radius: 2px; }
 .village-status-card h3 { margin: 0 0 4px; font-size: 12px; }
+.village-inventory-section { padding: 3px 0; border-width: 0 0 1px; border-radius: 0; background: transparent; }
+.village-inventory-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 5px; }
+.village-inventory-heading h3 { margin: 0; }
+.village-inventory-heading small { white-space: nowrap; }
+.village-inventory-section .village-status-values { margin-bottom: 0; }
+.village-debug .village-inventory-section .village-empty-inventory { margin: 0; font-size: 11px; }
 .village-status-values { gap: 2px 7px; margin: 0 0 4px; }
-.village-status-values div { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; min-width: 0; padding: 2px 0; background: transparent; }
+.village-status-values div { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; min-width: 0; padding: 1px 0; background: transparent; line-height: 1.2; }
 .village-status-values dt { font-size: 10px; }
-.village-status-values dd { margin: 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.village-status-values dd { margin: 0; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .village-need-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 8px; margin-bottom: 4px; }
-.village-need-meter { gap: 1px 4px; margin: 2px 0; font-size: 11px; }
-.village-need-meter progress { height: 4px; }
+.village-need-meter { grid-template-columns: minmax(0, 1fr) auto 34px; align-items: center; gap: 1px 4px; margin: 0; font-size: 11px; line-height: 1.3; }
+.village-need-meter progress { grid-column: auto; height: 4px; }
+.village-experience-values { margin: 4px 0; font-size: 11px; }
+.village-experience-values div { display: flex; justify-content: space-between; gap: 6px; }
+.village-experience-values dt { color: #b6c9b6; }
+.village-experience-values dd { margin: 0; font-variant-numeric: tabular-nums; }
 .village-inventory-table { margin-top: 4px; font-size: 11px; }
 .village-inventory-table th, .village-inventory-table td { padding: 3px 2px; }
+.village-inventory-table summary > small { display: inline; margin-left: 3px; font-size: 10px; white-space: nowrap; }
+.village-offer-tag { color: #edc57e; font-size: 10px; white-space: nowrap; }
 .village-debug .e1-legend { margin: 4px 0; font-size: 10px; }
 .village-overview { margin-top: 6px; border-top: 1px solid #425d47; }
+.village-cell-inspector { flex: 0 0 auto; padding: 4px 0; border-top: 1px solid #425d47; }
+.village-cell-inspector h3 { margin: 0 0 2px; font-size: 12px; }
+.village-debug .village-cell-inspector p { margin: 0; font-size: 11px; }
+.village-overview { flex: 0 0 auto; }
 .village-overview h2 { margin: 4px 0; font-family: inherit; font-size: 12px; }
 .village-overview h2 small { margin-left: 6px; font-weight: normal; font-size: 10px; }
 .village-overview-scroll { max-width: 100%; overflow: auto; }
@@ -702,6 +721,15 @@ footer {
 .village-event-details { color: #a7b0a2; font-size: 10px; }
 .village-event-details summary { cursor: pointer; overflow-wrap: anywhere; }
 .village-event-details code { display: block; overflow-wrap: anywhere; margin: 3px 0; color: #c4d0bf; font-size: 11px; }
+.village-log-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.village-log-table th, .village-log-table td { padding: 3px 2px; border-bottom: 1px solid #3c4a3f; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.village-log-table th { color: #aebfaa; font-weight: normal; }
+.village-log-table small { display: block; }
+.village-decision-table th:first-child { width: 58px; }
+.village-decision-table th:nth-child(2) { width: 50px; }
+.village-debug .village-decision-expand { display: block; margin-top: 2px; padding: 0 3px; font-size: 10px; color: #b3c4af; }
+.village-decision-input { font-size: 11px; color: #b3c4af; background: #25392b; }
+.village-record-source { margin-top: 8px; font-size: 10px; color: #a7b0a2; }
 .village-legend-drawer { top: 100px; bottom: 8px; }
 .village-legend-content { padding: 8px 10px; }
 .village-legend-content h2 { font-size: 15px; margin-bottom: 6px; }
@@ -713,6 +741,8 @@ footer {
 @media (max-width: 960px) {
   .village-debug { height: auto; min-height: 100dvh; }
   .village-debug .village-resizable-layout { flex: none; overflow: visible; padding: 6px; grid-template-rows: auto; gap: 6px; }
+  .village-debug .village-resizable-layout > .e1-map-panel { display: block; }
+  .village-debug .village-canvas-scroll canvas { width: 100%; max-height: none; }
   .village-debug .village-side { height: max(640px, calc(100dvh - 130px)); }
   .village-legend-drawer { top: 60px; }
 }

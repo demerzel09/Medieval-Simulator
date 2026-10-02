@@ -308,6 +308,18 @@ test("v17 default shows actual time since eating and matched personal experience
   await overview.getByRole("button", { name: "F の詳細を表示" }).click();
   const bounds = await page.getByRole("region", { name: "人物の身体ステータス" }).boundingBox();
   expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(768);
+  const homeBounds = (await page.getByRole("region", { name: "F の家の保管品" }).boundingBox())!;
+  expect(homeBounds.y + homeBounds.height).toBeLessThanOrEqual(768);
+  const recent = page.getByRole("region", { name: "人物の判断一覧", exact: true });
+  await expect(recent.getByRole("heading")).toContainText("直近の判断");
+  await expect(recent.locator("tbody tr")).not.toHaveCount(0);
+  const firstDecision = recent.locator("tbody tr").first();
+  await expect(firstDecision).toContainText(`体${last.knownContext.energy}`);
+  await expect(firstDecision).toContainText(`金${last.knownContext.ownCash}`);
+  await firstDecision.getByRole("button", { name: `${last.eventId} の入力と原因` }).click();
+  await expect(recent.locator(`#decision-${last.eventId}`)).toBeVisible();
+  await expect(recent.locator(`#decision-${last.eventId}`)).toContainText(last.eventId);
+  await firstDecision.getByRole("button", { name: `${last.eventId} の入力と原因` }).click();
   expect((await overview.boundingBox())!.y + (await overview.boundingBox())!.height).toBeLessThanOrEqual(768);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(768);
   const specification = page.getByRole("note");
@@ -316,7 +328,7 @@ test("v17 default shows actual time since eating and matched personal experience
   await expect(specification).toHaveAttribute("open");
   await expect(specification.locator("p").filter({ hasText: "穀物は直接食べられません" })).toBeVisible();
   await specification.locator("summary").click();
-  await page.screenshot({ path: "/tmp/medieval-village-dense.png", fullPage: true });
+  await page.screenshot({ path: "/tmp/medieval-village-dense-tables.png", fullPage: true });
   await page.screenshot({ path: "/tmp/medieval-v17-experience.png", fullPage: true });
   await expect(page.getByRole("region", { name: "人物の行動ログ", exact: true })).toContainText("判断理由");
 
@@ -354,7 +366,7 @@ test("v17 default shows actual time since eating and matched personal experience
   await expect(page.locator(".village-person-location")).toContainText(position);
   expect(await pixels()).not.toEqual(beforePixels);
   await page.screenshot({ path: "/tmp/medieval-village-gather-status.png", fullPage: true });
-  await expect(page.getByRole("region", { name: "人物の行動ログ", exact: true })).toContainText("再生中");
+  await expect(page.getByRole("region", { name: "選択セルの状態", exact: true })).toContainText("再生中");
 });
 
 test("inspector panes resize together with the map and the independent legend pulls from the edge", async ({ page }) => {
@@ -383,6 +395,8 @@ test("inspector panes resize together with the map and the independent legend pu
   expect((await map.boundingBox())!.width).toBeLessThan(mapBefore.width - 90);
   await expect(map).toHaveAttribute("width", "1280");
   await expect(map).toHaveAttribute("height", "768");
+  const resizedMap = (await map.boundingBox())!;
+  expect(resizedMap.width / resizedMap.height).toBeCloseTo(1280 / 768, 2);
   await clickCell(map, 15, 9);
   await expect(page.getByRole("heading", { name: "選択セル 15,9" })).toBeVisible();
   await separator.press("ArrowRight");

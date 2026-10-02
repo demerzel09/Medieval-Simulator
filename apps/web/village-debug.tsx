@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { VillageStatusReplay } from "./village-status-replay";
 import type { VillageId } from "../../packages/ai/autonomous-world";
 import { findGridPathV2, type GridMap, type GridPoint } from "../../packages/sim/grid-path";
-import { bodilyDiscomfort, type InventoryStatus, type PersonStatus } from "../../packages/sim/village-status";
+import { bodilyDiscomfort, type InventoryItem, type InventoryStatus, type PersonStatus } from "../../packages/sim/village-status";
 import { loadMovement, type LoadTransport } from "../../packages/sim/load-movement";
 import type { VillageRecording } from "../../packages/sim/village-recording";
 import type { ActionLearningMemory } from "../../packages/ai/action-learning";
@@ -47,6 +47,7 @@ const actionNames: Record<string, string> = {
 };
 const pointKey = (p: GridPoint) => `${p.x},${p.y}`;
 const clock = (hour: number) => `${Math.floor((hour - 1) / 24) + 1}日目 ${String((hour - 1) % 24 + 1).padStart(2, "0")}時`;
+const compactClock = (hour: number) => `${Math.floor((hour - 1) / 24) + 1}日${String((hour - 1) % 24 + 1).padStart(2, "0")}時`;
 const totalMinutes = 90 * 24 * 60;
 const replayClock = (minutes: number) => {
   const day = Math.min(90, Math.floor(minutes / 1440) + 1);
@@ -135,57 +136,91 @@ const reasonLabels: Record<string, string> = {
 const activityLabels: Record<string, string> = { sleep: "睡眠", rest: "休憩", travel: "移動", bake_bread: "製パン",
   gather_plant: "採集", till_plot: "耕作", sow_plot: "播種", harvest_plot: "収穫" };
 
+const decisionLabels: Record<string, string> = { ...activityLabels, eat: "食事", wait: "待機",
+  post_surplus_offer: "販売提示", buy_surplus: "購入", load_grain: "穀物積載", store_grain: "穀物保存",
+  store_home: "家に収納", take_home: "家から取出", store_home_cash: "現金収納", take_home_cash: "現金取出" };
+
 const itemNames: Record<string, string> = { ...plantNames, bread: "パン", seed: "播種用の穀物", wood: "薪" };
 function ExperienceCard({ memory }: { memory?: ActionLearningMemory }) {
   const outcome = memory?.recent.at(-1), p = memory?.pending.at(-1) ?? outcome?.prediction;
-  return <section className="village-status-card" aria-label="経験からの見込み"><h3>経験からの見込み</h3>
+  return <section className="village-status-card village-experience" aria-label="経験からの見込み"><h3>経験からの見込み</h3>
     {!memory ? <p>まだ行動経験はありません。</p> : <>
       <p>対応した結果 {memory.totals.matched}件 · 条件の記憶 {Object.keys(memory.models).length}件 · 結果待ち {memory.pending.length}件</p>
-      {p && <p>{activityLabels[p.action] ?? p.action} · 荷物の重量 {p.before.mass}<br />
-        体力の見込み：{p.selected === "experience" ? "本人の経験" : "初期の見込み"} · {(p.selected === "experience" ? p.learnedRate! : p.priorRate).toFixed(2)}/時間<br />
-        予定期間 {p.expectedHours.toFixed(1)}時間</p>}
-      {outcome && <p>直前の結果：{outcome.status === "completed" ? "完了" : outcome.status === "failed" ? "失敗" : outcome.status === "interrupted" ? "中断" : "学習対象外"}
-        {outcome.energyChange !== undefined && <> · 体力の実変化 {outcome.energyChange}</>}
-        {outcome.error !== undefined && <> · 観測区間の予測との差 {outcome.error.toFixed(2)}</>}</p>}
+      {p && <dl className="village-experience-values">
+        <div><dt>行動 / 重量</dt><dd>{decisionLabels[p.action] ?? p.action} / {p.before.mass}</dd></div>
+        <div><dt>採用モデル</dt><dd>{p.selected === "experience" ? "本人の経験" : "初期の見込み"}</dd></div>
+        <div><dt>体力見込み / 時間</dt><dd>{(p.selected === "experience" ? p.learnedRate! : p.priorRate).toFixed(2)}</dd></div>
+        <div><dt>予定期間</dt><dd>{p.expectedHours.toFixed(1)}時間</dd></div>
+      </dl>}
+      {outcome && <p>結果 {outcome.status === "completed" ? "完了" : outcome.status === "failed" ? "失敗" : outcome.status === "interrupted" ? "中断" : "学習対象外"}
+        {outcome.energyChange !== undefined && <> · 体力変化 {outcome.energyChange}</>}
+        {outcome.error !== undefined && <> · 予測誤差 {outcome.error.toFixed(2)}</>}</p>}
       {outcome && <p>実際の増減：食事分 {outcome.mealsChange ?? "不明"} · 原料 {outcome.rawChange ?? "不明"} · 現金 {outcome.cashChange ?? "不明"}</p>}
-      <small>自分に届いた結果で更新します。同じ重量の荷物は共通の移動経験を使います。</small>
+      <small title="自分に届いた結果で更新します。同じ重量の荷物は共通の移動経験を使います。">本人に届いた結果で更新 · 同重量の移動経験を共有</small>
     </>}
   </section>;
 }
 function InventoryCard({ title, inventory, day, owner }: { title: string; inventory: InventoryStatus; day: number; owner: string }) {
-  return <section className="village-status-card" aria-label={title}>
-    <h3>{title}</h3><dl className="village-status-values">
+  const groups = new Map<string, InventoryItem & { lots: InventoryItem[] }>();
+  for (const lot of inventory.items) {
+    const key = JSON.stringify([lot.kind, lot.ownerId, lot.containerId, lot.expiresDay, lot.offered]);
+    const group = groups.get(key);
+    if (group) { group.quantity += lot.quantity; group.mass += lot.mass; group.lots.push(lot); }
+    else groups.set(key, { ...lot, lots: [lot] });
+  }
+  return <section className="village-status-card village-inventory-section" aria-label={title}>
+    <div className="village-inventory-heading"><h3>{title}</h3><small>所有者 {owner}</small></div>
+    <dl className="village-status-values">
       <div><dt>所持金</dt><dd>{inventory.cash}</dd></div>
       <div><dt>総重量 / 容量</dt><dd>{inventory.mass} / {inventory.capacity}</dd></div>
-    </dl><small>所有者 {owner} · 重量：sim単位</small>
-    {inventory.items.length ? <table className="village-inventory-table"><thead><tr><th>物品</th><th>数量</th><th>重量</th><th>状態</th></tr></thead>
-      <tbody>{inventory.items.map((item) => <tr key={item.id}><td><details><summary>{itemNames[item.kind] ?? item.kind}</summary>
-        <small>{item.id}<br />所有者 {item.ownerId}<br />保管先 {item.containerId}</small></details></td>
-        <td>{item.quantity}</td><td>{item.mass}</td><td>{item.expiresDay === undefined ? (item.kind === "grain" ? "腐敗なし・原料" : "期限なし") :
-          `あと${Math.max(0, item.expiresDay - day)}日`}{item.offered && <small>販売提示あり</small>}</td></tr>)}</tbody></table> : <p className="village-empty-inventory">物品なし</p>}
+    </dl>
+    {groups.size ? <table className="village-inventory-table"><thead><tr><th>物品</th><th>数量</th><th>重量</th><th>状態</th></tr></thead>
+      <tbody>{[...groups].map(([key, item]) => <tr key={key}><td><details><summary>{itemNames[item.kind] ?? item.kind}
+        {item.lots.length > 1 && <small>{item.lots.length}ロット</small>}</summary>
+        {item.lots.map((lot) => <small key={lot.id}>{lot.id}<br />数量 {lot.quantity} · 重量 {lot.mass}<br />所有者 {lot.ownerId}<br />保管先 {lot.containerId}</small>)}</details></td>
+        <td>{item.quantity}</td><td>{item.mass}</td><td>{item.expiresDay === undefined ? (item.kind === "grain" ? "原料・腐敗なし" : "期限なし") :
+          `あと${Math.max(0, item.expiresDay - day)}日`}{item.offered && <span className="village-offer-tag" title="販売提示あり" aria-label="販売提示あり"> 売</span>}</td></tr>)}</tbody></table> : <p className="village-empty-inventory">物品なし</p>}
   </section>;
 }
 function StatusCards({ status, person, day, transport, realMealClock }: { status: PersonStatus; person: VillageId; day: number; transport?: LoadTransport; realMealClock?: boolean }) {
   const needs = bodilyDiscomfort(status.body);
   return <div className="village-status-stack">
-    <small>状態の記録：{status.hour === 0 ? "開始時" : clock(status.hour)}</small>
-    <p className="village-cash-total">現金合計（携帯＋保管） <b>{status.carried.cash + status.home.cash + status.market.cash}</b></p>
+    <div className="village-status-context"><small title={status.hour === 0 ? "開始時" : clock(status.hour)}>記録：{status.hour === 0 ? "開始時" : compactClock(status.hour)}</small>
+      <span title="携帯・家・市場の現金合計">現金計 <b>{status.carried.cash + status.home.cash + status.market.cash}</b></span></div>
     <InventoryCard title="携帯中の所持品" inventory={status.carried} day={day} owner={person} />
     {transport && <p aria-label="運搬負荷" title="歩行速度は無荷物時を100%とした比率">歩行速度 {Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · 移動消費 {loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
     <section className="village-status-card" aria-label="人物の身体ステータス"><h3>{person} の身体</h3>
       <dl className="village-status-values"><div><dt>体力</dt><dd>{status.body.energy} / {status.body.maxEnergy}</dd></div>
         <div><dt>気温</dt><dd>{status.body.temperature}℃</dd></div><div><dt>空腹</dt><dd>{status.body.hunger}</dd></div>
-        <div><dt>睡眠不足</dt><dd>{status.body.sleepDebt}時間</dd></div></dl>
+        <div><dt>睡眠不足</dt><dd>{status.body.sleepDebt}時間</dd></div>
+        <div><dt>寒さ</dt><dd>{status.body.cold}</dd></div><div><dt>行動</dt><dd>{decisionLabels[status.body.activity] ?? status.body.activity}</dd></div></dl>
       <p>{status.body.sheltered ? "自宅の屋内" : "屋外"} · {realMealClock ? "食事からの経過" : "食事周期（旧記録）"} {status.body.mealHours}時間</p>
       <div className="village-need-grid"><div className="village-need-meter"><span>快適さ</span><b>{needs.comfort}%</b><progress aria-label="身体の快適さ" value={needs.comfort} max={100} /></div>
       {([["不快", needs.discomfort], ["空腹の負担", needs.hunger], ["寒さの負担", needs.cold], ["疲労", needs.fatigue], ["眠気", needs.sleepiness]] as const).map(([label, value]) =>
         <div className="village-need-meter discomfort" key={label}><span>{label.replace("の負担", "")}</span><b>{value}%</b><progress aria-label={label} value={value} max={100} /></div>)}</div>
-      <small title="快・不快は身体の負担の目安。不快は4項目の最大値、快適さは100−不快。">各負担0〜100% · 不快＝最大値 · 快適さ＝100−不快</small>
+      <small title="快・不快は身体の負担の目安。不快は4項目の最大値、快適さは100−不快。">不快＝最大負担 · 快適さ＝100−不快</small>
     </section>
     {status.field && <InventoryCard title="畑の保管品" inventory={status.field} day={day} owner={person} />}
     <InventoryCard title={`${person} の家の保管品`} inventory={status.home} day={day} owner={person} />
     {(status.market.items.length > 0 || status.market.cash > 0) && <InventoryCard title="市場の保管品" inventory={status.market} day={day} owner={person} />}
   </div>;
+}
+
+function DecisionRow({ decision: d }: { decision: VillageRecording["decisions"][number] }) {
+  const [expanded, setExpanded] = useState(false);
+  return <><tr>
+    <td title={clock(d.hour)}>{compactClock(d.hour)}</td>
+    <td>{decisionLabels[d.chosen?.kind ?? "wait"] ?? d.chosen?.kind}
+      <button className="village-decision-expand" type="button" aria-label={`${d.eventId} の入力と原因`}
+        aria-expanded={expanded} aria-controls={`decision-${d.eventId}`} onClick={() => setExpanded((open) => !open)}>詳細</button>
+    </td>
+    <td><span>体{d.knownContext.energy} · 空{d.knownContext.hunger} · 金{d.knownContext.ownCash}</span>
+      <small>地点 {d.knownContext.siteId}</small>
+      {d.stimuli.some((s) => s.reason) && <small>結果：{d.stimuli.filter((s) => s.reason).map((s) => s.reason).join("、")}</small>}
+    </td>
+  </tr><tr id={`decision-${d.eventId}`} hidden={!expanded} className="village-decision-input"><td colSpan={3}>
+    {d.eventId} · 到達刺激 {d.stimuli.map((s) => s.kind).join("、") || "なし"}
+  </td></tr></>;
 }
 
 function atHour(recording: VillageRecording, hour: number, eventFrame: number, minuteOfHour: number) {
@@ -518,12 +553,12 @@ export default function VillageDebug() {
     (e.actors.includes(selected) ||
       ["crop_harvested", "plant_stage", "animal_born", "animal_died", "season_changed"].includes(e.kind))) ?? [],
   [recording, day, hour, visibleEventIds, selected]);
-  const decisions = useMemo(() => recording?.decisions.filter((d) => d.actorId === selected &&
-    d.hour > (day - 1) * 24 && (d.hour < hour || d.hour === hour &&
-      visibleEventIds.has(d.eventId))) ?? [], [recording, day, hour, visibleEventIds, selected]);
-  const latestObservation = useMemo(() => recording?.decisions.filter((d) => d.actorId === selected &&
-    (d.hour < hour || d.hour === hour && visibleEventIds.has(d.eventId))).at(-1),
+  const reachedDecisions = useMemo(() => recording?.decisions.filter((d) => d.actorId === selected &&
+    (d.hour < hour || d.hour === hour && visibleEventIds.has(d.eventId))) ?? [],
   [recording, hour, visibleEventIds, selected]);
+  const decisions = reachedDecisions.filter((d) => d.hour > (day - 1) * 24);
+  const displayedDecisions = decisions.length ? decisions : reachedDecisions.slice(-12);
+  const latestObservation = reachedDecisions.at(-1);
   if (error) return <main className="e1-debug"><h1>土地経済の記録を開けませんでした</h1><p role="alert">{error}</p></main>;
   if (!recording || !snapshot || !gridNow) return <main className="e1-debug"><p>90日記録を読み込んでいます…</p></main>;
   const selectedFarm = recording.fixture.landEconomy?.farms?.find((farm) => farm.ownerId === selected);
@@ -620,6 +655,12 @@ export default function VillageDebug() {
           if (actor) setSelected(actor);
         }} /></div>
         <p className="e1-legend">32ピクセル×40列×24行 · 縮尺自動 · セルをクリックで詳細 · 右端に凡例</p>
+        <section className="village-cell-inspector" aria-label="選択セルの状態">
+          <h3>選択セル {pointKey(focusCell)}</h3>
+          <p>{terrain} · {blocked ? "通行不可" : "通行可能"} · {localPlants.map((p) =>
+            `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}${p.ownerId ? ` · 所有者 ${p.ownerId} · ${p.farmId}` : ""}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
+          {localStocks.map((stock) => <p key={stock.ownerId}>穀物庫 {stock.ownerId}: {stock.quantity}単位 · 所有者 {stock.ownerId}</p>)}
+        </section>
         <section className="village-overview" aria-label="全員の状態">
           <h2>全員の状態 <small>表示時点・人物をクリックで追跡</small></h2>
           <div className="village-overview-scroll"><table className="village-overview-table">
@@ -696,29 +737,27 @@ export default function VillageDebug() {
             対処の見込み {latestObservation.response.subjectiveUpdate.anticipation.reasoning.leadHours.toFixed(1)}時間 ·
             先の寒さ {latestObservation.response.subjectiveUpdate.anticipation.reasoning.forecastCold.toFixed(1)} ·
             記憶 {latestObservation.response.subjectiveUpdate.anticipation.experiences.length}件</p>}
-          <h3>選択セル {pointKey(focusCell)}</h3>
-          <p>{terrain} · {blocked ? "通行不可" : "通行可能"} · {localPlants.map((p) =>
-            `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}${p.ownerId ? ` · 所有者 ${p.ownerId} · ${p.farmId}` : ""}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
-          {localStocks.map((stock) => <p key={stock.ownerId}>穀物庫 {stock.ownerId}: {stock.quantity}単位 · 所有者 {stock.ownerId}</p>)}
           {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") && <section aria-label="人物の最近の売買"><h3>最近の売買</h3>
-            {recording.events.filter((e) => e.kind === "surplus_sold" && e.actors.includes(selected) &&
-              (e.hour < hour || visibleEventIds.has(e.id))).slice(-6).reverse().map((e) => <p key={e.id}>
-              {clock(e.hour)} · {e.data.product === "bread" ? "パン" : e.data.product === "grain" ? "穀物" : plantNames[String(e.data.species)]} {e.data.quantity}単位 ·
-              {e.actors[0]} → {e.actors[1]} · 代金 {e.data.price}</p>)}
+            <table className="village-log-table"><thead><tr><th>時刻</th><th>品・数量</th><th>売手 → 買手</th><th>代金</th></tr></thead>
+              <tbody>{recording.events.filter((e) => e.kind === "surplus_sold" && e.actors.includes(selected) &&
+                (e.hour < hour || visibleEventIds.has(e.id))).slice(-6).reverse().map((e) => <tr key={e.id}>
+                <td>{compactClock(e.hour)}</td><td>{e.data.product === "bread" ? "パン" : e.data.product === "grain" ? "穀物" : plantNames[String(e.data.species)]} {e.data.quantity}</td>
+                <td>{e.actors[0]} → {e.actors[1]}</td><td>{e.data.price}</td>
+              </tr>)}</tbody></table>
           </section>}
-          {decisions.slice().reverse().map((d) => <div key={d.eventId} className="e1-row">
-            <b>{clock(d.hour)} · {d.chosen?.kind ?? "待機"}</b><br />
-            <small>観察地点 {d.knownContext.siteId} · 体力 {d.knownContext.energy} · 空腹 {d.knownContext.hunger} · 所持金 {d.knownContext.ownCash}</small><br />
-            {d.stimuli.some((s) => s.reason) && <><small>結果: {d.stimuli.filter((s) => s.reason)
-              .map((s) => s.reason).join("、")}</small><br /></>}
-            <small>到達刺激 {d.stimuli.map((s) => s.kind).join("、") || "なし"} · {d.eventId}</small>
-          </div>)}
-          <p>元記録: {recording.finalStateHash} · 判断 {recording.decisions.length}件 · Event {recording.events.length}件</p>
+          <section aria-label="人物の判断一覧">
+            <h3>{decisions.length ? `${day}日目の判断` : "直近の判断"}（{displayedDecisions.length}件）</h3>
+            <small>体＝体力 · 空＝空腹 · 金＝所持金</small>
+            <table className="village-log-table village-decision-table"><thead><tr><th>時刻</th><th>判断</th><th>観察・結果</th></tr></thead>
+              <tbody>{displayedDecisions.slice().reverse().map((d) => <DecisionRow key={d.eventId} decision={d} />)}</tbody>
+            </table>
+          </section>
             <h3>{day}日目の関連Event（{dayEvents.length}件）</h3>
             {dayEvents.slice().reverse().slice(0, 120).map((e) =>
               <div key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b>
                 <details className="village-event-details"><summary>{e.id} ← {e.causes.join(", ") || "起点"}</summary>
                   <code>{JSON.stringify(e.data)}</code></details></div>)}
+            <p className="village-record-source">元記録: {recording.finalStateHash} · 判断 {recording.decisions.length}件 · Event {recording.events.length}件</p>
           </section>
         </div>
       </aside>
