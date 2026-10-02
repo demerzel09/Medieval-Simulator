@@ -58,3 +58,10 @@ export const breadStorage90V1: VillageFixture = {
   ...structuredClone(localWork90V1),
   breadEconomy: { bakeHours: 2, shelfLifeDays: 3, storageCapacity: 128 },
 };
+
+/** Needs-driven body and experience-based anticipation, preserving all earlier archives. */
+export const anticipatoryNeeds90V1: VillageFixture = {
+  ...structuredClone(breadStorage90V1),
+  needs: { dayTemperature: 22, nightTemperature: 8, homeInsulation: 10,
+    comfortableTemperature: 16, initialSleepDebt: 4, initialMealHours: 18 },
+};

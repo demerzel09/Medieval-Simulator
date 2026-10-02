@@ -1,6 +1,8 @@
 import { autonomousVillageV1, type VillageFixture } from "../../fixtures/autonomous-village";
 import { ordinaryVillageModel, type VillageAttempt, type VillageContext, type VillageId, type VillageMemory,
   type VillageModel, type VillageResponse, type VillageRole, type VillageStimulus } from "../ai/autonomous-world";
+import { checkAnticipationMemory } from "../ai/anticipatory-needs";
+import { advanceNeedsBody, needsTemperature, type NeedsBody } from "./needs-body";
 import { wakeActors } from "./actor-clock";
 import { hash } from "./core";
 import { cellKey, checkGridMap, defaultVillageGrid, ecologicalVillageGrid, exploringVillageGrid,
@@ -16,7 +18,7 @@ export type VillageEvent = { id: string; hour: number; day: number; kind: string
   causes: string[]; data: Record<string, string | number> };
 type VillagePerson = { id: VillageId; role: VillageRole; nextWakeAt: number; hunger: number; cold: number;
   energy: number; cell: GridPoint; farmingSkills: Record<string, number>;
-  foragingSkill?: number; seenPlantIds?: string[];
+  foragingSkill?: number; seenPlantIds?: string[]; needs?: NeedsBody;
   memory: VillageMemory; activeProcessId?: string; receivedOrderIds: string[];
   seenBidIds: string[]; seenQuoteIds: string[]; receivedStimulusIds: string[];
   inbox: VillageStimulus[]; meals: number; fuelUsed: number };
@@ -33,7 +35,7 @@ type FoodOffer = { id: string; sellerId: VillageId; lotId: string; quantity: num
 type SaleQuote = { id: string; day: number; price: number; postedEventId: string };
 type VillageProcess = { id: string; actorId: VillageId; kind: "travel" | "forage" | "tender_food" |
   "deliver_food" | "sell_wood" | "rest" | "till_plot" | "sow_plot" | "harvest_plot" |
-  "gather_plant" | "forage_route" | "bake_bread"; lotId?: string; startedAt: number; duration: number; progress: number;
+  "gather_plant" | "forage_route" | "bake_bread" | "sleep"; lotId?: string; startedAt: number; duration: number; progress: number;
   energyPerHour: number; startEventId: string; transitId?: string; destinationId?: string;
   path?: GridPoint[]; pathIndex?: number; edgeProgress?: number; stepHours?: number;
   resource?: "food" | "wood"; quantity?: number; orderId?: string; buyerId?: VillageId;
@@ -133,6 +135,10 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   if (fixture.breadEconomy && (!fixture.spatialForaging || !fixture.grainNonperishable ||
     Object.values(fixture.breadEconomy).some((n) => !Number.isSafeInteger(n) || n < 1)))
     throw Error("invalid bread fixture");
+  if (fixture.needs && (!fixture.breadEconomy || Object.values(fixture.needs).some((n) => !Number.isSafeInteger(n)) ||
+    fixture.needs.dayTemperature < fixture.needs.nightTemperature || fixture.needs.homeInsulation < 0 ||
+    fixture.needs.initialSleepDebt < 0 || fixture.needs.initialSleepDebt > 48 || fixture.needs.initialMealHours < 0 ||
+    fixture.needs.initialMealHours >= 24)) throw Error("invalid needs fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
@@ -248,7 +254,8 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
         parentId: bag(id), ownerId: id, quantity: initialSeeds, causeEventId: "initial" };
     for (let i = 0; i < f.initialCash[id]; i++) add(`coin_${id}_${i}`, "currency", wallet(id), id);
     const initialSite = id === "F" ? "grove" : id.startsWith("B") ? `home_${id}` : "market";
-    people[id] = { id, role: roles[id], nextWakeAt: 1, hunger: 1, cold: f.woodEnabled === false ? 0 : 1, energy: f.body.initialEnergy,
+    people[id] = { ...(f.needs ? { needs: { sleepDebt: f.needs.initialSleepDebt,
+      mealHours: f.needs.initialMealHours, exposureHours: 0, sleptHours: 0 } } : {}), id, role: roles[id], nextWakeAt: 1, hunger: f.needs ? 0 : 1, cold: f.woodEnabled === false ? 0 : 1, energy: f.body.initialEnergy,
       cell: structuredClone(grid.sites[initialSite]),
       farmingSkills: id === "F" || farm ? { grain: f.landEconomy?.farmerGrainSkill ?? 1 } : {},
       ...(f.landEconomy?.exploreWildPlants && (id === "F" || f.publicForaging) ?
@@ -474,8 +481,11 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
     const event = emit(w, "bread_baked", [id], [p.startEventId, lot.causeEventId],
       { grainLotId: lot.id, storeId: lot.parentId!, lotId: breadId, quantity: 1, originPlantId: meta.originPlantId!, siteId: siteOf(w.physical, id) });
     w.physical.objects[breadId].causeEventId = event.id;
+  } else if (p.kind === "sleep") {
+    emit(w, "slept", [id], [p.startEventId], { siteId: siteOf(w.physical, id),
+      hours: p.progress, sleepDebt: w.people[id].needs!.sleepDebt, energy: w.people[id].energy });
   } else if (p.kind === "rest") {
-    w.people[id].energy = Math.min(w.fixture.body.maxEnergy, w.people[id].energy + w.fixture.restEnergyGain);
+    if (!w.fixture.needs) w.people[id].energy = Math.min(w.fixture.body.maxEnergy, w.people[id].energy + w.fixture.restEnergyGain);
     emit(w, "rested", [id], [p.startEventId], { energy: w.people[id].energy });
   } else if (p.kind === "till_plot" || p.kind === "sow_plot" || p.kind === "harvest_plot" ||
     p.kind === "gather_plant") {
@@ -921,7 +931,7 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
       price: offer.price, species: meta.species!, originPlantId: meta.originPlantId! });
     offer.purchasedEventId = event.id;
     result(w, id, a.kind, event); send(w, offer.sellerId, { kind: "result", action: "post_surplus_offer",
-      success: true, causeEventIds: [event.id] }, 0); return undefined;
+      success: true, ...(w.fixture.needs ? { saleRevenue: offer.price } : {}), causeEventIds: [event.id] }, 0); return undefined;
   }
   if (a.kind === "store_grain") {
     const lot = w.physical.objects[a.lotId], store = w.physical.objects[a.storeId], meta = w.foodLots[a.lotId];
@@ -951,7 +961,13 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     const event = emit(w, "wood_burned", [id], [decisionId, lot.causeEventId], { quantity: 1 });
     result(w, id, a.kind, event); return undefined;
   }
-  if (a.kind === "rest") return startProcess(w, id, "rest", w.fixture.workHours.rest, 0, decisionId);
+  if (a.kind === "sleep") {
+    if (!w.fixture.needs || site.startsWith("transit_") || site.startsWith("home_") && site !== `home_${id}`)
+      return "sleep place unavailable";
+    return startProcess(w, id, "sleep", 8, 0, decisionId);
+  }
+  if (a.kind === "wake_up") return "actor is not asleep";
+  if (a.kind === "rest") return startProcess(w, id, "rest", w.fixture.needs ? 2 : w.fixture.workHours.rest, 0, decisionId);
   return "unknown attempt";
 }
 function localView(w: VillageWorld, id: VillageId): VillageContext {
@@ -968,6 +984,9 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.needs ? { needs: { sleepDebt: person.needs!.sleepDebt, mealHours: person.needs!.mealHours,
+      temperature: needsTemperature(w.hour, w.fixture.needs, siteId === `home_${id}`),
+      sheltered: siteId === `home_${id}`, home: { siteId: `home_${id}`, cell: structuredClone(w.grid.sites[`home_${id}`]) } } } : {}),
     ...(w.fixture.breadEconomy ? { breadEconomy: true as const, bakingHours: w.fixture.breadEconomy.bakeHours,
       grainCarried: ownLots.filter((lot) => w.foodLots[lot.id].species === "grain" && w.foodLots[lot.id].product !== "bread")
         .reduce((n, lot) => n + lot.quantity, 0),
@@ -1072,7 +1091,7 @@ function growAndNeed(w: VillageWorld) {
     emit(w, "food_spoiled", [], [lot.causeEventId], { lotId, quantity: lot.quantity,
       ownerId: lot.ownerId!, siteId: siteOf(w.physical, lot.parentId!) });
   }
-  for (const id of ids) {
+  for (const id of w.fixture.needs ? [] : ids) {
     const p = w.people[id]; p.hunger++; if (w.fixture.woodEnabled !== false) p.cold++;
     const event = emit(w, "body_need", [id], [], { hunger: p.hunger, cold: p.cold });
     send(w, id, { kind: "body", causeEventIds: [event.id] }, 0);
@@ -1150,6 +1169,20 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
       }
       command.status = "applied";
     }
+    if (w.fixture.needs) for (const id of ids) {
+      const p = w.people[id], sheltered = siteOf(w.physical, id) === `home_${id}`;
+      const activity = p.activeProcessId ? w.processes[p.activeProcessId]?.kind : undefined;
+      const temperature = needsTemperature(w.hour, w.fixture.needs, sheltered);
+      const updated = advanceNeedsBody(p.needs!, p.cold, p.energy, w.fixture.body.maxEnergy,
+        temperature, w.fixture.needs.comfortableTemperature, activity, sheltered);
+      p.cold = updated.cold; p.energy = updated.energy;
+      if (updated.mealDue) p.hunger++;
+      const event = emit(w, "body_changed", [id], p.activeProcessId ? [w.processes[p.activeProcessId].startEventId] : [], { temperature, sheltered: sheltered ? 1 : 0,
+        sleepDebt: p.needs!.sleepDebt, cold: p.cold, hunger: p.hunger, energy: p.energy,
+        activity: activity ?? "wait", mealHours: p.needs!.mealHours });
+      if (updated.mealDue || p.cold >= 6 || p.needs!.sleepDebt >= 20)
+        send(w, id, { kind: "body", causeEventIds: [event.id] }, 0);
+    }
     progressProcesses(w);
     for (const command of w.commands) if (command.status === "queued" && command.at === w.hour)
       w.people[command.actorId].nextWakeAt = Math.min(w.people[command.actorId].nextWakeAt, w.hour);
@@ -1173,7 +1206,13 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
       if (person.activeProcessId) {
         const process = w.processes[person.activeProcessId];
         if (command) {
-          if (command.attempt.kind === "redirect_travel" && process.kind === "travel") {
+          if (w.fixture.needs && command.attempt.kind === "wake_up" && process.kind === "sleep") {
+            const event = emit(w, "sleep_interrupted", [id], [process.startEventId],
+              { commandId: command.id, hours: process.progress });
+            person.activeProcessId = undefined; delete w.processes[process.id];
+            command.status = "applied"; command.eventId = event.id;
+            result(w, id, "wake_up", event);
+          } else if (command.attempt.kind === "redirect_travel" && process.kind === "travel") {
             const submitted = emit(w, "command_submitted", [id], [process.startEventId],
               { commandId: command.id, action: command.attempt.kind });
             const reason = redirectTravel(w, id, command.attempt.siteId, submitted.id);
@@ -1190,7 +1229,7 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
             result(w, id, command.attempt.kind, rejected, false, "actor already working");
           }
         }
-        person.nextWakeAt = w.hour + Math.max(1, process.duration - process.progress);
+        person.nextWakeAt = person.activeProcessId ? w.hour + Math.max(1, process.duration - process.progress) : w.hour + 1;
         return;
       }
       const view = localView(w, id);
@@ -1302,6 +1341,9 @@ export function checkVillageWorld(w: VillageWorld) {
   }
   for (const id of ids) {
     const p = w.people[id];
+    if (p.memory.anticipation) checkAnticipationMemory(p.memory.anticipation, w.hour);
+    if (!!w.fixture.needs !== !!p.needs || p.needs && (Object.values(p.needs).some((n) => !Number.isSafeInteger(n) || n < 0) ||
+      p.needs.sleepDebt > 48 || p.needs.mealHours >= 24)) throw Error("invalid needs body");
     if (p?.id !== id || !Number.isSafeInteger(p.nextWakeAt) || p.nextWakeAt <= w.hour ||
       !Number.isSafeInteger(p.energy) || p.energy < 0 || p.energy > w.fixture.body.maxEnergy ||
       !Number.isSafeInteger(p.hunger) || p.hunger < 0 || !Number.isSafeInteger(p.cold) || p.cold < 0 ||

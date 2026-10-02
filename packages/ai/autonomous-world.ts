@@ -4,14 +4,17 @@ export type VillageId = "S" | "F" | "C" | "B1" | "B2";
 export type VillageRole = "merchant" | "farmer" | "carrier" | "woodcutter";
 export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | "observation";
   occurredAt: number; receivedAt: number; causeEventIds: string[];
-  action?: VillageAttempt["kind"]; actionDay?: number; success?: boolean; reason?: string;
+  saleRevenue?: number; action?: VillageAttempt["kind"]; actionDay?: number; success?: boolean; reason?: string;
   order?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number } };
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
+  anticipation?: import("./anticipatory-needs").AnticipationMemory;
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number;
+  needs?: { sleepDebt: number; mealHours: number; temperature: number; sheltered: boolean;
+    home: { siteId: string; cell: { x: number; y: number } }; };
   breadEconomy?: true; grainCarried?: number; bakingHours?: number;
   grainStores?: { id: string; siteId: string; grain: number; capacity: number; lots: { id: string; quantity: number }[] }[];
   publicForaging?: true; spatialForaging?: true; edibleMeals?: number;
@@ -39,6 +42,7 @@ export type VillageAttempt =
   | { kind: "sell_wood"; buyerId: VillageId } | { kind: "buy_food" }
   | { kind: "store_grain"; lotId: string; storeId: string }
   | { kind: "bake_bread"; lotId: string }
+  | { kind: "sleep" } | { kind: "wake_up" }
   | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" }
   | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string }
   | { kind: "harvest_plot"; plantId: string }
