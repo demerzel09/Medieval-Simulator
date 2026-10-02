@@ -157,7 +157,7 @@ function InventoryCard({ title, inventory, day, owner }: { title: string; invent
     <h3>{title}</h3><dl className="village-status-values">
       <div><dt>所持金</dt><dd>{inventory.cash}</dd></div>
       <div><dt>総重量 / 容量</dt><dd>{inventory.mass} / {inventory.capacity}</dd></div>
-    </dl><small>所有者 {owner} · 重量はシミュレーション単位</small>
+    </dl><small>所有者 {owner} · 重量：sim単位</small>
     {inventory.items.length ? <table className="village-inventory-table"><thead><tr><th>物品</th><th>数量</th><th>重量</th><th>状態</th></tr></thead>
       <tbody>{inventory.items.map((item) => <tr key={item.id}><td><details><summary>{itemNames[item.kind] ?? item.kind}</summary>
         <small>{item.id}<br />所有者 {item.ownerId}<br />保管先 {item.containerId}</small></details></td>
@@ -171,16 +171,16 @@ function StatusCards({ status, person, day, transport, realMealClock }: { status
     <small>状態の記録：{status.hour === 0 ? "開始時" : clock(status.hour)}</small>
     <p className="village-cash-total">現金合計（携帯＋保管） <b>{status.carried.cash + status.home.cash + status.market.cash}</b></p>
     <InventoryCard title="携帯中の所持品" inventory={status.carried} day={day} owner={person} />
-    {transport && <p aria-label="運搬負荷">歩行速度：無荷物時の{Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · 移動中の体力消費：{loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
+    {transport && <p aria-label="運搬負荷" title="歩行速度は無荷物時を100%とした比率">歩行速度 {Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · 移動消費 {loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
     <section className="village-status-card" aria-label="人物の身体ステータス"><h3>{person} の身体</h3>
       <dl className="village-status-values"><div><dt>体力</dt><dd>{status.body.energy} / {status.body.maxEnergy}</dd></div>
         <div><dt>気温</dt><dd>{status.body.temperature}℃</dd></div><div><dt>空腹</dt><dd>{status.body.hunger}</dd></div>
         <div><dt>睡眠不足</dt><dd>{status.body.sleepDebt}時間</dd></div></dl>
       <p>{status.body.sheltered ? "自宅の屋内" : "屋外"} · {realMealClock ? "食事からの経過" : "食事周期（旧記録）"} {status.body.mealHours}時間</p>
-      <div className="village-need-meter"><span>快適さ（身体）</span><b>{needs.comfort}%</b><progress aria-label="身体の快適さ" value={needs.comfort} max={100} /></div>
+      <div className="village-need-grid"><div className="village-need-meter"><span>快適さ</span><b>{needs.comfort}%</b><progress aria-label="身体の快適さ" value={needs.comfort} max={100} /></div>
       {([["不快", needs.discomfort], ["空腹の負担", needs.hunger], ["寒さの負担", needs.cold], ["疲労", needs.fatigue], ["眠気", needs.sleepiness]] as const).map(([label, value]) =>
-        <div className="village-need-meter discomfort" key={label}><span>{label}</span><b>{value}%</b><progress aria-label={label} value={value} max={100} /></div>)}
-      <small>快・不快は身体の負担の目安。不快は4項目の最大値、快適さは100−不快。</small>
+        <div className="village-need-meter discomfort" key={label}><span>{label.replace("の負担", "")}</span><b>{value}%</b><progress aria-label={label} value={value} max={100} /></div>)}</div>
+      <small title="快・不快は身体の負担の目安。不快は4項目の最大値、快適さは100−不快。">各負担0〜100% · 不快＝最大値 · 快適さ＝100−不快</small>
     </section>
     {status.field && <InventoryCard title="畑の保管品" inventory={status.field} day={day} owner={person} />}
     <InventoryCard title={`${person} の家の保管品`} inventory={status.home} day={day} owner={person} />
@@ -450,7 +450,7 @@ export default function VillageDebug() {
   const [selected, setSelected] = useState<VillageId>("F");
   const [routeTo, setRouteTo] = useState("");
   const [sideWidth, setSideWidth] = useState(() => Math.max(640, Math.min(760, window.innerWidth * .43)));
-  const [layoutWidth, setLayoutWidth] = useState(window.innerWidth - 32);
+  const [layoutWidth, setLayoutWidth] = useState(window.innerWidth - 16);
   const [resizing, setResizing] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
   const [legendWidth, setLegendWidth] = useState(360);
@@ -543,8 +543,7 @@ export default function VillageDebug() {
     Math.max(Math.abs(focusCell.x - gridNow.sites.meadow.x),
       Math.abs(focusCell.y - gridNow.sites.meadow.y)) <= 4 ? "草原" : "平地";
   return <div className="e1-debug village-debug">
-    <header className="e1-top"><div><p className="eyebrow">AUTONOMOUS VILLAGE · RECORDED LAND ECONOMY</p>
-      <h1>土地経済90日 · 生態デバッグ</h1></div><div>
+    <header className="e1-top"><div><h1>土地経済90日 · 生態デバッグ</h1></div><div>
         <label>表示する記録 <select aria-label="表示する記録" value={recordMode}
           onChange={(e) => { const url = new URL(window.location.href);
             if (e.target.value !== "learn") url.searchParams.set("wood", e.target.value);
@@ -552,23 +551,27 @@ export default function VillageDebug() {
             window.location.assign(url.href); }}>
           <option value="learn">経験学習・目的のある運搬・食事時計</option><option value="load">旧記録：収穫20・畑の保管・荷重と運搬</option><option value="home">旧記録：人物ステータス・自宅保管・食品市場</option><option value="market">旧記録：穀物売却・市場製パン・パン購入</option><option value="needs">旧記録：自宅製パン・欲求と経験</option><option value="bread">旧記録：穀物保存・パン加工</option><option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
         </select></label> <a href="/">90日ゲーム</a></div></header>
-    {recordMode === "paused" && <p className="e1-map-panel" role="note">薪の採集・売買・燃料要求は停止中です。
+    {!legacyWood && <details className="village-specification" role="note">
+      <summary>記録の条件・仕様 <span>{processedFood ? "穀物＝原料・腐敗なし / パン＝3日期限 / 薪停止" : "土地・食料・作業の条件"}</span></summary>
+    {recordMode === "paused" && <p className="e1-map-panel">薪の採集・売買・燃料要求は停止中です。
       B1・B2の薪販売収入もなくなるため、食料代の不足と市場の資金不足が起きる対照記録です。
       90日間の正常稼働を示す記録ではありません。旧記録でCが森に待機するのは食料の引渡し待ちです。</p>}
-    {recordMode === "farms" && <p className="e1-map-panel" role="note">穀物は腐敗しません。
+    {recordMode === "farms" && <p className="e1-map-panel">穀物は腐敗しません。
       F・B1・B2がそれぞれ自分の畑を耕作・播種・収穫します。薪と雇用は使いません。
       農夫3人は90日食料を確保しますが、S・Cの食料市場の資金循環は未解決です。</p>}
-    {recordMode === "wild" && <p className="e1-map-panel" role="note">全員が野草・ベリーを採集して直接食べられます。
+    {recordMode === "wild" && <p className="e1-map-panel">全員が野草・ベリーを採集して直接食べられます。
       余剰は市場で提示し、買い手が現金で購入します。採集には移動・体力と再生待ちが必要です。
       穀物は腐敗せず、薪・雇用・製パン・技能習得・転職は未導入です。</p>}
-    {recordMode === "local" && <p className="e1-map-panel" role="note">採集は植物のセルへ移動してから行い、
+    {recordMode === "local" && <p className="e1-map-panel">採集は植物のセルへ移動してから行い、
       その場で食事・休息できます。森・畑の中心へ自動では戻りません。
       作業対象がなければ生育・再生待ち、余剰の販売中は市場で買い手待ちになります。</p>}
-    {processedFood && <p className="e1-map-panel" role="note">穀物は直接食べられません。原料として扱います。
+    {processedFood && <p className="e1-map-panel">穀物は直接食べられません。原料として扱います。
       {(recordMode === "load" || recordMode === "learn") && <>播種1→収穫20、穀物1単位の重量2。袋の容量20、人物全体24。畑に収穫物を保管し、容量に収まる量を分けて運びます。荷物が重いほど歩行が遅く、体力消費が増えます。 </>}
       {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") ? <>農夫は穀物を市場で売り、代金でパンを購入します。初期の製パン技能はSだけが持ち、市場の穀物庫に買った原料を保存して加工します。</> : <>収穫後は本人の家か市場の穀物庫へ運び、腐敗せず保存します。</>}
       穀物1から2時間でパン1を作り、パンは製造日から3日で腐敗します。野草・ベリーは直接食べられます。
       {(recordMode === "needs" || (recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn")) && <> 気温・睡眠不足・場所の回復を扱い、経験から先の冷え方と移動時間を見積もります。短い休憩と睡眠は別です。</>}</p>}
+      <p>5/15/30/60分の移動表示は、1時間内の通過セルを均等に割り当てた補間です。植物と所持品は表示中のEventで更新します。</p>
+    </details>}
     <div className="e1-controls"><label>日 <input aria-label="土地経済の日" type="range" min="1" max="90" value={day}
       onChange={(e) => { setPlaying(false); setCursorMinutes((Number(e.target.value) - 1) * 1440); }} /></label>
       <button onClick={() => { setPlaying(false); setCursorMinutes(Math.max(0, cursorMinutes - 1440)); }}>−1日</button>
@@ -606,7 +609,6 @@ export default function VillageDebug() {
     <main ref={layoutRef} className={`e1-layout village-resizable-layout${resizing ? " is-resizing" : ""}`}
       style={{ gridTemplateColumns: `minmax(0, 1fr) 12px ${displayedSideWidth}px` }}>
       <section className="e1-map-panel">
-        <p className="village-map-description">保存済みのEventを順に再生します。分単位の移動は1時間内の通過セルから補間した目安です。黄色い線は計算経路、植物の色と高さは生育段階です。</p>
       <div className="village-canvas-scroll"><canvas ref={canvasRef} width={1280} height={768}
         role="img" aria-label="土地経済の1280×768ピクセル地図"
         onClick={(event) => {
@@ -617,7 +619,26 @@ export default function VillageDebug() {
           const actor = people.find((id) => pointKey(snapshot.positions[id]) === pointKey(cell));
           if (actor) setSelected(actor);
         }} /></div>
-        <p className="e1-legend">32ピクセル×40列×24行。表示は地図の幅に合わせて拡縮します。右端の「凡例」をクリック、または左へ引くと説明を開けます。</p>
+        <p className="e1-legend">32ピクセル×40列×24行 · 縮尺自動 · セルをクリックで詳細 · 右端に凡例</p>
+        <section className="village-overview" aria-label="全員の状態">
+          <h2>全員の状態 <small>表示時点・人物をクリックで追跡</small></h2>
+          <div className="village-overview-scroll"><table className="village-overview-table">
+            <thead><tr><th>人物</th><th>セル</th><th>行動</th><th>所持金</th><th>重量</th><th>体力</th><th>空腹</th><th>寒さ</th><th>睡眠不足</th></tr></thead>
+            <tbody>{people.map((id) => {
+              const status = snapshot.statuses[id];
+              return <tr key={id} className={selected === id ? "is-selected" : ""}>
+                <th scope="row"><button type="button" aria-label={`${id} の詳細を表示`} aria-pressed={selected === id}
+                  onClick={() => { setSelected(id); setFocusCell(snapshot.positions[id]); }}>{id}</button></th>
+                <td>{pointKey(snapshot.positions[id])}</td><td>{activityLabels[snapshot.activeActions[id] ?? ""] ?? "待機"}</td>
+                <td>{status?.carried.cash ?? "—"}</td><td>{status ? `${status.carried.mass}/${status.carried.capacity}` : "—"}</td>
+                <td className={status && status.body.energy < status.body.maxEnergy * .3 ? "village-value-alert" : ""}>{status ? `${status.body.energy}/${status.body.maxEnergy}` : "—"}</td>
+                <td className={status && status.body.hunger > 0 ? "village-value-alert" : ""}>{status?.body.hunger ?? "—"}</td>
+                <td>{status?.body.cold ?? snapshot.bodies[id]?.cold ?? "—"}</td>
+                <td>{status?.body.sleepDebt ?? snapshot.bodies[id]?.sleepDebt ?? "—"}</td>
+              </tr>;
+            })}</tbody>
+          </table></div>
+        </section>
       </section>
       <div role="separator" aria-label="地図と人物パネルの幅" aria-orientation="vertical"
         aria-valuemin={560} aria-valuemax={Math.max(560, Math.floor(layoutWidth - 332))}
@@ -662,7 +683,6 @@ export default function VillageDebug() {
           <h2>{selected} の判断履歴</h2>
           {selectedFarm && <p>所有する畑: {selectedFarm.id} · {selectedFarm.plotIds.length}区画 · 穀物は腐敗なし</p>}
           {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") && <p>製パン技能：{recording.fixture.foodMarket!.initialBakingSkills[selected]} · 市場で加工</p>}
-          {snapshot.statuses[selected] && <p>所持金 {snapshot.statuses[selected]!.carried.cash} · 携帯重量 {snapshot.statuses[selected]!.carried.mass}/{snapshot.statuses[selected]!.carried.capacity} · 快適さ {bodilyDiscomfort(snapshot.statuses[selected]!.body).comfort}%</p>}
           {!snapshot.statuses[selected] && latestObservation && <p>最新の本人観察（{clock(latestObservation.hour)}）:
             所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger} ·
             体力 {latestObservation.knownContext.energy} ·
@@ -696,8 +716,9 @@ export default function VillageDebug() {
           <p>元記録: {recording.finalStateHash} · 判断 {recording.decisions.length}件 · Event {recording.events.length}件</p>
             <h3>{day}日目の関連Event（{dayEvents.length}件）</h3>
             {dayEvents.slice().reverse().slice(0, 120).map((e) =>
-              <p key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b><br />
-                <small>{e.id} ← {e.causes.join(", ") || "起点"} · {JSON.stringify(e.data)}</small></p>)}
+              <div key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b>
+                <details className="village-event-details"><summary>{e.id} ← {e.causes.join(", ") || "起点"}</summary>
+                  <code>{JSON.stringify(e.data)}</code></details></div>)}
           </section>
         </div>
       </aside>

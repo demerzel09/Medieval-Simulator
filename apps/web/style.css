@@ -645,3 +645,74 @@ footer {
 .village-inventory-table small { display: block; overflow-wrap: anywhere; }
 .village-inventory-table summary { cursor: pointer; }
 .village-empty-inventory { color: #adbfac; }
+
+/* The village debugger prioritizes live values and log rows within the viewport. */
+.village-debug { display: flex; flex-direction: column; height: 100dvh; min-height: 0; font-size: 12px; line-height: 1.4; }
+.village-debug button, .village-debug select { padding: 3px 6px; border-radius: 3px; }
+.village-debug label { margin: 0; gap: 4px; }
+.village-debug p { margin-bottom: 5px; }
+.village-debug .e1-top { flex: 0 0 auto; gap: 8px; padding: 5px 8px; flex-wrap: wrap; }
+.village-debug .e1-top h1 { font-family: inherit; font-size: 17px; letter-spacing: .03em; }
+.village-debug .e1-top select { max-width: min(340px, 55vw); }
+.village-debug .e1-controls, .village-debug .e1-stats { flex: 0 0 auto; gap: 3px 8px; padding: 4px 8px; font-variant-numeric: tabular-nums; }
+.village-debug .e1-controls label { gap: 4px; }
+.village-debug .e1-controls input[type="range"] { width: min(100px, 9vw); height: 18px; padding: 0; margin: 0; }
+.village-debug .e1-stats { font-size: 11px; gap: 3px 10px; }
+.village-specification { flex: 0 0 auto; max-height: 25dvh; overflow: auto; padding: 3px 8px; border-bottom: 1px solid #425143; font-size: 11px; }
+.village-specification > summary { cursor: pointer; color: #d7bd8c; }
+.village-specification > summary span { margin-left: 10px; color: #b8c8b4; }
+.village-debug .village-specification .e1-map-panel { margin: 4px 0; padding: 4px 6px; border-radius: 2px; }
+.village-debug .village-resizable-layout { flex: 1; min-height: 0; overflow: hidden; padding: 6px 8px; align-items: stretch; grid-template-rows: minmax(0, 1fr); }
+.village-debug .village-resizable-layout > .e1-map-panel { min-height: 0; overflow: auto; padding: 5px; border-radius: 3px; }
+.village-debug .village-side { height: auto; min-height: 0; position: static; padding: 5px; border-radius: 3px; }
+.village-divider { min-height: 0; }
+.village-side-selectors { gap: 10px; }
+.village-person-location { margin: 4px 0 5px; font-size: 11px; }
+.village-inspector-panes { gap: 5px; }
+.village-inspector-pane { padding: 0 5px 5px; font-size: 12px; line-height: 1.4; border-radius: 2px; }
+.village-inspector-pane h2 { margin: 0 -5px 5px; padding: 4px 5px; font-size: 13px; }
+.village-inspector-pane h3 { margin: 6px 0 3px; font-size: 12px; }
+.village-inspector-pane .e1-row { padding: 4px 0; }
+.village-inspector-pane small { font-size: 11px; }
+.village-status-stack { gap: 5px; margin: 5px 0; }
+.village-status-card { padding: 5px 6px; border-radius: 2px; }
+.village-status-card h3 { margin: 0 0 4px; font-size: 12px; }
+.village-status-values { gap: 2px 7px; margin: 0 0 4px; }
+.village-status-values div { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; min-width: 0; padding: 2px 0; background: transparent; }
+.village-status-values dt { font-size: 10px; }
+.village-status-values dd { margin: 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.village-need-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 8px; margin-bottom: 4px; }
+.village-need-meter { gap: 1px 4px; margin: 2px 0; font-size: 11px; }
+.village-need-meter progress { height: 4px; }
+.village-inventory-table { margin-top: 4px; font-size: 11px; }
+.village-inventory-table th, .village-inventory-table td { padding: 3px 2px; }
+.village-debug .e1-legend { margin: 4px 0; font-size: 10px; }
+.village-overview { margin-top: 6px; border-top: 1px solid #425d47; }
+.village-overview h2 { margin: 4px 0; font-family: inherit; font-size: 12px; }
+.village-overview h2 small { margin-left: 6px; font-weight: normal; font-size: 10px; }
+.village-overview-scroll { max-width: 100%; overflow: auto; }
+.village-overview-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.village-overview-table th, .village-overview-table td { padding: 3px 5px; border-bottom: 1px solid #344b3b; text-align: right; }
+.village-overview-table th:first-child, .village-overview-table td:nth-child(3) { text-align: left; }
+.village-overview-table thead th { color: #aebfaa; font-weight: normal; }
+.village-overview-table button { padding: 1px 5px; min-width: 30px; font-size: 11px; }
+.village-overview-table .is-selected { background: #344b36; }
+.village-overview-table .is-selected button { border-color: #e8ca8d; color: #fff0c5; }
+.village-value-alert { color: #f1b986; font-weight: bold; }
+.village-event-details { color: #a7b0a2; font-size: 10px; }
+.village-event-details summary { cursor: pointer; overflow-wrap: anywhere; }
+.village-event-details code { display: block; overflow-wrap: anywhere; margin: 3px 0; color: #c4d0bf; font-size: 11px; }
+.village-legend-drawer { top: 100px; bottom: 8px; }
+.village-legend-content { padding: 8px 10px; }
+.village-legend-content h2 { font-size: 15px; margin-bottom: 6px; }
+.village-legend-content h3 { font-size: 12px; margin: 10px 0 5px; }
+.village-legend-content p { font-size: 11px; }
+.village-legend-list { gap: 5px; margin-bottom: 10px; }
+.village-legend-list li { font-size: 11px; gap: 6px; }
+
+@media (max-width: 960px) {
+  .village-debug { height: auto; min-height: 100dvh; }
+  .village-debug .village-resizable-layout { flex: none; overflow: visible; padding: 6px; grid-template-rows: auto; gap: 6px; }
+  .village-debug .village-side { height: max(640px, calc(100dvh - 130px)); }
+  .village-legend-drawer { top: 60px; }
+}

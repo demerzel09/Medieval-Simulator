@@ -298,6 +298,25 @@ test("v17 default shows actual time since eating and matched personal experience
   const last = r.decisions.filter((d: { actorId: string; hour: number }) => d.actorId === "F" && d.hour <= 240).at(-1);
   await expect(page.getByRole("region", { name: "人物の身体ステータス" })).toContainText(`食事からの経過 ${status.body.mealHours}時間`);
   await expect(page.getByRole("region", { name: "経験からの見込み" })).toContainText(`対応した結果 ${last.response.subjectiveUpdate.anticipation.learning.totals.matched}件`);
+  await page.setViewportSize({ width: 1280, height: 768 });
+  const overview = page.getByRole("region", { name: "全員の状態", exact: true });
+  await expect(overview.locator("tbody tr")).toHaveCount(5);
+  await overview.getByRole("button", { name: "C の詳細を表示" }).click();
+  await expect(page.getByLabel("土地経済の人物")).toHaveValue("C");
+  await expect(page.getByRole("heading", { name: "C のステータス" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "C の判断履歴" })).toBeVisible();
+  await overview.getByRole("button", { name: "F の詳細を表示" }).click();
+  const bounds = await page.getByRole("region", { name: "人物の身体ステータス" }).boundingBox();
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(768);
+  expect((await overview.boundingBox())!.y + (await overview.boundingBox())!.height).toBeLessThanOrEqual(768);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(768);
+  const specification = page.getByRole("note");
+  await expect(specification).not.toHaveAttribute("open");
+  await specification.locator("summary").click();
+  await expect(specification).toHaveAttribute("open");
+  await expect(specification.locator("p").filter({ hasText: "穀物は直接食べられません" })).toBeVisible();
+  await specification.locator("summary").click();
+  await page.screenshot({ path: "/tmp/medieval-village-dense.png", fullPage: true });
   await page.screenshot({ path: "/tmp/medieval-v17-experience.png", fullPage: true });
   await expect(page.getByRole("region", { name: "人物の行動ログ", exact: true })).toContainText("判断理由");
 
