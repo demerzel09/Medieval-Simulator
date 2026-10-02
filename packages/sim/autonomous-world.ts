@@ -18,6 +18,7 @@ import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, totalMass
 export type VillageEvent = { id: string; hour: number; day: number; kind: string; actors: string[];
   causes: string[]; data: Record<string, string | number> };
 type VillagePerson = { id: VillageId; role: VillageRole; nextWakeAt: number; hunger: number; cold: number;
+  bakingSkills?: { bread: number };
   energy: number; cell: GridPoint; farmingSkills: Record<string, number>;
   foragingSkill?: number; seenPlantIds?: string[]; needs?: NeedsBody;
   memory: VillageMemory; activeProcessId?: string; receivedOrderIds: string[];
@@ -148,6 +149,10 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     fixture.needs.initialSleepDebt < 0 || fixture.needs.initialSleepDebt > 48 || fixture.needs.initialMealHours < 0 ||
     fixture.needs.initialMealHours >= 24)) throw Error("invalid needs fixture");
   if (fixture.predictionLedger && !fixture.needs) throw Error("prediction ledger requires needs fixture");
+  if (fixture.foodMarket && (!fixture.predictionLedger ||
+    ids.some((id) => !Number.isSafeInteger(fixture.foodMarket!.initialBakingSkills[id]) || fixture.foodMarket!.initialBakingSkills[id] < 0) ||
+    [fixture.foodMarket.grainBatchQuantity, fixture.foodMarket.grainBatchPrice, fixture.foodMarket.breadPrice]
+      .some((n) => !Number.isSafeInteger(n) || n < 1))) throw Error("invalid food market fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
@@ -226,6 +231,9 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   };
   if (f.breadEconomy) types.granary = { id: "granary", tags: ["store"], unitMass: 0,
     stackable: false, ownable: true, container: { acceptsTags: ["food"], maxContentsMass: f.breadEconomy.storageCapacity } };
+  // In this coarse mass unit, coins are negligible. Their count/ownership remains conserved.
+  // Earlier fixtures retain their original coin mass for exact replay.
+  if (f.foodMarket) types.currency.unitMass = 0;
   const objects: PhysicalState["objects"] = {};
   const add = (id: string, typeId: string, parentId: string | null, ownerId?: string) => {
     objects[id] = { id, typeId, parentId, ownerId, quantity: 1, causeEventId: "initial" };
@@ -266,6 +274,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     people[id] = { ...(f.needs ? { needs: { sleepDebt: f.needs.initialSleepDebt,
       mealHours: f.needs.initialMealHours, exposureHours: 0, sleptHours: 0 } } : {}), id, role: roles[id], nextWakeAt: 1, hunger: f.needs ? 0 : 1, cold: f.woodEnabled === false ? 0 : 1, energy: f.body.initialEnergy,
       cell: structuredClone(grid.sites[initialSite]),
+      ...(f.foodMarket ? { bakingSkills: { bread: f.foodMarket.initialBakingSkills[id] } } : {}),
       farmingSkills: id === "F" || farm ? { grain: f.landEconomy?.farmerGrainSkill ?? 1 } : {},
       ...(f.landEconomy?.exploreWildPlants && (id === "F" || f.publicForaging) ?
         { foragingSkill: 4, seenPlantIds: [] } : {}),
@@ -481,6 +490,8 @@ function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
     bid.filledEventId = event.id;
     send(w, buyerId, { kind: "result", action: "sell_wood", success: true, causeEventIds: [event.id] }, 0);
   } else if (p.kind === "bake_bread") {
+    if (w.fixture.foodMarket && (w.people[id].bakingSkills!.bread < 1 || !atSite(w, id, "market")))
+      return "market baking skill or workplace unavailable";
     const lot = w.physical.objects[p.lotId!], meta = w.foodLots[p.lotId!];
     if (!lot || !meta || meta.species !== "grain" || meta.product === "bread" ||
       lot.ownerId !== id || siteOf(w.physical, lot.id) !== siteOf(w.physical, id)) return "grain unavailable";
@@ -917,7 +928,8 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
       return "surplus offer unavailable";
     const offerId = uid(w, "food_offer");
     const event = emit(w, "surplus_offered", [id], [decisionId, lot.causeEventId],
-      { offerId, lotId: lot.id, quantity: a.quantity, price: a.price, species: meta.species! });
+      { offerId, lotId: lot.id, quantity: a.quantity, price: a.price, species: meta.species!,
+        ...(w.fixture.foodMarket ? { product: meta.product ?? (meta.species === "grain" ? "grain" : meta.species!) } : {}) });
     w.foodOffers![offerId] = { id: offerId, sellerId: id, lotId: lot.id,
       quantity: a.quantity, price: a.price, postedEventId: event.id };
     result(w, id, a.kind, event); return undefined;
@@ -933,20 +945,26 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     if (coins.length !== offer.price) return "buyer lacks cash";
     const meta = { ...w.foodLots[lot.id] }, unitId = uid(w, "food");
     const transferred = lot.quantity > offer.quantity ? unitId : lot.id;
+    const ingredientStore = w.fixture.foodMarket && meta.product !== "bread" && meta.species === "grain" &&
+      w.people[id].bakingSkills!.bread > 0 ? w.physical.objects[`granary_market_${id}`] : undefined;
     const reason = tx(w, id, [offer.sellerId], (t) => {
       const foodId = lot.quantity > offer.quantity ? unitId : lot.id;
       if (foodId === unitId) t.split(lot.id, unitId, offer.quantity, decisionId);
-      t.move(foodId, bag(id)); t.changeOwner(foodId, id);
+      t.move(foodId, ingredientStore?.id ?? bag(id)); t.changeOwner(foodId, id);
       moveCoins(t, coins, wallet(offer.sellerId), offer.sellerId);
     });
     if (reason) return reason;
     w.foodLots[transferred] = meta;
     const event = emit(w, "surplus_sold", [offer.sellerId, id], [decisionId, offer.postedEventId,
       lot.causeEventId], { offerId: offer.id, lotId: transferred, quantity: offer.quantity,
-      price: offer.price, species: meta.species!, originPlantId: meta.originPlantId! });
+      price: offer.price, species: meta.species!, originPlantId: meta.originPlantId!,
+      ...(w.fixture.foodMarket ? { product: meta.product ?? (meta.species === "grain" ? "grain" : meta.species!) } : {}) });
     offer.purchasedEventId = event.id;
+    if (ingredientStore) emit(w, "grain_stored", [id], [event.id],
+      { lotId: transferred, storeId: ingredientStore.id, siteId: site, quantity: offer.quantity });
     result(w, id, a.kind, event); send(w, offer.sellerId, { kind: "result", action: "post_surplus_offer",
-      success: true, ...(w.fixture.needs ? { saleRevenue: offer.price } : {}), causeEventIds: [event.id] }, 0); return undefined;
+      success: true, ...(w.fixture.needs ? { saleRevenue: offer.price } : {}), causeEventIds: [event.id] },
+      w.fixture.foodMarket ? 1 : 0); return undefined;
   }
   if (a.kind === "store_grain") {
     const lot = w.physical.objects[a.lotId], store = w.physical.objects[a.storeId], meta = w.foodLots[a.lotId];
@@ -960,6 +978,8 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     result(w, id, a.kind, event); return undefined;
   }
   if (a.kind === "bake_bread") {
+    if (w.fixture.foodMarket && (w.people[id].bakingSkills!.bread < 1 || site !== "market"))
+      return "market baking skill or workplace unavailable";
     const lot = w.physical.objects[a.lotId], meta = w.foodLots[a.lotId];
     if (!w.fixture.breadEconomy || !lot || !meta || meta.species !== "grain" || meta.product === "bread" ||
       lot.ownerId !== id || siteOf(w.physical, lot.id) !== site ||
@@ -999,6 +1019,9 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.foodMarket ? { foodMarket: { bakingSkill: person.bakingSkills!.bread,
+      grainBatchQuantity: w.fixture.foodMarket.grainBatchQuantity, grainBatchPrice: w.fixture.foodMarket.grainBatchPrice,
+      breadPrice: w.fixture.foodMarket.breadPrice } } : {}),
     ...(w.fixture.predictionLedger ? { predictionLedger: true as const } : {}),
     ...(w.fixture.needs ? { needs: { sleepDebt: person.needs!.sleepDebt, mealHours: person.needs!.mealHours,
       temperature: needsTemperature(w.hour, w.fixture.needs, siteId === `home_${id}`),
@@ -1366,6 +1389,8 @@ export function checkVillageWorld(w: VillageWorld) {
     const p = w.people[id];
     if (p.memory.anticipation) checkAnticipationMemory(p.memory.anticipation, w.hour);
     if (p.memory.anticipation?.predictions) checkPredictionLedger(p.memory.anticipation.predictions, w.hour);
+    if (!!w.fixture.foodMarket !== !!p.bakingSkills || p.bakingSkills &&
+      (!Number.isSafeInteger(p.bakingSkills.bread) || p.bakingSkills.bread < 0)) throw Error("invalid baking skill");
     if (!!w.fixture.needs !== !!p.needs || p.needs && (Object.values(p.needs).some((n) => !Number.isSafeInteger(n) || n < 0) ||
       p.needs.sleepDebt > 48 || p.needs.mealHours >= 24)) throw Error("invalid needs body");
     if (p?.id !== id || !Number.isSafeInteger(p.nextWakeAt) || p.nextWakeAt <= w.hour ||

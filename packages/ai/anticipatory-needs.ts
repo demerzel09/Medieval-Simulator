@@ -1,4 +1,5 @@
 import type { VillageAttempt, VillageContext, VillageMemory, VillageModel } from "./autonomous-world";
+import { foodMarketChoice } from "./food-market";
 
 export type RunningEstimate = { count: number; mean: number; m2: number };
 type Observation = { at: number; site: string; cold: number; energy: number; debt: number;
@@ -11,6 +12,7 @@ export type AnticipationMemory = {
   trip?: { at: number; from: string; to: string };
   goal?: { kind: "sleep" | "store" | "bake" | "sell"; siteId: string; startedAt: number };
   sales: { visits: number; sales: number; failures: number; retryAt: number; offeredAt?: number };
+  foodMarket?: { visitStartedAt?: number; retryAt: number };
   reasoning?: { reason: string; evidenceIds: string[]; leadHours: number; forecastCold: number;
     forecastDebt: number; uncertainty: number; candidates: { goal: string; cold: number; debt: number; cost: number }[] };
 };
@@ -163,7 +165,11 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     return travel(home.siteId);
   }
   if (c.energy < 6) return choose({ kind: "rest" }, "recover activity fatigue without erasing sleep debt");
-  if ((c.grainCarried ?? 0) > 0) {
+  if (c.foodMarket) {
+    const market = foodMarketChoice(c, m, input.actorId, input.at);
+    if (market) return choose(market.attempt, market.reason);
+  }
+  if (!c.foodMarket && (c.grainCarried ?? 0) > 0) {
     const lot = c.ownFoodLots!.find((lot) => lot.product === "grain")!;
     const stores = c.grainStores!.filter((store) => store.capacity - store.grain >= lot.quantity);
     const store = stores.find((store) => store.siteId === home.siteId) ?? stores[0];
@@ -174,7 +180,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     return choose({ kind: "store_grain", lotId: lot.id, storeId: store.id }, "store physically carried raw grain");
   }
   const raw = c.grainStores!.reduce((n, s) => n + s.grain, 0);
-  if (meals < 2 && raw > 0 && (c.hunger > 0 || body.mealHours >= 12 || meals === 0)) {
+  if (!c.foodMarket && meals < 2 && raw > 0 && (c.hunger > 0 || body.mealHours >= 12 || meals === 0)) {
     const store = c.grainStores!.find((store) => store.siteId === c.siteId && store.grain > 0) ??
       c.grainStores!.find((store) => store.grain > 0)!;
     m.goal = { kind: "bake", siteId: store.siteId, startedAt: m.goal?.startedAt ?? input.at };
@@ -192,7 +198,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       .sort((a, b) => Math.max(Math.abs(a.cell!.x - c.cell.x), Math.abs(a.cell!.y - c.cell.y)) -
         Math.max(Math.abs(b.cell!.x - c.cell.x), Math.abs(b.cell!.y - c.cell.y)) || a.id.localeCompare(b.id))[0];
     const ripe = c.visiblePlants.find((p) => p.ownerId === input.actorId && p.species === "grain" && p.stage === "ripe");
-    if (ripe && raw < 12) return choose(c.siteId === ripe.siteId ? { kind: "harvest_plot", plantId: ripe.id } :
+    if (!c.foodMarket && ripe && raw < 12) return choose(c.siteId === ripe.siteId ? { kind: "harvest_plot", plantId: ripe.id } :
       { kind: "travel", siteId: ripe.siteId! }, "obtain raw material for impending food need");
     if (wild) return choose(c.siteId === wild.siteId ? { kind: "gather_plant", plantId: wild.id,
       quantity: wild.species === "herb" ? 2 : Math.min(3, wild.available) } :
@@ -215,7 +221,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
         (meals - 2) * lot.mealQuantity), price: 1 }, "offer only food above personal reserve");
     }
   }
-  if (c.ownFarm && raw + meals < 12) {
+  if (c.ownFarm && (c.foodMarket ? c.ownCash < 4 && (c.grainCarried ?? 0) === 0 : raw + meals < 12)) {
     const crops = c.visiblePlants.filter((p) => p.ownerId === input.actorId && p.farmId === c.ownFarm!.id);
     const target = crops.find((p) => p.stage === "ripe") ?? crops.find((p) => p.stage === "tilled") ?? crops.find((p) => p.stage === "bare");
     if (target) return choose(c.siteId !== target.siteId ? { kind: "travel", siteId: target.siteId! } :

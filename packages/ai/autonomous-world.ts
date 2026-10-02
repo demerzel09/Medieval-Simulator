@@ -14,6 +14,7 @@ export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageS
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
   predictionLedger?: true;
+  foodMarket?: { bakingSkill: number; grainBatchQuantity: number; grainBatchPrice: number; breadPrice: number };
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number;

@@ -1,5 +1,32 @@
 import { expect, test } from "@playwright/test";
 
+test("the default food market records farmers selling grain and purchasing bread", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("market", { timeout: 30000 });
+  await expect(page.getByRole("note")).toContainText("農夫は穀物を市場で売り");
+  await page.getByLabel("土地経済の日").fill("10");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  for (const id of ["F", "B1", "B2"]) {
+    await page.getByLabel("土地経済の人物").selectOption(id);
+    await expect(page.getByText("製パン技能：0 · 市場で加工")).toBeVisible();
+    const sales = page.getByRole("region", { name: "人物の最近の売買" });
+    await expect(sales).toContainText("穀物");
+    await expect(sales).toContainText("パン");
+    await expect(sales).toContainText(`S → ${id}`);
+  }
+  await page.getByLabel("土地経済の人物").selectOption("S");
+  await expect(page.getByText("製パン技能：1 · 市場で加工")).toBeVisible();
+  await page.getByLabel("土地経済の日").fill("90");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
+  for (const label of ["穀物売買", "パン売買"]) {
+    await expect(page.locator(".e1-stats span").filter({ hasText: label }).locator("b")).toHaveText(/^[1-9]\d*件$/);
+  }
+});
+
 test("land economy recording opens from the browser route and shows timed person history", async ({ page }) => {
   await page.goto("/?village=land-economy&wood=legacy");
   await expect(page.getByRole("heading", { name: "土地経済90日 · 生態デバッグ" })).toBeVisible();
@@ -173,8 +200,8 @@ test("the previous scene stores raw grain and feeds processed bread", async ({ p
 });
 
 
-test("the default scene exposes needs and the basis of anticipatory decisions", async ({ page }) => {
-  await page.goto("/?village=land-economy");
+test("the previous needs scene exposes the basis of anticipatory decisions", async ({ page }) => {
+  await page.goto("/?village=land-economy&wood=needs");
   await expect(page.getByLabel("表示する記録")).toHaveValue("needs");
   await expect(page.getByRole("note")).toContainText("短い休憩と睡眠は別");
   await page.getByLabel("土地経済の時刻").fill("18");

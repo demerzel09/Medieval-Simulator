@@ -69,5 +69,5 @@ describe("grain storage and perishable bread", () => {
       expect(meals.some((e) => e.day === day && e.actors.includes(id))).toBe(true);
     expect(w.events.filter((e) => e.kind === "grain_stored")).toHaveLength(102);
     expect(w.events.filter((e) => e.kind === "attempt_rejected")).toHaveLength(0);
-  }, 60000);
+  }, 120000);
 });

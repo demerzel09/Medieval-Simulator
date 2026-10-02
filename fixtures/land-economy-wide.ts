@@ -70,3 +70,10 @@ export const anticipatoryNeeds90V1: VillageFixture = {
 export const predictionLedger90V1: VillageFixture = {
   ...structuredClone(anticipatoryNeeds90V1), predictionLedger: true,
 };
+
+/** Farmers sell raw grain; initially S alone has the skill to bake at the market. */
+export const foodMarket90V1: VillageFixture = {
+  ...structuredClone(predictionLedger90V1),
+  foodMarket: { initialBakingSkills: { S: 1, F: 0, C: 0, B1: 0, B2: 0 },
+    grainBatchQuantity: 5, grainBatchPrice: 2, breadPrice: 1 },
+};
