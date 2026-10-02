@@ -16,6 +16,7 @@ export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageS
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
   experienceLearning?: true;
+  foodJourneys?: true;
   carriedInventory?: { id: string; kind: string; quantity: number; mass: number; edible: boolean; expiresDay?: number }[];
   predictionLedger?: true;
   bulkTransport?: import("../sim/load-movement").LoadTransport & { bagFreeMass: number; plantingReserve: number; maxEnergy: number };

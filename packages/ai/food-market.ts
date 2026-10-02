@@ -1,28 +1,54 @@
 import { forecastCold, type AnticipationMemory } from "./anticipatory-needs";
-import type { VillageAttempt, VillageContext } from "./autonomous-world";
+import type { VillageAttempt, VillageContext, VillageStimulus } from "./autonomous-world";
 import { actionObservation, effortForecast } from "./action-learning";
 
 type Choice = { attempt?: VillageAttempt; reason: string };
+
+export function beginFoodMarketVisit(m: AnticipationMemory, c: VillageContext, at: number, purpose: "grain-sale" | "food-buy") {
+  const state = m.foodMarket ??= { retryAt: 0 };
+  state.visit ??= { purpose, startedAt: at, fulfilled: false };
+  if (c.siteId === "market") state.visit.arrivedAt ??= at;
+}
+function endVisit(m: AnticipationMemory, at: number) {
+  const state = m.foodMarket!;
+  if (!state.visit?.fulfilled) {
+    state.failures = Math.min(4, (state.failures ?? 0) + 1);
+    state.retryAt = at + 24 * 2 ** (state.failures - 1);
+  } else { state.failures = 0; state.retryAt = at; }
+  delete state.visit; delete state.visitStartedAt;
+}
+/** Observe actual arrival/departure and delivered transactions, even when shelter interrupts trading. */
+export function observeFoodMarketVisit(c: VillageContext, m: AnticipationMemory, stimuli: VillageStimulus[], at: number) {
+  const state = m.foodMarket;
+  if (!state?.visit) return;
+  for (const s of stimuli) if (s.receivedAt <= at && s.occurredAt <= at && s.success && (
+    state.visit.purpose === "grain-sale" && s.saleRevenue !== undefined && s.occurredAt >= state.visit.startedAt ||
+    state.visit.purpose === "food-buy" && s.action === "buy_surplus" && s.occurredAt >= state.visit.startedAt)) state.visit.fulfilled = true;
+  if (c.siteId === "market") state.visit.arrivedAt ??= at;
+  else if (state.visit.arrivedAt !== undefined) endVisit(m, at);
+}
 /** Initial food trade policy. It uses own stock and delivered local offers; no synthetic buyers or income. */
 export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actorId: string, at: number): Choice | undefined {
   const cfg = c.foodMarket!;
-  if (c.bulkTransport && c.siteId !== "market") delete m.foodMarket?.visitStartedAt;
+  if (c.bulkTransport && (!c.foodJourneys || cfg.bakingSkill > 0) && c.siteId !== "market") delete m.foodMarket?.visitStartedAt;
   const state = m.foodMarket ??= { retryAt: 0 };
   const meals = c.edibleMeals ?? 0;
-  const market = (reason: string): Choice => {
+  const market = (reason: string, purpose?: "grain-sale" | "food-buy"): Choice => {
+    if (c.foodJourneys && purpose && c.siteId === "market") beginFoodMarketVisit(m, c, at, purpose);
     if (!c.bulkTransport) state.visitStartedAt ??= at;
     return { attempt: c.siteId === "market" ? undefined : { kind: "travel", siteId: "market" }, reason };
   };
   const rawStored = c.grainStores!.reduce((n, store) => n + store.grain, 0);
   // Sowing stock may remain safely in storage; it need not accompany every trading journey.
-  const reserve = Math.max(0, (c.bulkTransport?.plantingReserve ?? 0) - (c.experienceLearning ? rawStored : 0));
+  const reserve = Math.max(c.foodJourneys && m.cropPlan ? 1 : 0, (c.bulkTransport?.plantingReserve ?? 0) - (c.experienceLearning ? rawStored : 0));
   const rawCarried = c.grainCarried ?? 0;
   const rawLots = c.ownFoodLots!.filter((lot) => lot.product === "grain" && lot.quantity > 0);
   const rawLot = rawCarried > reserve ? (c.bulkTransport ? rawLots.sort((a, b) => b.quantity - a.quantity || a.id.localeCompare(b.id))[0] : rawLots[0]) : undefined;
   const edibleOffer = c.visibleFoodOffers?.filter((o) => o.sellerId !== actorId && o.product !== "grain" &&
     o.price <= c.ownCash).sort((a, b) => a.price - b.price || a.id.localeCompare(b.id))[0];
   if (edibleOffer && meals < 2 && cfg.bakingSkill === 0) {
-    delete state.visitStartedAt;
+    if (c.foodJourneys) beginFoodMarketVisit(m, c, at, "food-buy");
+    else delete state.visitStartedAt;
     return { attempt: { kind: "buy_surplus", offerId: edibleOffer.id }, reason: "buy edible food with earned cash" };
   }
   if (cfg.bakingSkill > 0) {
@@ -89,9 +115,11 @@ export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actor
     }
   }
   if (rawLot) {
+    if (c.foodJourneys && (at < state.retryAt || c.ownCash >= 8)) return undefined;
     if (c.experienceLearning && rawLot.offered && at < state.retryAt) return undefined;
     if (rawLot.offered && meals === 0 && c.hunger > 0) return undefined;
-    if (c.siteId !== "market") return market("carry harvested grain to sell for edible food");
+    if (c.siteId !== "market") return market("carry harvested grain to sell for edible food", "grain-sale");
+    if (c.foodJourneys) beginFoodMarketVisit(m, c, at, "grain-sale");
     if (!rawLot.offered) {
       const quantity = Math.min(cfg.grainBatchQuantity, rawLot.quantity, rawCarried - reserve);
       return { attempt: { kind: "post_surplus_offer", lotId: rawLot.id, quantity,
@@ -99,19 +127,22 @@ export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actor
         reason: "offer inedible grain to an ingredient buyer" };
     }
     if (c.experienceLearning) {
-      state.visitStartedAt ??= at;
-      if (at - state.visitStartedAt >= 6) {
-        state.retryAt = at + 24; delete state.visitStartedAt;
+      if (!c.foodJourneys) state.visitStartedAt ??= at;
+      if (at - (c.foodJourneys ? state.visit!.arrivedAt! : state.visitStartedAt!) >= 6) {
+        if (c.foodJourneys) endVisit(m, at);
+        else { state.retryAt = at + 24; delete state.visitStartedAt; }
         return undefined;
       }
     }
     return { reason: "wait for an actual grain buyer; retain ownership until sale" };
   }
   if (meals < 2 && c.ownCash >= cfg.breadPrice && at >= state.retryAt) {
-    if (c.siteId !== "market") return market("visit market to obtain edible food instead of eating raw grain");
-    state.visitStartedAt ??= at;
-    if (at - state.visitStartedAt < 6) return { reason: "wait for an actual edible-food offer" };
-    state.retryAt = at + 24; delete state.visitStartedAt;
+    if (c.siteId !== "market") return market("visit market to obtain edible food instead of eating raw grain", "food-buy");
+    if (c.foodJourneys) beginFoodMarketVisit(m, c, at, "food-buy");
+    else state.visitStartedAt ??= at;
+    if (at - (c.foodJourneys ? state.visit!.arrivedAt! : state.visitStartedAt!) < 6) return { reason: "wait for an actual edible-food offer" };
+    if (c.foodJourneys) endVisit(m, at);
+    else { state.retryAt = at + 24; delete state.visitStartedAt; }
     return undefined; // Failed visit: gather food or work, then reconsider after new information/time.
   }
   delete state.visitStartedAt;

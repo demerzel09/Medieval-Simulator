@@ -285,9 +285,36 @@ test("v16 grain comparison shows load-dependent walking and actual field invento
   await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("8 / 24");
 });
 
-test("v17 default shows actual time since eating and matched personal experience", async ({ page }) => {
+test("v18 default shows F's real grain sale, bread purchase and cultivation purpose", async ({ page }) => {
   test.setTimeout(120000);
   await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("journey", { timeout: 30000 });
+  await expect(page.getByRole("region", { name: "経験からの見込み" })).toBeVisible();
+  const r = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-food-journeys-90.v2.json.gz")).toString());
+  const jump = async (hour: number) => {
+    await page.getByLabel("土地経済の日").fill(String(Math.floor((hour - 1) / 24) + 1));
+    await page.getByLabel("土地経済の時刻").fill(String((hour - 1) % 24 + 1));
+    await page.getByLabel("土地経済の分").fill("60");
+  };
+  const trades = r.events.filter((e: VillageEvent) => e.kind === "surplus_sold");
+  const grain = trades.find((e: VillageEvent) => e.data.product === "grain" && e.actors[0] === "F");
+  const bread = trades.find((e: VillageEvent) => e.data.product === "bread" && e.actors[1] === "F");
+  await jump(grain.hour);
+  await expect(page.getByRole("region", { name: "人物の最近の売買" })).toContainText("F → S");
+  await expect(page.getByRole("region", { name: "人物の最近の売買" })).toContainText("穀物");
+  await jump(bread.hour);
+  await expect(page.getByRole("region", { name: "人物の最近の売買" })).toContainText("S → F");
+  await expect(page.getByRole("region", { name: "人物の最近の売買" })).toContainText("パン");
+  const loading = r.decisions.find((d: { actorId: string; response: { subjectiveUpdate: { anticipation: { reasoning: { reason: string } } } } }) =>
+    d.actorId === "F" && d.response.subjectiveUpdate.anticipation.reasoning.reason === "load one grain for selected cultivated crop");
+  await jump(loading.hour);
+  await expect(page.getByRole("region", { name: "人物の行動ログ", exact: true })).toContainText("農作業の目的");
+  await page.screenshot({ path: "/tmp/medieval-village-food-journeys.png", fullPage: true });
+});
+
+test("v17 comparison shows actual time since eating and matched personal experience", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto("/?village=land-economy&wood=learn");
   await expect(page.getByLabel("表示する記録")).toHaveValue("learn", { timeout: 30000 });
   await expect(page.getByRole("region", { name: "経験からの見込み" })).toBeVisible();
   await page.getByLabel("土地経済の日").fill("10");

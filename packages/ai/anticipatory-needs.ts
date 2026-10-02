@@ -1,6 +1,7 @@
 import { loadMovement, travelExperienceKey } from "../sim/load-movement";
 import type { VillageAttempt, VillageContext, VillageMemory, VillageModel } from "./autonomous-world";
-import { foodMarketChoice } from "./food-market";
+import { beginFoodMarketVisit, foodMarketChoice, observeFoodMarketVisit } from "./food-market";
+import { cultivationChoice, localFoodTransaction } from "./food-journeys";
 import { actionObservation, effortForecast } from "./action-learning";
 import { checkForagingMemory, forageDestination, rememberForaging, type ForagingMemory } from "./foraging-memory";
 
@@ -16,8 +17,10 @@ export type AnticipationMemory = {
   coldRates: Record<string, RunningEstimate>; temperatures: Record<string, RunningEstimate>; sleepRecovery: Record<string, RunningEstimate>; travelTimes: Record<string, RunningEstimate>;
   trip?: { at: number; from: string; to: string };
   goal?: { kind: "sleep" | "store" | "bake" | "sell" | "forage"; siteId: string; startedAt: number };
+  cropPlan?: { plantId: string; siteId: string; cell: { x: number; y: number }; stage: "bare" | "tilled"; observedAt: number };
   sales: { visits: number; sales: number; failures: number; retryAt: number; offeredAt?: number };
-  foodMarket?: { visitStartedAt?: number; retryAt: number };
+  foodMarket?: { visitStartedAt?: number; retryAt: number; failures?: number;
+    visit?: { purpose: "grain-sale" | "food-buy"; startedAt: number; arrivedAt?: number; fulfilled: boolean } };
   reasoning?: { reason: string; evidenceIds: string[]; leadHours: number; forecastCold: number;
     forecastDebt: number; uncertainty: number; candidates: { goal: string; cold: number; debt: number; cost: number }[] };
 };
@@ -92,7 +95,7 @@ function learn(m: AnticipationMemory, c: VillageContext, at: number, evidenceIds
   }
   m.last = current;
 }
-function travelEstimate(m: AnticipationMemory, c: VillageContext, siteId: string, cell: { x: number; y: number }) {
+export function travelEstimate(m: AnticipationMemory, c: VillageContext, siteId: string, cell: { x: number; y: number }) {
   if (siteId === c.siteId) return { hours: 0, margin: 0 };
   const estimate = m.travelTimes[travelExperienceKey(c.siteId, siteId, c.carriedMass, !!c.bulkTransport)];
   const distance = Math.max(Math.abs(c.cell.x - cell.x), Math.abs(c.cell.y - cell.y));
@@ -105,6 +108,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
   const c = input.knownContext, memory: VillageMemory = structuredClone(input.subjectiveState);
   if (!c.needs) throw Error("anticipatory personality requires a needs context");
   const m = memory.anticipation ??= freshMemory();
+  if (c.foodJourneys) observeFoodMarketVisit(c, m, input.stimuli, input.at);
   if (c.experienceLearning) rememberForaging(m.foraging ??= { places: {} }, c, input.at);
   if (memory.day !== c.day) { memory.day = c.day; memory.done = []; }
   const evidenceIds = input.stimuli.flatMap((s) => s.causeEventIds);
@@ -112,6 +116,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
   for (const stimulus of input.stimuli) {
     if (c.experienceLearning && stimulus.action === "gather_plant" && stimulus.experience &&
       ["completed", "failed", "rejected"].includes(stimulus.experience.phase) && m.goal?.kind === "forage") delete m.goal;
+    if (c.foodJourneys && stimulus.action === "sow_plot" && stimulus.kind === "result") delete m.cropPlan;
     if (stimulus.saleRevenue !== undefined) {
       m.sales.sales++; m.sales.failures = 0; m.sales.retryAt = input.at; delete m.sales.offeredAt;
       if (m.goal?.kind === "sell") delete m.goal;
@@ -141,8 +146,12 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
         debt: Math.max(0, body.sleepDebt - 8 * (body.sheltered ? homeRecovery : outdoorRecovery)), cost: 8 } ] };
   const choose = (attempt: VillageAttempt | undefined, reason: string) => {
     if (body.sheltered && attempt?.kind === "travel" && !(c.hunger > 0 && (c.edibleMeals ?? 0) === 0)) {
-      const leaving = forecastCold(m, c.cold, input.at, 8, false);
-      m.reasoning!.candidates.push({ goal: "exposed-trip", cold: leaving.peak, debt: body.sleepDebt + 8, cost: 8 });
+      const destination = attempt.siteId;
+      const cell = c.visiblePlants.find((p) => p.siteId === destination)?.cell ?? m.predictions?.knownSites[destination];
+      const target = c.foodJourneys && cell ? travelEstimate(m, c, destination, cell) : undefined;
+      const hours = target ? target.hours + target.margin + 1 : 8;
+      const leaving = forecastCold(m, c.cold, input.at, hours, false);
+      m.reasoning!.candidates.push({ goal: "exposed-trip", cold: leaving.peak, debt: body.sleepDebt + hours, cost: hours });
       if (leaving.peak >= 8) {
         attempt = undefined; reason = "defer exposed trip; predicted cold exceeds reserve benefit";
         m.reasoning!.forecastCold = leaving.peak;
@@ -158,6 +167,16 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
         if (c.energy < required) { attempt = { kind: "rest" }; reason = "recover energy for predicted loaded journey"; }
       }
     }
+    if (c.foodJourneys && c.foodMarket?.bakingSkill === 0 && attempt?.kind === "travel" && attempt.siteId === "market") {
+      beginFoodMarketVisit(m, c, input.at, reason === "carry harvested grain to sell for edible food" ? "grain-sale" : "food-buy");
+    }
+    if (c.foodJourneys && attempt?.kind === "buy_surplus" && c.foodMarket?.bakingSkill === 0) {
+      beginFoodMarketVisit(m, c, input.at, "food-buy");
+    }
+    if (c.foodJourneys && attempt?.kind === "post_surplus_offer") {
+      const lotId = attempt.lotId;
+      if (c.ownFoodLots?.some((lot) => lot.id === lotId && lot.product === "grain")) beginFoodMarketVisit(m, c, input.at, "grain-sale");
+    }
     m.reasoning!.reason = reason; m.lastAction = attempt?.kind ?? "wait";
     if (attempt?.kind === "travel") m.trip = { at: input.at, from: c.siteId, to: attempt.siteId };
     return { attempts: attempt ? [attempt] : [], subjectiveUpdate: memory, wait: { at: input.at + 1 } };
@@ -166,6 +185,10 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
   const meals = c.edibleMeals ?? 0;
   if (m.failedTravel) { delete m.failedTravel; return choose({ kind: "rest" }, "revise travel effort after actual exhaustion rejection"); }
   if (c.hunger > 0 && meals > 0) return choose({ kind: "eat" }, "eat personal edible reserve");
+  if (c.foodJourneys) {
+    const transaction = localFoodTransaction(c, m, input.actorId, input.at);
+    if (transaction) return choose(transaction.attempt, transaction.reason);
+  }
   // Maintain a selected sleep destination until sleeping, rather than oscillating to another task on arrival.
   if (m.goal?.kind === "sleep" && c.siteId === m.goal.siteId) {
     delete m.goal;
@@ -207,7 +230,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       if (store) return choose({ kind: "store_grain", lotId: grain.id, storeId: store.id }, "leave heavy grain at home before seeking edible food");
     }
     const storedGrain = c.homeStorage.items.find((lot) => lot.kind === "grain");
-    if (c.ownFarm && meals > 0 && c.ownCash < (c.experienceLearning ? 8 : 4) && (c.grainCarried ?? 0) < c.bulkTransport.plantingReserve && storedGrain &&
+    if (!c.foodJourneys && c.ownFarm && meals > 0 && c.ownCash < (c.experienceLearning ? 8 : 4) && (c.grainCarried ?? 0) < c.bulkTransport.plantingReserve && storedGrain &&
       (!c.experienceLearning || c.visiblePlants.some((p) => p.ownerId === input.actorId && (p.stage === "tilled" || p.stage === "bare")))) {
       const quantity = Math.min(storedGrain.quantity, (c.experienceLearning ? 1 : c.bulkTransport.plantingReserve) - (c.grainCarried ?? 0), Math.floor(c.bulkTransport.bagFreeMass / c.bulkTransport.grainUnitMass));
       if (quantity > 0) return choose({ kind: "take_home", objectId: storedGrain.id, quantity }, "take grain reserve for sowing owned crops");
@@ -222,6 +245,10 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     const excess = c.ownFoodLots?.find((lot) => (lot.product === "bread" || lot.species !== "grain") && !lot.offered && lot.quantity >= lot.mealQuantity);
     if (meals > 2 && excess) return choose({ kind: "store_home", objectId: excess.id,
       quantity: Math.min(excess.quantity, (meals - 2) * excess.mealQuantity) }, "leave surplus food in own home");
+  }
+  if (c.foodJourneys) {
+    const cultivation = cultivationChoice(c, m, input.actorId);
+    if (cultivation) return choose(cultivation.attempt, cultivation.reason);
   }
   if (c.experienceLearning && meals === 0 && (c.hunger > 0 || Math.max(body.mealHours, body.needClockHours ?? 0) >= 16)) {
     const local = c.visiblePlants.find((p) => p.siteId === c.siteId && ["herb", "wild_berry", "fruit_tree"].includes(p.species) &&
@@ -313,6 +340,11 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
   if (c.ownFarm && (!c.bulkTransport || raw + (c.grainCarried ?? 0) < c.bulkTransport.grainYield) && (c.foodMarket ? c.ownCash < (c.experienceLearning ? 8 : 4) && (c.grainCarried ?? 0) <= (c.bulkTransport?.plantingReserve ?? 0) : raw + meals < 12)) {
     const crops = c.visiblePlants.filter((p) => p.ownerId === input.actorId && p.farmId === c.ownFarm!.id);
     const target = crops.find((p) => p.stage === "ripe") ?? crops.find((p) => p.stage === "tilled") ?? crops.find((p) => p.stage === "bare");
+    if (c.foodJourneys && target?.cell && target.siteId && (target.stage === "bare" || target.stage === "tilled")) {
+      m.cropPlan = { plantId: target.id, siteId: target.siteId, cell: { ...target.cell }, stage: target.stage, observedAt: input.at };
+      const cultivation = cultivationChoice(c, m, input.actorId);
+      if (cultivation) return choose(cultivation.attempt, cultivation.reason);
+    }
     if (target?.stage === "tilled" && c.bulkTransport && (c.grainCarried ?? 0) === 0) {
       if (c.experienceLearning) {
         const stock = c.grainStores!.find((s) => s.grain > 0 && s.siteId === c.siteId) ?? c.grainStores!.find((s) => s.grain > 0);
@@ -342,6 +374,14 @@ export function checkAnticipationMemory(memory: AnticipationMemory, at: number) 
     memory.goal && memory.goal.startedAt > at ||
     [memory.sales.visits, memory.sales.sales, memory.sales.failures, memory.sales.retryAt]
       .some((n) => !Number.isSafeInteger(n) || n < 0)) throw Error("invalid anticipation memory");
+  if (memory.cropPlan && (!Number.isSafeInteger(memory.cropPlan.observedAt) || memory.cropPlan.observedAt < 0 || memory.cropPlan.observedAt > at ||
+    !["bare", "tilled"].includes(memory.cropPlan.stage) || !memory.cropPlan.plantId || !memory.cropPlan.siteId ||
+    !Number.isSafeInteger(memory.cropPlan.cell.x) || !Number.isSafeInteger(memory.cropPlan.cell.y))) throw Error("invalid cultivation plan");
+  const market = memory.foodMarket;
+  if (market && (![market.retryAt, market.failures ?? 0, market.visitStartedAt ?? 0, market.visit?.startedAt ?? 0, market.visit?.arrivedAt ?? 0]
+    .every((n) => Number.isSafeInteger(n) && n >= 0) || market.visit && (market.visit.startedAt > at ||
+      market.visit.arrivedAt !== undefined && (market.visit.arrivedAt < market.visit.startedAt || market.visit.arrivedAt > at) ||
+      !["grain-sale", "food-buy"].includes(market.visit.purpose) || typeof market.visit.fulfilled !== "boolean"))) throw Error("invalid food market memory");
   if (memory.reasoning && [memory.reasoning.leadHours, memory.reasoning.forecastCold, memory.reasoning.forecastDebt,
     memory.reasoning.uncertainty, ...memory.reasoning.candidates.flatMap((c) => [c.cold, c.debt, c.cost])]
     .some((n) => !Number.isFinite(n) || n < 0)) throw Error("invalid anticipation forecast");

@@ -171,6 +171,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   if (fixture.homeStorage && (!fixture.foodMarket || !Number.isSafeInteger(fixture.homeStorage.capacity) || fixture.homeStorage.capacity < 1)) throw Error("invalid home storage fixture");
   if (fixture.bulkTransport && (!fixture.homeStorage || !fixture.landEconomy?.wideWorld || Object.values(fixture.bulkTransport).some((n) => !Number.isSafeInteger(n) || n < 1))) throw Error("invalid bulk transport fixture");
   if (fixture.experienceLearning && (!fixture.bulkTransport || !fixture.predictionLedger)) throw Error("invalid experience learning fixture");
+  if (fixture.foodJourneys && (!fixture.experienceLearning || !fixture.foodMarket)) throw Error("invalid food journeys fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
@@ -1109,6 +1110,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.foodJourneys ? { foodJourneys: true as const } : {}),
     ...(w.fixture.experienceLearning ? { experienceLearning: true as const, carriedInventory: villagePersonStatus(w, id).carried.items.map((item) => ({
       id: item.id, kind: item.kind, quantity: item.quantity, mass: item.mass, edible: !["grain", "wood", "seed"].includes(item.kind),
       ...(item.expiresDay === undefined ? {} : { expiresDay: item.expiresDay }) })) } : {}),

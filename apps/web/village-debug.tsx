@@ -8,10 +8,13 @@ import type { VillageRecording } from "../../packages/sim/village-recording";
 import type { ActionLearningMemory } from "../../packages/ai/action-learning";
 
 const woodQuery = new URLSearchParams(window.location.search).get("wood");
-const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" || woodQuery === "wild" || woodQuery === "local" || woodQuery === "bread" || woodQuery === "needs" || woodQuery === "market" || woodQuery === "home" || woodQuery === "load" ? woodQuery : "learn";
-const processedFood = recordMode === "bread" || recordMode === "needs" || (recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn");
+const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" || woodQuery === "wild" || woodQuery === "local" || woodQuery === "bread" || woodQuery === "needs" || woodQuery === "market" || woodQuery === "home" || woodQuery === "load" || woodQuery === "learn" ? woodQuery : "journey";
+const foodMarketRecord = ["market", "home", "load", "learn", "journey"].includes(recordMode);
+const loadRecord = ["load", "learn", "journey"].includes(recordMode);
+const processedFood = recordMode === "bread" || recordMode === "needs" || foodMarketRecord;
 const legacyWood = recordMode === "legacy";
-const recordingUrl = recordMode === "learn" ?
+const recordingUrl = recordMode === "journey" ?
+  new URL("../../fixtures/recordings/autonomous-village-food-journeys-90.v2.json.gz", import.meta.url).href : recordMode === "learn" ?
   new URL("../../fixtures/recordings/autonomous-village-experience-learning-90.v2.json.gz", import.meta.url).href : recordMode === "load" ?
   new URL("../../fixtures/recordings/autonomous-village-bulk-transport-90.v2.json.gz", import.meta.url).href : recordMode === "home" ?
   new URL("../../fixtures/recordings/autonomous-village-home-storage-90.v2.json.gz", import.meta.url).href : recordMode === "market" ?
@@ -65,7 +68,7 @@ async function readRecording(): Promise<VillageRecording> {
     await new Response(new Blob([bytes]).stream()
       .pipeThrough(new DecompressionStream("gzip"))).arrayBuffer() : bytes);
   const recording = JSON.parse(text) as VillageRecording;
-  if (recording.rulesetId !== (recordMode === "learn" ? "autonomous-village-experience-learning-v17" : recordMode === "load" ? "autonomous-village-bulk-transport-v16" : recordMode === "home" ? "autonomous-village-home-storage-v15" : recordMode === "market" ? "autonomous-village-food-market-v14" : legacyWood ? "autonomous-village-ecological-land-v6" :
+  if (recording.rulesetId !== (recordMode === "journey" ? "autonomous-village-food-journeys-v18" : recordMode === "learn" ? "autonomous-village-experience-learning-v17" : recordMode === "load" ? "autonomous-village-bulk-transport-v16" : recordMode === "home" ? "autonomous-village-home-storage-v15" : recordMode === "market" ? "autonomous-village-food-market-v14" : legacyWood ? "autonomous-village-ecological-land-v6" :
     recordMode === "paused" ? "autonomous-village-wood-paused-v7" :
     recordMode === "farms" ? "autonomous-village-owned-farms-v8" : recordMode === "wild" ? "autonomous-village-wild-food-market-v9" : recordMode === "local" ? "autonomous-village-local-work-v10" : recordMode === "bread" ? "autonomous-village-bread-storage-v11" : "autonomous-village-anticipatory-needs-v12") || recording.untilHour !== 2160)
     throw Error("土地経済90日の記録ではありません");
@@ -73,6 +76,13 @@ async function readRecording(): Promise<VillageRecording> {
 }
 
 const reasonLabels: Record<string, string> = {
+  "buy locally observed food while retaining a safe shelter journey": "帰宅までの寒さ・眠気・体力を見込み、現地の食品を先に買う",
+  "offer carried sale grain while retaining a safe shelter journey": "帰宅する余裕を残し、市場へ運んだ穀物を売り出す",
+  "prepare selected owned crop before loading sowing grain": "播種用の穀物を積む前に、選んだ自分の区画を耕す",
+  "carry reserved grain to selected crop, then sow": "選んだ作物セルへ播種用の穀物を運び、到着したら播く",
+  "retrieve grain for selected cultivated crop": "選んだ耕作済み区画に使う穀物を保管庫へ取りに行く",
+  "load one grain for selected cultivated crop": "選んだ耕作済み区画に播く穀物を1単位積む",
+  "leave sowing grain stored until carrying space is available": "携帯する空き容量ができるまで、播種用の穀物を保管する",
   "load sale surplus for affordable predicted market journey": "販売する余剰から、移動体力の見込みに収まる量を積む",
   "continue forage goal": "選んだ植物セルで採集を続ける",
   "finish selected food gathering before reconsidering trade": "到着した採集先で食料を取ってから、次の目的を考える",
@@ -559,6 +569,7 @@ export default function VillageDebug() {
   const decisions = reachedDecisions.filter((d) => d.hour > (day - 1) * 24);
   const displayedDecisions = decisions.length ? decisions : reachedDecisions.slice(-12);
   const latestObservation = reachedDecisions.at(-1);
+  const anticipation = latestObservation?.response.subjectiveUpdate?.anticipation;
   if (error) return <main className="e1-debug"><h1>土地経済の記録を開けませんでした</h1><p role="alert">{error}</p></main>;
   if (!recording || !snapshot || !gridNow) return <main className="e1-debug"><p>90日記録を読み込んでいます…</p></main>;
   const selectedFarm = recording.fixture.landEconomy?.farms?.find((farm) => farm.ownerId === selected);
@@ -581,10 +592,10 @@ export default function VillageDebug() {
     <header className="e1-top"><div><h1>土地経済90日 · 生態デバッグ</h1></div><div>
         <label>表示する記録 <select aria-label="表示する記録" value={recordMode}
           onChange={(e) => { const url = new URL(window.location.href);
-            if (e.target.value !== "learn") url.searchParams.set("wood", e.target.value);
+            if (e.target.value !== "journey") url.searchParams.set("wood", e.target.value);
             else url.searchParams.delete("wood");
             window.location.assign(url.href); }}>
-          <option value="learn">経験学習・目的のある運搬・食事時計</option><option value="load">旧記録：収穫20・畑の保管・荷重と運搬</option><option value="home">旧記録：人物ステータス・自宅保管・食品市場</option><option value="market">旧記録：穀物売却・市場製パン・パン購入</option><option value="needs">旧記録：自宅製パン・欲求と経験</option><option value="bread">旧記録：穀物保存・パン加工</option><option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
+          <option value="journey">農作業の目的・市場の再訪・パン購入</option><option value="learn">旧記録：経験学習・運搬・食事時計</option><option value="load">旧記録：収穫20・畑の保管・荷重と運搬</option><option value="home">旧記録：人物ステータス・自宅保管・食品市場</option><option value="market">旧記録：穀物売却・市場製パン・パン購入</option><option value="needs">旧記録：自宅製パン・欲求と経験</option><option value="bread">旧記録：穀物保存・パン加工</option><option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
         </select></label> <a href="/">90日ゲーム</a></div></header>
     {!legacyWood && <details className="village-specification" role="note">
       <summary>記録の条件・仕様 <span>{processedFood ? "穀物＝原料・腐敗なし / パン＝3日期限 / 薪停止" : "土地・食料・作業の条件"}</span></summary>
@@ -601,10 +612,10 @@ export default function VillageDebug() {
       その場で食事・休息できます。森・畑の中心へ自動では戻りません。
       作業対象がなければ生育・再生待ち、余剰の販売中は市場で買い手待ちになります。</p>}
     {processedFood && <p className="e1-map-panel">穀物は直接食べられません。原料として扱います。
-      {(recordMode === "load" || recordMode === "learn") && <>播種1→収穫20、穀物1単位の重量2。袋の容量20、人物全体24。畑に収穫物を保管し、容量に収まる量を分けて運びます。荷物が重いほど歩行が遅く、体力消費が増えます。 </>}
-      {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") ? <>農夫は穀物を市場で売り、代金でパンを購入します。初期の製パン技能はSだけが持ち、市場の穀物庫に買った原料を保存して加工します。</> : <>収穫後は本人の家か市場の穀物庫へ運び、腐敗せず保存します。</>}
+      {loadRecord && <>播種1→収穫20、穀物1単位の重量2。袋の容量20、人物全体24。畑に収穫物を保管し、容量に収まる量を分けて運びます。荷物が重いほど歩行が遅く、体力消費が増えます。 </>}
+      {foodMarketRecord ? <>農夫は穀物を市場で売り、代金でパンを購入します。初期の製パン技能はSだけが持ち、市場の穀物庫に買った原料を保存して加工します。</> : <>収穫後は本人の家か市場の穀物庫へ運び、腐敗せず保存します。</>}
       穀物1から2時間でパン1を作り、パンは製造日から3日で腐敗します。野草・ベリーは直接食べられます。
-      {(recordMode === "needs" || (recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn")) && <> 気温・睡眠不足・場所の回復を扱い、経験から先の冷え方と移動時間を見積もります。短い休憩と睡眠は別です。</>}</p>}
+      {(recordMode === "needs" || foodMarketRecord) && <> 気温・睡眠不足・場所の回復を扱い、経験から先の冷え方と移動時間を見積もります。短い休憩と睡眠は別です。</>}</p>}
       <p>5/15/30/60分の移動表示は、1時間内の通過セルを均等に割り当てた補間です。植物と所持品は表示中のEventで更新します。</p>
     </details>}
     <div className="e1-controls"><label>日 <input aria-label="土地経済の日" type="range" min="1" max="90" value={day}
@@ -639,7 +650,7 @@ export default function VillageDebug() {
       {(recordMode === "farms" || recordMode === "wild" || recordMode === "local" || processedFood) && <span>穀物保存 <b>腐敗なし</b></span>}
       <span>薪 <b>{legacyWood ? `使用 ${snapshot.totals.wood}/450` : "停止中"}</b></span>
       {(recordMode === "wild" || recordMode === "local" || processedFood) && <span>余剰売買 <b>{snapshot.totals.surplusSales}件</b></span>}
-      {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") && <><span>穀物売買 <b>{snapshot.totals.grainSales}件</b></span><span>パン売買 <b>{snapshot.totals.breadSales}件</b></span></>}
+      {foodMarketRecord && <><span>穀物売買 <b>{snapshot.totals.grainSales}件</b></span><span>パン売買 <b>{snapshot.totals.breadSales}件</b></span></>}
       <span>動物 <b>{Object.keys(snapshot.animals).length}</b></span></div>
     <main ref={layoutRef} className={`e1-layout village-resizable-layout${resizing ? " is-resizing" : ""}`}
       style={{ gridTemplateColumns: `minmax(0, 1fr) 12px ${displayedSideWidth}px` }}>
@@ -723,7 +734,7 @@ export default function VillageDebug() {
           <section className="village-inspector-pane" aria-label="人物の行動ログ">
           <h2>{selected} の判断履歴</h2>
           {selectedFarm && <p>所有する畑: {selectedFarm.id} · {selectedFarm.plotIds.length}区画 · 穀物は腐敗なし</p>}
-          {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") && <p>製パン技能：{recording.fixture.foodMarket!.initialBakingSkills[selected]} · 市場で加工</p>}
+          {foodMarketRecord && <p>製パン技能：{recording.fixture.foodMarket!.initialBakingSkills[selected]} · 市場で加工</p>}
           {!snapshot.statuses[selected] && latestObservation && <p>最新の本人観察（{clock(latestObservation.hour)}）:
             所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger} ·
             体力 {latestObservation.knownContext.energy} ·
@@ -737,7 +748,12 @@ export default function VillageDebug() {
             対処の見込み {latestObservation.response.subjectiveUpdate.anticipation.reasoning.leadHours.toFixed(1)}時間 ·
             先の寒さ {latestObservation.response.subjectiveUpdate.anticipation.reasoning.forecastCold.toFixed(1)} ·
             記憶 {latestObservation.response.subjectiveUpdate.anticipation.experiences.length}件</p>}
-          {(recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn") && <section aria-label="人物の最近の売買"><h3>最近の売買</h3>
+          {anticipation?.cropPlan && <p>農作業の目的：{anticipation.cropPlan.siteId} を耕作・播種</p>}
+          {recording.fixture.foodJourneys && anticipation?.foodMarket && <p>市場：
+            {anticipation.foodMarket.visit ? `${anticipation.foodMarket.visit.purpose === "grain-sale" ? "穀物売却" : "食品購入"}の訪問中` :
+              anticipation.foodMarket.retryAt > hour ? `再訪まで${anticipation.foodMarket.retryAt - hour}時間` : "再検討可能"}
+            {` · 未成立の訪問 ${anticipation.foodMarket.failures ?? 0}回`}</p>}
+          {foodMarketRecord && <section aria-label="人物の最近の売買"><h3>最近の売買</h3>
             <table className="village-log-table"><thead><tr><th>時刻</th><th>品・数量</th><th>売手 → 買手</th><th>代金</th></tr></thead>
               <tbody>{recording.events.filter((e) => e.kind === "surplus_sold" && e.actors.includes(selected) &&
                 (e.hour < hour || visibleEventIds.has(e.id))).slice(-6).reverse().map((e) => <tr key={e.id}>
@@ -794,7 +810,7 @@ export default function VillageDebug() {
       <div id="village-legend-content" className="village-legend-content" inert={!legendOpen} aria-hidden={!legendOpen}>
         <button type="button" className="village-legend-dismiss" onClick={() => setLegendOpen(false)}>凡例をしまう</button>
           <h2>地図の凡例</h2>
-          {(recordMode === "needs" || (recordMode === "market" || recordMode === "home" || recordMode === "load" || recordMode === "learn")) && <p>家：本人の家では保温と睡眠回復が有利です。帰宅時刻は固定せず、予測と身体の必要から選びます。屋外睡眠も可能です。人物の横の「Z」は睡眠中です。</p>}
+          {(recordMode === "needs" || foodMarketRecord) && <p>家：本人の家では保温と睡眠回復が有利です。帰宅時刻は固定せず、予測と身体の必要から選びます。屋外睡眠も可能です。人物の横の「Z」は睡眠中です。</p>}
           {processedFood && <p>黄茶色の箱と数字：家・市場・畑の穀物庫と保存量。穀物は原料で直接食べられません。パンは製造日から3日で腐敗します。</p>}
           <p>1セルは32×32ピクセル。地面の色は土地の種類、セル内の形は植物や障害物を表します。</p>
           {(recordMode === "farms" || recordMode === "wild" || recordMode === "local" || processedFood) && <p>畑の枠色：Fは黄、B1は青、B2は紫。各4区画で、所有者だけが作業できます。穀物は腐敗しません。</p>}

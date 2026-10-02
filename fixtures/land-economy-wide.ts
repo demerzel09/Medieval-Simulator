@@ -91,3 +91,6 @@ export const bulkTransport90V1: VillageFixture = {
 
 /** Actual meal time and matched experience for effort, recovery and purposeful transport. */
 export const experienceLearning90V1: VillageFixture = { ...structuredClone(bulkTransport90V1), experienceLearning: true };
+
+/** Preserve cultivation intent and observed market visit outcomes across shelter interruptions. */
+export const foodJourneys90V1: VillageFixture = { ...structuredClone(experienceLearning90V1), foodJourneys: true };
