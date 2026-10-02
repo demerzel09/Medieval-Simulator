@@ -7,6 +7,7 @@ export type InventoryItem = { id: string; kind: string; quantity: number; mass: 
   containerId: string; expiresDay?: number; offered: boolean };
 export type InventoryStatus = { cash: number; mass: number; capacity: number; items: InventoryItem[] };
 export type PersonStatus = { hour: number; carried: InventoryStatus; home: InventoryStatus; market: InventoryStatus;
+  field?: InventoryStatus;
   body: { energy: number; maxEnergy: number; hunger: number; cold: number; sleepDebt: number; mealHours: number;
     temperature: number; sheltered: boolean; activity: string } };
 
@@ -36,6 +37,7 @@ export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatu
   carried.capacity = w.physical.types.person.container!.maxContentsMass!;
   return { hour: w.hour, carried, home: inventory([`home_chest_${id}`, `granary_home_${id}`]),
     market: inventory([`granary_market_${id}`, ...(id === "S" ? ["stock_S"] : [])]),
+    ...(w.fixture.bulkTransport ? { field: inventory(Object.values(w.physical.objects).filter((o) => o.id.startsWith("granary_field_") && o.ownerId === id).map((o) => o.id)) } : {}),
     body: { energy: person.energy, maxEnergy: w.fixture.body.maxEnergy, hunger: person.hunger, cold: person.cold,
       sleepDebt: person.needs?.sleepDebt ?? 0, mealHours: person.needs?.mealHours ?? 0, temperature, sheltered,
       activity: person.activeProcessId ? w.processes[person.activeProcessId]?.kind ?? "wait" : "wait" } };

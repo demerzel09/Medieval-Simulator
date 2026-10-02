@@ -1,8 +1,10 @@
+import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { expect, test } from "@playwright/test";
 
 test("person and home status follow recorded cash, items, weight and physical needs", async ({ page }) => {
   test.setTimeout(120000);
-  await page.goto("/?village=land-economy");
+  await page.goto("/?village=land-economy&wood=home");
   await expect(page.getByLabel("表示する記録")).toHaveValue("home", { timeout: 30000 });
   const carried = page.getByRole("region", { name: "携帯中の所持品" });
   const home = page.getByRole("region", { name: "F の家の保管品" });
@@ -246,4 +248,36 @@ test("the previous needs scene exposes the basis of anticipatory decisions", asy
   await page.getByLabel("土地経済の時刻").fill("24");
   await page.getByLabel("土地経済の分").fill("60");
   await expect(page.locator(".e1-stats span").filter({ hasText: /^食事/ }).locator("b")).toHaveText("450/450");
+});
+
+
+test("bulk grain default shows load-dependent walking and actual field inventories", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("load", { timeout: 30000 });
+  await expect(page.getByRole("note")).toContainText("播種1→収穫20");
+  const carried = page.getByRole("region", { name: "携帯中の所持品" });
+  const fields = page.getByRole("region", { name: "畑の保管品" });
+  await expect(carried).toContainText("穀物");
+  await expect(carried).not.toContainText("播種用の穀物");
+  await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("8 / 24");
+  await expect(page.getByLabel("運搬負荷")).toContainText("56%");
+  await expect(page.getByLabel("運搬負荷")).toContainText("2/時間");
+  await expect(fields).toContainText("物品なし");
+  const record = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-bulk-transport-90.v2.json.gz")).toString());
+  const first = record.events.find((e: { kind: string; actors: string[]; data: { storeId?: string } }) => e.kind === "grain_loaded" && e.actors[0] === "B1" && e.data.storeId?.startsWith("granary_field_"));
+  await page.getByLabel("土地経済の人物").selectOption("B1");
+  await page.getByLabel("土地経済の日").fill(String(Math.floor((first.hour - 1) / 24) + 1));
+  await page.getByLabel("土地経済の時刻").fill(String((first.hour - 1) % 24 + 1));
+  await page.getByLabel("土地経済の分").fill("60");
+  // Real field lots remain visible even after the person leaves the crop cell.
+  await expect(fields).toContainText("穀物");
+  await expect(fields.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("30 / 512");
+  await page.screenshot({ path: "/tmp/medieval-v16-load.png", fullPage: true });
+  await page.getByLabel("土地経済の人物").selectOption("F");
+  await page.getByLabel("土地経済の日").fill("1");
+  await page.getByLabel("土地経済の時刻").fill("1");
+  await page.getByLabel("土地経済の分").fill("0");
+  await expect(fields).toContainText("物品なし");
+  await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("8 / 24");
 });

@@ -1,3 +1,4 @@
+import { loadMovement } from "../sim/load-movement";
 import type { VillageContext, VillageStimulus } from "./autonomous-world";
 
 export type TravelPrediction = {
@@ -87,7 +88,7 @@ export function beginTravelPrediction(ledger: PredictionLedger, actorId: string,
   const target = ledger.knownSites[to];
   const expectedHours = estimate ? Math.max(1, estimate.mean) : target ? Math.max(1,
     Math.ceil(Math.max(Math.abs(target.x - c.cell.x), Math.abs(target.y - c.cell.y)) *
-      (1 + Math.floor(c.carriedMass / 20)) / 16)) : undefined;
+      (c.bulkTransport ? 1 / loadMovement(c.carriedMass, c.bulkTransport).speedRatio : 1 + Math.floor(c.carriedMass / 20)) / 16)) : undefined;
   const p: TravelPrediction = { id: `${actorId}:travel:${ledger.nextId++}`, madeAt: at,
     expiresAt: at + Math.max(48, Math.ceil((expectedHours ?? 1) * 4 + 8)), from: c.siteId, to,
     carriedMass: c.carriedMass, source: estimate ? "route-experience" : target ? "distance-prior" : "unknown-destination",

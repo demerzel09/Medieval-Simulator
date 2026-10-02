@@ -82,3 +82,9 @@ export const foodMarket90V1: VillageFixture = {
 export const homeStorage90V1: VillageFixture = {
   ...structuredClone(foodMarket90V1), homeStorage: { capacity: 40 },
 };
+
+/** Grain is one material for sowing/processing; harvests stay at the field until physically loaded. */
+export const bulkTransport90V1: VillageFixture = {
+  ...structuredClone(homeStorage90V1),
+  bulkTransport: { grainYield: 20, grainUnitMass: 2, baseMoveTicks: 10, fatigueMass: 8 },
+};

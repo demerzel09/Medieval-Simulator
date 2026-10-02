@@ -5,13 +5,17 @@ type Choice = { attempt?: VillageAttempt; reason: string };
 /** Initial food trade policy. It uses own stock and delivered local offers; no synthetic buyers or income. */
 export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actorId: string, at: number): Choice | undefined {
   const cfg = c.foodMarket!;
+  if (c.bulkTransport && c.siteId !== "market") delete m.foodMarket?.visitStartedAt;
   const state = m.foodMarket ??= { retryAt: 0 };
   const meals = c.edibleMeals ?? 0;
   const market = (reason: string): Choice => {
-    state.visitStartedAt ??= at;
+    if (!c.bulkTransport) state.visitStartedAt ??= at;
     return { attempt: c.siteId === "market" ? undefined : { kind: "travel", siteId: "market" }, reason };
   };
-  const rawLot = c.ownFoodLots!.find((lot) => lot.product === "grain" && lot.quantity > 0);
+  const reserve = c.bulkTransport?.plantingReserve ?? 0;
+  const rawCarried = c.grainCarried ?? 0;
+  const rawLots = c.ownFoodLots!.filter((lot) => lot.product === "grain" && lot.quantity > 0);
+  const rawLot = rawCarried > reserve ? (c.bulkTransport ? rawLots.sort((a, b) => b.quantity - a.quantity || a.id.localeCompare(b.id))[0] : rawLots[0]) : undefined;
   const rawStored = c.grainStores!.reduce((n, store) => n + store.grain, 0);
   const edibleOffer = c.visibleFoodOffers?.filter((o) => o.sellerId !== actorId && o.product !== "grain" &&
     o.price <= c.ownCash).sort((a, b) => a.price - b.price || a.id.localeCompare(b.id))[0];
@@ -47,11 +51,25 @@ export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actor
     // No purchased ingredients: permit direct wild-food gathering rather than inventing bread.
     return undefined;
   }
+  if (c.bulkTransport && cfg.bakingSkill === 0 && !rawLot) {
+    const homeStock = c.grainStores!.find((store) => store.siteId === c.needs!.home.siteId && store.grain > 0);
+    const stores = [...(c.fieldGrainStores ?? []), ...(homeStock ? [{ ...homeStock, cell: c.needs!.home.cell }] : [])];
+    const field = stores.filter((store) => store.grain > 0).sort((a, b) =>
+      Math.max(Math.abs(a.cell.x - c.cell.x), Math.abs(a.cell.y - c.cell.y)) -
+      Math.max(Math.abs(b.cell.x - c.cell.x), Math.abs(b.cell.y - c.cell.y)) || a.id.localeCompare(b.id))[0];
+    if (field) {
+      if (c.siteId !== field.siteId) return { attempt: { kind: "travel", siteId: field.siteId }, reason: "return to owned grain stock for another load" };
+      const lot = field.lots[0];
+      const quantity = Math.min(cfg.grainBatchQuantity, lot.quantity, Math.floor(c.bulkTransport.bagFreeMass / cfgGrainMass(c)));
+      if (quantity > 0) return { attempt: { kind: "load_grain", lotId: lot.id, quantity }, reason: "load only grain that fits while retaining planting reserve" };
+      return { reason: "carrying capacity full; leave harvested grain safely at field" };
+    }
+  }
   if (rawLot) {
     if (rawLot.offered && meals === 0 && c.hunger > 0) return undefined;
     if (c.siteId !== "market") return market("carry harvested grain to sell for edible food");
     if (!rawLot.offered) {
-      const quantity = Math.min(cfg.grainBatchQuantity, rawLot.quantity);
+      const quantity = Math.min(cfg.grainBatchQuantity, rawLot.quantity, rawCarried - reserve);
       return { attempt: { kind: "post_surplus_offer", lotId: rawLot.id, quantity,
         price: Math.max(1, Math.ceil(cfg.grainBatchPrice * quantity / cfg.grainBatchQuantity)) },
         reason: "offer inedible grain to an ingredient buyer" };
@@ -68,3 +86,5 @@ export function foodMarketChoice(c: VillageContext, m: AnticipationMemory, actor
   delete state.visitStartedAt;
   return undefined;
 }
+
+function cfgGrainMass(c: VillageContext) { return c.bulkTransport!.grainUnitMass; }

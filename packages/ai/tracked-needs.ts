@@ -1,3 +1,4 @@
+import { travelExperienceKey } from "../sim/load-movement";
 import { anticipatoryNeedsVillageModel, checkAnticipationMemory, updateEstimate } from "./anticipatory-needs";
 import type { VillageModel } from "./autonomous-world";
 import { beginTravelPrediction, checkPredictionLedger, newPredictionLedger, receiveTravelOutcomes,
@@ -12,7 +13,7 @@ export const trackedNeedsVillageModel: VillageModel = { decide(input) {
   if (state.anticipation) {
     delete state.anticipation.trip; // Current location and decision time cannot identify a completed trip.
     for (const outcome of receiveTravelOutcomes(ledger, input.stimuli, input.at)) if (outcome.status === "completed") {
-      const key = `${outcome.prediction.from}>${outcome.prediction.to}`;
+      const key = travelExperienceKey(outcome.prediction.from, outcome.prediction.to, outcome.prediction.carriedMass, !!input.knownContext.bulkTransport);
       state.anticipation.travelTimes[key] = updateEstimate(state.anticipation.travelTimes[key], outcome.actualHours!);
     }
   }
@@ -22,7 +23,7 @@ export const trackedNeedsVillageModel: VillageModel = { decide(input) {
   rememberTravelSites(ledger, input.knownContext);
   const chosen = response.attempts[0];
   if (chosen?.kind === "travel") {
-    const key = `${input.knownContext.siteId}>${chosen.siteId}`;
+    const key = travelExperienceKey(input.knownContext.siteId, chosen.siteId, input.knownContext.carriedMass, !!input.knownContext.bulkTransport);
     const p = beginTravelPrediction(ledger, input.actorId, input.at, input.knownContext, chosen.siteId,
       m.travelTimes[key], input.stimuli.flatMap((s) => s.causeEventIds));
     chosen.predictionId = p.id;

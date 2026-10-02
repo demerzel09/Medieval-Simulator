@@ -1,3 +1,4 @@
+import { loadMovement, travelExperienceKey } from "../sim/load-movement";
 import type { VillageAttempt, VillageContext, VillageMemory, VillageModel } from "./autonomous-world";
 import { foodMarketChoice } from "./food-market";
 
@@ -89,9 +90,9 @@ function learn(m: AnticipationMemory, c: VillageContext, at: number, evidenceIds
 }
 function travelEstimate(m: AnticipationMemory, c: VillageContext, siteId: string, cell: { x: number; y: number }) {
   if (siteId === c.siteId) return { hours: 0, margin: 0 };
-  const estimate = m.travelTimes[`${c.siteId}>${siteId}`];
+  const estimate = m.travelTimes[travelExperienceKey(c.siteId, siteId, c.carriedMass, !!c.bulkTransport)];
   const distance = Math.max(Math.abs(c.cell.x - cell.x), Math.abs(c.cell.y - cell.y));
-  return { hours: Math.max(1, estimate?.mean ?? Math.ceil(distance * (1 + Math.floor(c.carriedMass / 20)) / 16)),
+  return { hours: Math.max(1, estimate?.mean ?? Math.ceil(distance * (c.bulkTransport ? 1 / loadMovement(c.carriedMass, c.bulkTransport).speedRatio : 1 + Math.floor(c.carriedMass / 20)) / 16)),
     margin: estimate ? deviation(estimate) : 1 };
 }
 
@@ -140,6 +141,15 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
         m.reasoning!.forecastCold = leaving.peak;
       }
     }
+    if (c.bulkTransport && attempt?.kind === "travel") {
+      const destination = attempt.siteId;
+      const cell = destination === home.siteId ? home.cell : c.visiblePlants.find((p) => p.siteId === destination)?.cell ?? m.predictions?.knownSites[destination];
+      if (cell) {
+        const target = travelEstimate(m, c, destination, cell);
+        const required = Math.min(c.bulkTransport.maxEnergy, (target.hours + target.margin) * loadMovement(c.carriedMass, c.bulkTransport).energyPerHour + 1);
+        if (c.energy < required) { attempt = { kind: "rest" }; reason = "recover energy for predicted loaded journey"; }
+      }
+    }
     m.reasoning!.reason = reason; m.lastAction = attempt?.kind ?? "wait";
     if (attempt?.kind === "travel") m.trip = { at: input.at, from: c.siteId, to: attempt.siteId };
     return { attempts: attempt ? [attempt] : [], subjectiveUpdate: memory, wait: { at: input.at + 1 } };
@@ -161,10 +171,22 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       return choose({ kind: "sleep" }, "safe local sleep outweighs distant shelter journey");
     m.goal ??= { kind: "sleep", siteId: home.siteId, startedAt: input.at };
     if (c.siteId === home.siteId) { delete m.goal; return choose({ kind: "sleep" }, "prevent predicted sleep deficit"); }
-    if (c.energy < (trip.hours + trip.margin) * (1 + Math.floor(c.carriedMass / 10)) + 2) return choose({ kind: "rest" }, "recover enough energy to reach shelter");
+    if (c.energy < Math.min(c.bulkTransport?.maxEnergy ?? Infinity, (trip.hours + trip.margin) * (c.bulkTransport ? loadMovement(c.carriedMass, c.bulkTransport).energyPerHour : 1 + Math.floor(c.carriedMass / 10)) + 2)) return choose({ kind: "rest" }, "recover enough energy to reach shelter");
     return travel(home.siteId);
   }
   if (c.energy < 6) return choose({ kind: "rest" }, "recover activity fatigue without erasing sleep debt");
+  if (c.bulkTransport && c.homeStorage) {
+    const grain = c.ownFoodLots!.find((lot) => lot.product === "grain");
+    if (grain && meals === 0 && (c.hunger > 0 || body.mealHours >= 16)) {
+      const store = c.grainStores!.find((store) => store.siteId === c.siteId && store.capacity - store.grain >= grain.quantity);
+      if (store) return choose({ kind: "store_grain", lotId: grain.id, storeId: store.id }, "leave heavy grain at home before seeking edible food");
+    }
+    const storedGrain = c.homeStorage.items.find((lot) => lot.kind === "grain");
+    if (c.ownFarm && meals > 0 && c.ownCash < 4 && (c.grainCarried ?? 0) < c.bulkTransport.plantingReserve && storedGrain) {
+      const quantity = Math.min(storedGrain.quantity, c.bulkTransport.plantingReserve - (c.grainCarried ?? 0), Math.floor(c.bulkTransport.bagFreeMass / c.bulkTransport.grainUnitMass));
+      if (quantity > 0) return choose({ kind: "take_home", objectId: storedGrain.id, quantity }, "take grain reserve for sowing owned crops");
+    }
+  }
   if (c.homeStorage) {
     if (c.ownCash > 8) return choose({ kind: "store_home_cash", quantity: c.ownCash - 8 }, "leave excess cash in own home before carrying on");
     if (c.ownCash < 4 && c.homeStorage.cash > 0) return choose({ kind: "take_home_cash", quantity: Math.min(8 - c.ownCash, c.homeStorage.cash) }, "take own stored cash for food purchases");
@@ -175,7 +197,9 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     if (meals > 2 && excess) return choose({ kind: "store_home", objectId: excess.id,
       quantity: Math.min(excess.quantity, (meals - 2) * excess.mealQuantity) }, "leave surplus food in own home");
   }
-  if (c.foodMarket) {
+  const urgentForaging = c.bulkTransport && meals === 0 && (c.hunger > 0 || body.mealHours >= 16) &&
+    !(c.foodMarket!.bakingSkill > 0 && c.grainStores!.some((store) => store.siteId === c.siteId && store.grain > 0));
+  if (c.foodMarket && !urgentForaging) {
     const market = foodMarketChoice(c, m, input.actorId, input.at);
     if (market) return choose(market.attempt, market.reason);
   }
@@ -204,14 +228,15 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       .sort((a, b) => a.price - b.price || a.id.localeCompare(b.id))[0];
     if (offer) return choose({ kind: "buy_surplus", offerId: offer.id }, "buy available food before hunger worsens");
     const wild = c.visiblePlants.filter((p) => ["herb", "wild_berry", "fruit_tree"].includes(p.species) &&
-      p.stage === "ripe" && p.available >= (p.species === "herb" ? 2 : 1) && p.cell)
+      p.stage === "ripe" && p.available >= (p.species === "herb" ? 2 : 1) &&
+      (c.bulkTransport?.bagFreeMass ?? Infinity) >= (p.species === "herb" ? 2 : 1) && p.cell)
       .sort((a, b) => Math.max(Math.abs(a.cell!.x - c.cell.x), Math.abs(a.cell!.y - c.cell.y)) -
         Math.max(Math.abs(b.cell!.x - c.cell.x), Math.abs(b.cell!.y - c.cell.y)) || a.id.localeCompare(b.id))[0];
     const ripe = c.visiblePlants.find((p) => p.ownerId === input.actorId && p.species === "grain" && p.stage === "ripe");
     if (!c.foodMarket && ripe && raw < 12) return choose(c.siteId === ripe.siteId ? { kind: "harvest_plot", plantId: ripe.id } :
       { kind: "travel", siteId: ripe.siteId! }, "obtain raw material for impending food need");
     if (wild) return choose(c.siteId === wild.siteId ? { kind: "gather_plant", plantId: wild.id,
-      quantity: wild.species === "herb" ? 2 : Math.min(3, wild.available) } :
+      quantity: Math.min(wild.species === "herb" ? 2 : Math.min(3, wild.available), c.bulkTransport?.bagFreeMass ?? Infinity) } :
       { kind: "travel", siteId: wild.siteId! }, "gather locally observed food for impending hunger");
     if (c.siteId !== "grove") return choose({ kind: "travel", siteId: "grove" }, "revisit known food area; no visible food");
   }
@@ -231,9 +256,11 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
         (meals - 2) * lot.mealQuantity), price: 1 }, "offer only food above personal reserve");
     }
   }
-  if (c.ownFarm && (c.foodMarket ? c.ownCash < 4 && (c.grainCarried ?? 0) === 0 : raw + meals < 12)) {
+  if (c.ownFarm && (!c.bulkTransport || raw + (c.grainCarried ?? 0) < c.bulkTransport.grainYield) && (c.foodMarket ? c.ownCash < 4 && (c.grainCarried ?? 0) <= (c.bulkTransport?.plantingReserve ?? 0) : raw + meals < 12)) {
     const crops = c.visiblePlants.filter((p) => p.ownerId === input.actorId && p.farmId === c.ownFarm!.id);
     const target = crops.find((p) => p.stage === "ripe") ?? crops.find((p) => p.stage === "tilled") ?? crops.find((p) => p.stage === "bare");
+    if (target?.stage === "tilled" && c.bulkTransport && (c.grainCarried ?? 0) === 0)
+      return choose(undefined, "sowing requires actual carried grain; retain tilled plot");
     if (target) return choose(c.siteId !== target.siteId ? { kind: "travel", siteId: target.siteId! } :
       target.stage === "ripe" ? { kind: "harvest_plot", plantId: target.id } : target.stage === "tilled" ?
       { kind: "sow_plot", plantId: target.id } : { kind: "till_plot", plantId: target.id }, "work owned crop for bounded personal reserve");
