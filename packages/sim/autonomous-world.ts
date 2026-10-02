@@ -1,7 +1,8 @@
 import { autonomousVillageV1, type VillageFixture } from "../../fixtures/autonomous-village";
 import { ordinaryVillageModel, type VillageAttempt, type VillageContext, type VillageId, type VillageMemory,
-  type VillageModel, type VillageResponse, type VillageRole, type VillageStimulus } from "../ai/autonomous-world";
+  type TravelExecution, type VillageModel, type VillageResponse, type VillageRole, type VillageStimulus } from "../ai/autonomous-world";
 import { checkAnticipationMemory } from "../ai/anticipatory-needs";
+import { checkPredictionLedger } from "../ai/prediction-ledger";
 import { advanceNeedsBody, needsTemperature, type NeedsBody } from "./needs-body";
 import { wakeActors } from "./actor-clock";
 import { hash } from "./core";
@@ -39,7 +40,7 @@ type VillageProcess = { id: string; actorId: VillageId; kind: "travel" | "forage
   energyPerHour: number; startEventId: string; transitId?: string; destinationId?: string;
   path?: GridPoint[]; pathIndex?: number; edgeProgress?: number; stepHours?: number;
   resource?: "food" | "wood"; quantity?: number; orderId?: string; buyerId?: VillageId;
-  plantId?: string };
+  plantId?: string; predictionId?: string; attemptEventId?: string };
 export type VillageCommand = { id: string; actorId: VillageId; at: number; attempt: VillageAttempt;
   status: "queued" | "applied"; eventId?: string };
 export type VillageTerrainCommand = { id: string; at: number; cell: GridPoint; blocked: boolean;
@@ -94,8 +95,15 @@ function send(w: VillageWorld, recipientId: VillageId, stimulus: Omit<VillageSti
     receivedAt: w.hour + delay, ...stimulus } });
 }
 function result(w: VillageWorld, actorId: VillageId, action: VillageAttempt["kind"], event: VillageEvent,
-  success = true, reason?: string, delay = 1, actionDay = dayAt(w.hour)) {
-  send(w, actorId, { kind: "result", action, actionDay, success, reason, causeEventIds: [event.id] }, delay);
+  success = true, reason?: string, delay = 1, actionDay = dayAt(w.hour), travel?: TravelExecution) {
+  send(w, actorId, { kind: "result", action, actionDay, success, reason, causeEventIds: [event.id],
+    ...(w.fixture.predictionLedger && travel ? { travel } : {}) }, delay);
+}
+function travelExecution(w: VillageWorld, p: VillageProcess, phase: TravelExecution["phase"]): TravelExecution | undefined {
+  if (!w.fixture.predictionLedger || p.kind !== "travel") return undefined;
+  return { phase, ...(p.predictionId ? { predictionId: p.predictionId } : {}), processId: p.id,
+    attemptEventId: p.attemptEventId!, destinationId: p.destinationId!, startedAt: p.startedAt,
+    ...(phase === "started" ? {} : { elapsedHours: w.hour - p.startedAt }) };
 }
 function tx(w: VillageWorld, actorId: VillageId, ownerIds: string[], op: (t: PhysicalTransaction) => void): string | undefined {
   const outcome = physicalTransaction(w.physical, { actorId, ownerIds }, op);
@@ -139,6 +147,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     fixture.needs.dayTemperature < fixture.needs.nightTemperature || fixture.needs.homeInsulation < 0 ||
     fixture.needs.initialSleepDebt < 0 || fixture.needs.initialSleepDebt > 48 || fixture.needs.initialMealHours < 0 ||
     fixture.needs.initialMealHours >= 24)) throw Error("invalid needs fixture");
+  if (fixture.predictionLedger && !fixture.needs) throw Error("prediction ledger requires needs fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
@@ -290,9 +299,11 @@ function startProcess(w: VillageWorld, actorId: VillageId, kind: VillageProcess[
   w.processes[id] = { id, actorId, kind, startedAt: w.hour, duration, progress: 0, energyPerHour,
     startEventId: started.id, ...extra };
   person.activeProcessId = id;
+  const travel = travelExecution(w, w.processes[id], "started");
+  if (travel) result(w, actorId, kind, started, true, undefined, 1, dayAt(w.hour), travel);
   return undefined;
 }
-function startTravel(w: VillageWorld, actorId: VillageId, toId: string, decisionId: string) {
+function startTravel(w: VillageWorld, actorId: VillageId, toId: string, decisionId: string, predictionId?: string) {
   const from = siteOf(w.physical, actorId);
   if (!w.grid.sites[toId] || (from === toId && !from.startsWith("transit_")))
     return "route unavailable";
@@ -312,7 +323,8 @@ function startTravel(w: VillageWorld, actorId: VillageId, toId: string, decision
     if (reason) return reason;
   }
   return startProcess(w, actorId, "travel", duration, energyPerHour, decisionId,
-    { transitId, destinationId: toId, path, pathIndex: 0, edgeProgress: 0, stepHours });
+    { transitId, destinationId: toId, path, pathIndex: 0, edgeProgress: 0, stepHours,
+      ...(w.fixture.predictionLedger ? { attemptEventId: decisionId, ...(predictionId ? { predictionId } : {}) } : {}) });
 }
 function routeRemainingHours(w: VillageWorld, path: GridPoint[], stepHours: number) {
   const cost = path.slice(1).reduce((n, point) =>
@@ -328,7 +340,10 @@ function redirectTravel(w: VillageWorld, actorId: VillageId, toId: string, cause
   p.duration = p.progress + routeRemainingHours(w, path, p.stepHours!);
   const event = emit(w, "travel_redirected", [actorId], [causeId, p.startEventId],
     { destinationId: toId, x: w.people[actorId].cell.x, y: w.people[actorId].cell.y });
-  result(w, actorId, "redirect_travel", event); return undefined;
+  result(w, actorId, "redirect_travel", event, true, undefined, 1, dayAt(w.hour), travelExecution(w, p, "redirected"));
+  // The original forecast ends on redirection; the new destination has no pre-action forecast.
+  if (w.fixture.predictionLedger) delete p.predictionId;
+  return undefined;
 }
 function finishProcess(w: VillageWorld, p: VillageProcess): string | undefined {
   const id = p.actorId, order = p.orderId ? w.orders[p.orderId] : undefined;
@@ -586,7 +601,7 @@ function progressProcesses(w: VillageWorld) {
       w.people[p.actorId].activeProcessId = undefined; delete w.processes[p.id];
       const failed = emit(w, "process_failed", [p.actorId], [p.startEventId],
         { action: p.kind, reason: "actor exhausted" });
-      result(w, p.actorId, p.kind, failed, false, "actor exhausted", 0, dayAt(p.startedAt));
+      result(w, p.actorId, p.kind, failed, false, "actor exhausted", 0, dayAt(p.startedAt), travelExecution(w, p, "failed"));
       continue;
     }
     w.people[p.actorId].energy -= p.energyPerHour;
@@ -647,10 +662,10 @@ function progressProcesses(w: VillageWorld) {
     if (reason) {
       if (p.kind === "forage") w.resources[p.resource!].reserved -= p.quantity!;
       const failed = emit(w, "process_failed", [p.actorId], [p.startEventId], { action: p.kind, reason });
-      result(w, p.actorId, p.kind, failed, false, reason, 0, dayAt(p.startedAt));
+      result(w, p.actorId, p.kind, failed, false, reason, 0, dayAt(p.startedAt), travelExecution(w, p, "failed"));
     } else {
       const completed = emit(w, "process_completed", [p.actorId], [p.startEventId], { action: p.kind });
-      result(w, p.actorId, p.kind, completed, true, undefined, 0, dayAt(p.startedAt));
+      result(w, p.actorId, p.kind, completed, true, undefined, 0, dayAt(p.startedAt), travelExecution(w, p, "completed"));
     }
   }
 }
@@ -741,7 +756,7 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
       return "foraging route too long";
     return startProcess(w, id, "forage_route", 1, 1, decisionId, { plantId: plant.id, ...(w.fixture.publicForaging ? { quantity } : {}) });
   }
-  if (a.kind === "travel") return startTravel(w, id, a.siteId, decisionId);
+  if (a.kind === "travel") return startTravel(w, id, a.siteId, decisionId, a.predictionId);
   if (a.kind === "till_plot" || a.kind === "sow_plot" || a.kind === "harvest_plot" ||
     a.kind === "gather_plant") {
     const plant = w.land.plants[a.plantId];
@@ -984,6 +999,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.predictionLedger ? { predictionLedger: true as const } : {}),
     ...(w.fixture.needs ? { needs: { sleepDebt: person.needs!.sleepDebt, mealHours: person.needs!.mealHours,
       temperature: needsTemperature(w.hour, w.fixture.needs, siteId === `home_${id}`),
       sheltered: siteId === `home_${id}`, home: { siteId: `home_${id}`, cell: structuredClone(w.grid.sites[`home_${id}`]) } } } : {}),
@@ -1254,12 +1270,19 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
       const causeId = command ? emit(w, "command_submitted", [id], [decision.id],
         { commandId: command.id, action: command.attempt.kind }).id : decision.id;
       if (command) { command.status = "applied"; command.eventId = causeId; }
+      const proposed = response.attempts[0];
+      if (w.fixture.predictionLedger && proposed?.kind === "travel" && proposed.predictionId &&
+        (chosen?.kind !== "travel" || chosen.predictionId !== proposed.predictionId)) {
+        result(w, id, "travel", decision, false, "external command replaced prediction", 1, dayAt(w.hour),
+          { phase: "superseded", predictionId: proposed.predictionId, attemptEventId: causeId, destinationId: proposed.siteId });
+      }
       if (chosen) {
         const reason = attempt(w, id, chosen, causeId);
         if (reason) {
           const rejected = emit(w, "attempt_rejected", [id], [causeId],
             { attempt: chosen.kind, reason });
-          result(w, id, chosen.kind, rejected, false, reason);
+          result(w, id, chosen.kind, rejected, false, reason, 1, dayAt(w.hour), chosen.kind === "travel" ?
+            { phase: "rejected", predictionId: chosen.predictionId, attemptEventId: causeId, destinationId: chosen.siteId } : undefined);
         }
       }
     });
@@ -1342,6 +1365,7 @@ export function checkVillageWorld(w: VillageWorld) {
   for (const id of ids) {
     const p = w.people[id];
     if (p.memory.anticipation) checkAnticipationMemory(p.memory.anticipation, w.hour);
+    if (p.memory.anticipation?.predictions) checkPredictionLedger(p.memory.anticipation.predictions, w.hour);
     if (!!w.fixture.needs !== !!p.needs || p.needs && (Object.values(p.needs).some((n) => !Number.isSafeInteger(n) || n < 0) ||
       p.needs.sleepDebt > 48 || p.needs.mealHours >= 24)) throw Error("invalid needs body");
     if (p?.id !== id || !Number.isSafeInteger(p.nextWakeAt) || p.nextWakeAt <= w.hour ||

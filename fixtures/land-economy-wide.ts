@@ -65,3 +65,8 @@ export const anticipatoryNeeds90V1: VillageFixture = {
   needs: { dayTemperature: 22, nightTemperature: 8, homeInsulation: 10,
     comfortableTemperature: 16, initialSleepDebt: 4, initialMealHours: 18 },
 };
+
+/** Explicit pre-action travel forecasts and delivered outcomes, in a separate ruleset. */
+export const predictionLedger90V1: VillageFixture = {
+  ...structuredClone(anticipatoryNeeds90V1), predictionLedger: true,
+};

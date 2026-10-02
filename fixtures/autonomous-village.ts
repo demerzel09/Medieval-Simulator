@@ -1,6 +1,6 @@
 import { autonomous90FeasibilityV1, type FeasibilityFixture } from "./autonomous-90";
 
-export type VillageFixture = FeasibilityFixture & { informationDelayHours: number; needs?: import("../packages/sim/needs-body").NeedsConfig; woodEnabled?: false; grainNonperishable?: true; publicForaging?: true; spatialForaging?: true; breadEconomy?: { bakeHours: number; shelfLifeDays: number; storageCapacity: number };
+export type VillageFixture = FeasibilityFixture & { informationDelayHours: number; predictionLedger?: true; needs?: import("../packages/sim/needs-body").NeedsConfig; woodEnabled?: false; grainNonperishable?: true; publicForaging?: true; spatialForaging?: true; breadEconomy?: { bakeHours: number; shelfLifeDays: number; storageCapacity: number };
   landEconomy?: { grainPlots: number; initialSeeds: number; farmerGrainSkill: number;
     spatialGrid?: true; wideWorld?: true; exploreWildPlants?: true; physicalGrowth?: true;
     farms?: { id: string; ownerId: "F" | "B1" | "B2"; siteId: string; plotIds: string[];

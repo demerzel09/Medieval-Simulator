@@ -103,3 +103,5 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 ## 次の作業
 
 5人の世界では[土地経済計画](docs/baseline/LAND_ECONOMY_NEXT_PLAN.md)の順1〜4を実装し、穀物中心の正常90日、供給不足・技能・通信・道路の対照、記録再実行を検証しました。次は利用権と契約証拠の一般化、作物・人格・人口・地理を変えた90日の適用範囲の検証です。[実走結果と限界](docs/baseline/LAND_ECONOMY_V3_RESULT.md)を参照してください。本編M3の3〜5人の人間試遊は[記録票](docs/baseline/PLAYTEST.md)で別途実施します。
+
+移動の事前予測と実結果の照合を追加したCLI版は `npm run autonomy:village -- 90 --scenario land-predictions`。[v13の実測・履歴と再実行](docs/baseline/PREDICTION_LEDGER_V13_RESULT.md)を参照。画面の標準表示はv12。

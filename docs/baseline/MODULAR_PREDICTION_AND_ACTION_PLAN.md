@@ -1,6 +1,6 @@
 # 状況別の予測モデルと快・不快による行動選択
 
-更新: 2026-10-02。ユーザー合意に基づく設計。**未実装**。[身体・環境の設計](NEEDS_AND_ACTION_SELECTION_PLAN.md)を具体化する。[v12の実測](ANTICIPATORY_NEEDS_V12_RESULT.md)は引き続き現行実装の正本とし、本書の方式が90日成立した証拠にはしない。
+更新: 2026-10-02。ユーザー合意に基づく設計。段階Aを[v13](PREDICTION_LEDGER_V13_RESULT.md)で実装した。段階B〜Dは未実装。[身体・環境の設計](NEEDS_AND_ACTION_SELECTION_PLAN.md)を具体化する。[v12の実測](ANTICIPATORY_NEEDS_V12_RESULT.md)は引き続き現行実装の正本とし、本書の方式が90日成立した証拠にはしない。
 
 ## 目的と境界
 
@@ -159,6 +159,6 @@ v12の記録は初期条件・応答・世界規則を維持する。新しい�
 
 ## 次の着手点
 
-**段階Aの移動時間の予測と実結果の対応づけから始める。** `packages/ai/anticipatory-needs.ts` の `trip` と移動経験を入口に、主観側の予測ID・実行ID・旧版の見込み・結果接続・除外理由を追加する。身体・食品の世界法則を変更する前に、この対応と保存再開を小fixtureで確かめる。その後、同じ予測対象を持つ二つの移動モデルを段階Bで比較する。
+**段階Aはv13で実装済み。次は段階Bの二つの移動モデルの比較へ進む。** 以下は段階Aの着手方針として残す。 `packages/ai/anticipatory-needs.ts` の `trip` と移動経験を入口に、主観側の予測ID・実行ID・旧版の見込み・結果接続・除外理由を追加する。身体・食品の世界法則を変更する前に、この対応と保存再開を小fixtureで確かめる。その後、同じ予測対象を持つ二つの移動モデルを段階Bで比較する。
 
-実装時の分割候補は `packages/ai/prediction-ledger.ts`（事前予測・結果照合・重複防止）、`packages/ai/local-prediction-models.ts`（適用条件・予測・信頼・係数更新）、`packages/ai/action-forecast.ts`（候補・短い連鎖・評価）。いずれも新設予定で、現時点の実在ファイルではない。既存人格はこれらを呼び出す入口とし、世界の保存・記録には必要な主観状態と識別子だけを接続する。
+実装済みの分割は `packages/ai/prediction-ledger.ts`（事前予測・結果照合・重複防止）と `packages/ai/tracked-needs.ts`（v12人格への接続）。後続の分割候補は`packages/ai/local-prediction-models.ts`（適用条件・予測・信頼・係数更新）、`packages/ai/action-forecast.ts`（候補・短い連鎖・評価）。後続候補は新設予定で、現時点の実在ファイルではない。既存人格はこれらを呼び出す入口とし、世界の保存・記録には必要な主観状態と識別子だけを接続する。

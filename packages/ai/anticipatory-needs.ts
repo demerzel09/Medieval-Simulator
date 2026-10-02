@@ -5,6 +5,7 @@ type Observation = { at: number; site: string; cold: number; energy: number; deb
   sheltered: boolean; phase: "day" | "night"; temperature: number };
 export type Experience = { from: Observation; to: Observation; action: string; salience: number; evidenceIds: string[] };
 export type AnticipationMemory = {
+  predictions?: import("./prediction-ledger").PredictionLedger;
   last?: Observation; lastAction?: string; failedTravel?: boolean; experiences: Experience[];
   coldRates: Record<string, RunningEstimate>; temperatures: Record<string, RunningEstimate>; sleepRecovery: Record<string, RunningEstimate>; travelTimes: Record<string, RunningEstimate>;
   trip?: { at: number; from: string; to: string };

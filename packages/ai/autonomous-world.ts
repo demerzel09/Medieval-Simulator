@@ -2,14 +2,18 @@ import type { ActorInput, ActorResponse, PersonalityModel } from "./personality"
 
 export type VillageId = "S" | "F" | "C" | "B1" | "B2";
 export type VillageRole = "merchant" | "farmer" | "carrier" | "woodcutter";
+export type TravelExecution = { phase: "started" | "completed" | "failed" | "redirected" | "rejected" | "superseded";
+  predictionId?: string; processId?: string; attemptEventId: string; destinationId: string;
+  startedAt?: number; elapsedHours?: number };
 export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | "observation";
   occurredAt: number; receivedAt: number; causeEventIds: string[];
-  saleRevenue?: number; action?: VillageAttempt["kind"]; actionDay?: number; success?: boolean; reason?: string;
+  travel?: TravelExecution; saleRevenue?: number; action?: VillageAttempt["kind"]; actionDay?: number; success?: boolean; reason?: string;
   order?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number } };
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
   anticipation?: import("./anticipatory-needs").AnticipationMemory;
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
+  predictionLedger?: true;
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number;
@@ -33,7 +37,7 @@ export type VillageAttempt =
   | { kind: "post_food_order"; quantity: number; bid: number; carrierFee: number; salePrice: number }
   | { kind: "accept_carriage"; orderId: string } | { kind: "fund_carriage"; orderId: string }
   | { kind: "post_wood_bid"; price: number } | { kind: "post_sale_quote"; price: number }
-  | { kind: "travel"; siteId: string } | { kind: "relay_order"; orderId: string }
+  | { kind: "travel"; siteId: string; predictionId?: string } | { kind: "relay_order"; orderId: string }
   | { kind: "redirect_travel"; siteId: string }
   | { kind: "accept_food_order"; orderId: string }
   | { kind: "forage"; resource: "food" | "wood"; quantity: number }
