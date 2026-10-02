@@ -5,7 +5,8 @@ import { autonomousVillageV1 } from "../../fixtures/autonomous-village";
 import { landEconomy90V1 } from "../../fixtures/land-economy-90";
 import { spatialLandEconomy90V1 } from "../../fixtures/land-economy-spatial";
 import { ecologicalLandEconomy90V1, exploringLandEconomy90V1,
-  bulkTransport90V1, homeStorage90V1, foodMarket90V1, predictionLedger90V1, anticipatoryNeeds90V1, breadStorage90V1, localWork90V1, wildFoodMarket90V1, ownedFarms90V1, woodPausedLandEconomy90V1, wideLandEconomy90V1 } from "../../fixtures/land-economy-wide";
+  experienceLearning90V1, bulkTransport90V1, homeStorage90V1, foodMarket90V1, predictionLedger90V1, anticipatoryNeeds90V1, breadStorage90V1, localWork90V1, wildFoodMarket90V1, ownedFarms90V1, woodPausedLandEconomy90V1, wideLandEconomy90V1 } from "../../fixtures/land-economy-wide";
+import { learningNeedsVillageModel } from "../ai/learning-needs";
 import { trackedNeedsVillageModel } from "../ai/tracked-needs";
 import { anticipatoryNeedsVillageModel } from "../ai/anticipatory-needs";
 import { ordinaryVillageModel, type VillageModel } from "../ai/autonomous-world";
@@ -56,6 +57,8 @@ const days = Number(process.argv[2] ?? 90);
 if (!Number.isSafeInteger(days) || days < 1 || days > 90) throw Error("days must be 1..90");
 const scenarioIndex = args.indexOf("--scenario");
 const scenario = scenarioIndex < 0 ? "baseline" : args[scenarioIndex + 1];
+const ownedScenario = ["land-owned-farms", "land-wild-food", "land-local-work", "land-bread", "land-needs",
+  "land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport", "land-experience-learning"].includes(scenario);
 const fixture = structuredClone(autonomousVillageV1);
 let grid = defaultVillageGrid();
 let land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity);
@@ -69,7 +72,7 @@ else if (scenario === "carrier-refuses") model = { decide(input) {
   return ordinaryVillageModel.decide(input);
 } };
 else if (scenario === "cultivation") model = cultivatorVillageModel;
-else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-ecology", "land-wood-paused", "land-owned-farms", "land-wild-food", "land-local-work", "land-bread", "land-needs", "land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport", "land-few-plots", "land-few-seeds", "land-poor-yield",
+else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-ecology", "land-wood-paused", "land-owned-farms", "land-wild-food", "land-local-work", "land-bread", "land-needs", "land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport", "land-experience-learning", "land-few-plots", "land-few-seeds", "land-poor-yield",
   "land-long-field", "land-road-blocked", "land-farmer-refuses", "land-no-skill",
   "land-late-information", "land-starvation"].includes(scenario)) {
   Object.assign(fixture, structuredClone(landEconomy90V1.world));
@@ -90,8 +93,8 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
       woodPausedLandEconomy90V1 : ecologicalLandEconomy90V1));
     grid = ecologicalVillageGrid();
   }
-  if (scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work" || scenario === "land-bread" || (scenario === "land-needs" || scenario === "land-predictions" || (scenario === "land-food-market" || (scenario === "land-home-storage" || scenario === "land-bulk-transport")))) {
-    Object.assign(fixture, structuredClone(scenario === "land-bulk-transport" ? bulkTransport90V1 : scenario === "land-home-storage" ? homeStorage90V1 : scenario === "land-food-market" ? foodMarket90V1 : scenario === "land-predictions" ? predictionLedger90V1 : scenario === "land-needs" ? anticipatoryNeeds90V1 : scenario === "land-bread" ? breadStorage90V1 : scenario === "land-local-work" ? localWork90V1 : scenario === "land-wild-food" ? wildFoodMarket90V1 : ownedFarms90V1));
+  if (ownedScenario) {
+    Object.assign(fixture, structuredClone(scenario === "land-experience-learning" ? experienceLearning90V1 : scenario === "land-bulk-transport" ? bulkTransport90V1 : scenario === "land-home-storage" ? homeStorage90V1 : scenario === "land-food-market" ? foodMarket90V1 : scenario === "land-predictions" ? predictionLedger90V1 : scenario === "land-needs" ? anticipatoryNeeds90V1 : scenario === "land-bread" ? breadStorage90V1 : scenario === "land-local-work" ? localWork90V1 : scenario === "land-wild-food" ? wildFoodMarket90V1 : ownedFarms90V1));
     grid = ownedFarmsVillageGrid();
   }
   if (scenario === "land-few-plots") fixture.landEconomy!.grainPlots = 3;
@@ -104,8 +107,8 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
   }
   land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity,
     fixture.landEconomy?.grainPlots, true,
-    scenario === "land-wide" || scenario === "land-explore" || scenario === "land-ecology" || scenario === "land-wood-paused" || scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work" || scenario === "land-bread" || (scenario === "land-needs" || scenario === "land-predictions" || (scenario === "land-food-market" || (scenario === "land-home-storage" || scenario === "land-bulk-transport"))),
-    scenario === "land-ecology" || scenario === "land-wood-paused" || scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work" || scenario === "land-bread" || (scenario === "land-needs" || scenario === "land-predictions" || (scenario === "land-food-market" || (scenario === "land-home-storage" || scenario === "land-bulk-transport"))));
+    ownedScenario || ["land-wide", "land-explore", "land-ecology", "land-wood-paused"].includes(scenario),
+    ownedScenario || ["land-ecology", "land-wood-paused"].includes(scenario));
   if (scenario === "land-poor-yield") for (const patch of Object.values(land.plants))
     if (patch.species === "grain") patch.growthQuantity = 4;
   if (scenario === "land-starvation") for (const patch of Object.values(land.plants))
@@ -113,7 +116,7 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
       patch.initialAvailable = 0; patch.available = 0; patch.growthQuantity = 0;
       patch.stage = "regrowing";
     }
-  model = (scenario === "land-food-market" || (scenario === "land-home-storage" || scenario === "land-bulk-transport")) || scenario === "land-predictions" ? trackedNeedsVillageModel : scenario === "land-needs" ? anticipatoryNeedsVillageModel : scenario === "land-bread" ? breadStorageVillageModel :
+  model = scenario === "land-experience-learning" ? learningNeedsVillageModel : ["land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport"].includes(scenario) ? trackedNeedsVillageModel : scenario === "land-needs" ? anticipatoryNeedsVillageModel : scenario === "land-bread" ? breadStorageVillageModel :
     scenario === "land-wild-food" || scenario === "land-local-work" ? wildFoodMarketVillageModel :
     scenario === "land-owned-farms" ? ownedFarmsVillageModel :
     scenario === "land-ecology" || scenario === "land-wood-paused" ? ecologicalLandEconomyVillageModel :
@@ -135,7 +138,7 @@ else if (scenario === "no-grass") {
   grid.sites.field = { x: 4, y: 3 }; grid.sites.meadow = { x: 7, y: 3 };
   land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity);
 } else if (scenario !== "baseline") throw Error("unknown village scenario");
-const w = newVillageWorld(240924, fixture, grid, scenario === "land-owned-farms" || scenario === "land-wild-food" || scenario === "land-local-work" || scenario === "land-bread" || scenario === "land-needs" || scenario === "land-predictions" || (scenario === "land-food-market" || (scenario === "land-home-storage" || scenario === "land-bulk-transport")) ? undefined : land);
+const w = newVillageWorld(240924, fixture, grid, ownedScenario ? undefined : land);
 if (scenario === "rerouted-carrier") {
   queueVillageCommand(w, { id: "carrier-route", actorId: "C", at: 1,
     attempt: { kind: "travel", siteId: "grove" } });
@@ -190,6 +193,8 @@ const daily = snapshots.length ? snapshots.map((snapshot, i) => {
 }) : undefined;
 console.log(JSON.stringify({ mode: w.mode, seed: w.seed, scenario,
   summary: villageSummary(w),
+  ...(w.fixture.experienceLearning ? { actionLearning: Object.fromEntries(Object.entries(w.people).map(([id, p]) =>
+    [id, { ...p.memory.anticipation!.learning!.totals, conditionModels: Object.keys(p.memory.anticipation!.learning!.models).length }])) } : {}),
   predictions: w.fixture.predictionLedger ? Object.fromEntries(Object.entries(w.people).map(([id, p]) =>
     [id, p.memory.anticipation?.predictions?.totals])) : undefined, eventCount: w.events.length, stateHash: villageHash(w),
   daily, events: process.argv.includes("--events") ? w.events : undefined,

@@ -88,3 +88,6 @@ export const bulkTransport90V1: VillageFixture = {
   ...structuredClone(homeStorage90V1),
   bulkTransport: { grainYield: 20, grainUnitMass: 2, baseMoveTicks: 10, fatigueMass: 8 },
 };
+
+/** Actual meal time and matched experience for effort, recovery and purposeful transport. */
+export const experienceLearning90V1: VillageFixture = { ...structuredClone(bulkTransport90V1), experienceLearning: true };

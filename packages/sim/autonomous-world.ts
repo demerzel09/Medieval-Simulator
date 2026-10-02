@@ -1,3 +1,4 @@
+import { actionObservation, checkActionLearning, type ActionExecution, type ActionObservation } from "../ai/action-learning";
 import { loadMovement } from "./load-movement";
 import { villagePersonStatus } from "./village-status";
 import { autonomousVillageV1, type VillageFixture } from "../../fixtures/autonomous-village";
@@ -20,6 +21,7 @@ import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, totalMass
 export type VillageEvent = { id: string; hour: number; day: number; kind: string; actors: string[];
   causes: string[]; data: Record<string, string | number> };
 type VillagePerson = { id: VillageId; role: VillageRole; nextWakeAt: number; hunger: number; cold: number;
+  execution?: { predictionId?: string; attemptEventId: string; startedAt: number; action: VillageAttempt["kind"]; before: ActionObservation; processId?: string };
   bakingSkills?: { bread: number };
   energy: number; cell: GridPoint; farmingSkills: Record<string, number>;
   foragingSkill?: number; seenPlantIds?: string[]; needs?: NeedsBody;
@@ -99,7 +101,18 @@ function send(w: VillageWorld, recipientId: VillageId, stimulus: Omit<VillageSti
 }
 function result(w: VillageWorld, actorId: VillageId, action: VillageAttempt["kind"], event: VillageEvent,
   success = true, reason?: string, delay = 1, actionDay = dayAt(w.hour), travel?: TravelExecution) {
+  const execution = w.fixture.experienceLearning ? w.people[actorId].execution : undefined;
+  let experience: ActionExecution | undefined;
+  if (execution && (execution.action === action || travel?.phase === "redirected")) {
+    const phase = event.kind === "process_started" ? "started" : travel?.phase === "redirected" || event.kind === "sleep_interrupted" ? "interrupted" :
+      event.kind === "attempt_rejected" ? "rejected" : success ? "completed" : "failed";
+    experience = { ...structuredClone(execution), phase, elapsedHours: w.hour - execution.startedAt,
+      after: actionObservation(localView(w, actorId)) };
+    action = execution.action;
+    if (phase !== "started") delete w.people[actorId].execution;
+  }
   send(w, actorId, { kind: "result", action, actionDay, success, reason, causeEventIds: [event.id],
+    ...(experience ? { experience } : {}),
     ...(w.fixture.predictionLedger && travel ? { travel } : {}) }, delay);
 }
 function travelExecution(w: VillageWorld, p: VillageProcess, phase: TravelExecution["phase"]): TravelExecution | undefined {
@@ -157,6 +170,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
       .some((n) => !Number.isSafeInteger(n) || n < 1))) throw Error("invalid food market fixture");
   if (fixture.homeStorage && (!fixture.foodMarket || !Number.isSafeInteger(fixture.homeStorage.capacity) || fixture.homeStorage.capacity < 1)) throw Error("invalid home storage fixture");
   if (fixture.bulkTransport && (!fixture.homeStorage || !fixture.landEconomy?.wideWorld || Object.values(fixture.bulkTransport).some((n) => !Number.isSafeInteger(n) || n < 1))) throw Error("invalid bulk transport fixture");
+  if (fixture.experienceLearning && (!fixture.bulkTransport || !fixture.predictionLedger)) throw Error("invalid experience learning fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
@@ -295,7 +309,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     for (let i = 0; i < f.initialCash[id]; i++) add(`coin_${id}_${i}`, "currency", wallet(id), id);
     const initialSite = id === "F" ? "grove" : id.startsWith("B") ? `home_${id}` : "market";
     people[id] = { ...(f.needs ? { needs: { sleepDebt: f.needs.initialSleepDebt,
-      mealHours: f.needs.initialMealHours, exposureHours: 0, sleptHours: 0 } } : {}), id, role: roles[id], nextWakeAt: 1, hunger: f.needs ? 0 : 1, cold: f.woodEnabled === false ? 0 : 1, energy: f.body.initialEnergy,
+      mealHours: f.needs.initialMealHours, ...(f.experienceLearning ? { needClockHours: f.needs.initialMealHours } : {}), exposureHours: 0, sleptHours: 0 } } : {}), id, role: roles[id], nextWakeAt: 1, hunger: f.needs ? 0 : 1, cold: f.woodEnabled === false ? 0 : 1, energy: f.body.initialEnergy,
       cell: structuredClone(grid.sites[initialSite]),
       ...(f.foodMarket ? { bakingSkills: { bread: f.foodMarket.initialBakingSkills[id] } } : {}),
       farmingSkills: id === "F" || farm ? { grain: f.landEconomy?.farmerGrainSkill ?? 1 } : {},
@@ -332,8 +346,9 @@ function startProcess(w: VillageWorld, actorId: VillageId, kind: VillageProcess[
   w.processes[id] = { id, actorId, kind, startedAt: w.hour, duration, progress: 0, energyPerHour,
     startEventId: started.id, ...extra };
   person.activeProcessId = id;
+  if (person.execution) person.execution.processId = id;
   const travel = travelExecution(w, w.processes[id], "started");
-  if (travel) result(w, actorId, kind, started, true, undefined, 1, dayAt(w.hour), travel);
+  if (travel || w.fixture.experienceLearning) result(w, actorId, kind, started, true, undefined, 1, dayAt(w.hour), travel);
   return undefined;
 }
 function startTravel(w: VillageWorld, actorId: VillageId, toId: string, decisionId: string, predictionId?: string) {
@@ -939,6 +954,7 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     if (reason) return reason;
     if (!w.physical.objects[lot.id]) delete w.foodLots[lot.id];
     w.people[id].hunger--; w.people[id].meals++; w.eatenFood += quantity;
+    if (w.fixture.experienceLearning) w.people[id].needs!.mealHours = 0;
     const event = emit(w, "ate", [id], [decisionId, ...(lot.causeEventId === "initial" ? [] : [lot.causeEventId])], { quantity,
       ...(origin?.originPlantId ? { originPlantId: origin.originPlantId,
         species: origin.species ?? "", ...(origin.product ? { product: origin.product } : {}) } : {}) });
@@ -990,7 +1006,8 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
     if (ingredientStore) emit(w, "grain_stored", [id], [event.id],
       { lotId: transferred, storeId: ingredientStore.id, siteId: site, quantity: offer.quantity });
     result(w, id, a.kind, event); send(w, offer.sellerId, { kind: "result", action: "post_surplus_offer",
-      success: true, ...(w.fixture.needs ? { saleRevenue: offer.price } : {}), causeEventIds: [event.id] },
+      success: true, ...(w.fixture.needs ? { saleRevenue: offer.price } : {}),
+      ...(w.fixture.experienceLearning ? { trade: { offeredAt: w.events.find((e) => e.id === offer.postedEventId)!.hour, soldAt: w.hour, quantity: offer.quantity, revenue: offer.price } } : {}), causeEventIds: [event.id] },
       w.fixture.foodMarket ? 1 : 0); return undefined;
   }
   if (a.kind === "store_home_cash" || a.kind === "take_home_cash" || a.kind === "store_home" || a.kind === "take_home") {
@@ -1092,6 +1109,9 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.experienceLearning ? { experienceLearning: true as const, carriedInventory: villagePersonStatus(w, id).carried.items.map((item) => ({
+      id: item.id, kind: item.kind, quantity: item.quantity, mass: item.mass, edible: !["grain", "wood", "seed"].includes(item.kind),
+      ...(item.expiresDay === undefined ? {} : { expiresDay: item.expiresDay }) })) } : {}),
     ...(w.fixture.bulkTransport ? { bulkTransport: { ...w.fixture.bulkTransport, maxEnergy: w.fixture.body.maxEnergy, plantingReserve: farmsForActor(w, id)?.plotIds.length ?? 0,
       bagFreeMass: w.physical.types.bag.container!.maxContentsMass! - totalMass(w.physical, bag(id)) },
       fieldGrainStores: Object.values(w.physical.objects).filter((o) => o.id.startsWith("granary_field_") && o.ownerId === id).map((store) => {
@@ -1101,13 +1121,14 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
       }) } : {}),
     ...(w.fixture.homeStorage && siteId === `home_${id}` ? { homeStorage: (() => {
       const home = villagePersonStatus(w, id).home;
-      return { cash: home.cash, items: home.items.map(({ id, kind, quantity }) => ({ id, kind, quantity })) };
+      return { cash: home.cash, ...(w.fixture.experienceLearning ? { freeMass: w.fixture.homeStorage!.capacity - totalMass(w.physical, `home_chest_${id}`) } : {}), items: home.items.map(({ id, kind, quantity }) => ({ id, kind, quantity })) };
     })() } : {}),
     ...(w.fixture.foodMarket ? { foodMarket: { bakingSkill: person.bakingSkills!.bread,
       grainBatchQuantity: w.fixture.foodMarket.grainBatchQuantity, grainBatchPrice: w.fixture.foodMarket.grainBatchPrice,
       breadPrice: w.fixture.foodMarket.breadPrice } } : {}),
     ...(w.fixture.predictionLedger ? { predictionLedger: true as const } : {}),
     ...(w.fixture.needs ? { needs: { sleepDebt: person.needs!.sleepDebt, mealHours: person.needs!.mealHours,
+      ...(w.fixture.experienceLearning ? { needClockHours: person.needs!.needClockHours! } : {}),
       temperature: needsTemperature(w.hour, w.fixture.needs, siteId === `home_${id}`),
       sheltered: siteId === `home_${id}`, home: { siteId: `home_${id}`, cell: structuredClone(w.grid.sites[`home_${id}`]) } } } : {}),
     ...(w.fixture.breadEconomy ? { breadEconomy: true as const, bakingHours: w.fixture.breadEconomy.bakeHours,
@@ -1334,6 +1355,7 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
               { commandId: command.id, hours: process.progress });
             person.activeProcessId = undefined; delete w.processes[process.id];
             command.status = "applied"; command.eventId = event.id;
+            if (w.fixture.experienceLearning) result(w, id, "sleep", event, false, "sleep interrupted");
             result(w, id, "wake_up", event);
           } else if (command.attempt.kind === "redirect_travel" && process.kind === "travel") {
             const submitted = emit(w, "command_submitted", [id], [process.startEventId],
@@ -1383,7 +1405,15 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
         result(w, id, "travel", decision, false, "external command replaced prediction", 1, dayAt(w.hour),
           { phase: "superseded", predictionId: proposed.predictionId, attemptEventId: causeId, destinationId: proposed.siteId });
       }
+      if (w.fixture.experienceLearning && proposed?.experienceId && chosen?.experienceId !== proposed.experienceId) {
+        const before = actionObservation(view);
+        send(w, id, { kind: "result", action: proposed.kind, success: false, reason: "external command replaced prediction", causeEventIds: [decision.id],
+          experience: { phase: "superseded", predictionId: proposed.experienceId, attemptEventId: causeId,
+            startedAt: w.hour, elapsedHours: 0, before, after: structuredClone(before) } });
+      }
       if (chosen) {
+        if (w.fixture.experienceLearning) person.execution = { action: chosen.kind, ...(chosen.experienceId ? { predictionId: chosen.experienceId } : {}),
+          attemptEventId: causeId, startedAt: w.hour, before: actionObservation(view) };
         const reason = attempt(w, id, chosen, causeId);
         if (reason) {
           const rejected = emit(w, "attempt_rejected", [id], [causeId],
@@ -1485,12 +1515,18 @@ export function checkVillageWorld(w: VillageWorld) {
     const homeChest = w.physical.objects[`home_chest_${id}`];
     if (w.fixture.homeStorage && (!homeChest || homeChest.typeId !== "home_chest" ||
       homeChest.ownerId !== id || homeChest.parentId !== `home_${id}`)) throw Error("invalid home chest");
+    if (p.memory.anticipation?.learning) checkActionLearning(p.memory.anticipation.learning, w.hour);
+    if (p.execution && (!w.fixture.experienceLearning || !eventIds.has(p.execution.attemptEventId) ||
+      p.execution.startedAt > w.hour || !p.activeProcessId || p.execution.processId !== p.activeProcessId ||
+      w.processes[p.activeProcessId].startedAt !== p.execution.startedAt || w.processes[p.activeProcessId].kind !== p.execution.action))
+      throw Error("invalid action execution");
     if (p.memory.anticipation) checkAnticipationMemory(p.memory.anticipation, w.hour);
     if (p.memory.anticipation?.predictions) checkPredictionLedger(p.memory.anticipation.predictions, w.hour);
     if (!!w.fixture.foodMarket !== !!p.bakingSkills || p.bakingSkills &&
       (!Number.isSafeInteger(p.bakingSkills.bread) || p.bakingSkills.bread < 0)) throw Error("invalid baking skill");
     if (!!w.fixture.needs !== !!p.needs || p.needs && (Object.values(p.needs).some((n) => !Number.isSafeInteger(n) || n < 0) ||
-      p.needs.sleepDebt > 48 || p.needs.mealHours >= 24)) throw Error("invalid needs body");
+      p.needs.sleepDebt > 48 || (!w.fixture.experienceLearning && p.needs.mealHours >= 24) ||
+      (w.fixture.experienceLearning && (!Number.isSafeInteger(p.needs.needClockHours) || p.needs.needClockHours! < 0 || p.needs.needClockHours! >= 24)))) throw Error("invalid needs body");
     if (p?.id !== id || !Number.isSafeInteger(p.nextWakeAt) || p.nextWakeAt <= w.hour ||
       !Number.isSafeInteger(p.energy) || p.energy < 0 || p.energy > w.fixture.body.maxEnergy ||
       !Number.isSafeInteger(p.hunger) || p.hunger < 0 || !Number.isSafeInteger(p.cold) || p.cold < 0 ||

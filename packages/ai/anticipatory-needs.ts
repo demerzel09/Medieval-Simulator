@@ -1,17 +1,21 @@
 import { loadMovement, travelExperienceKey } from "../sim/load-movement";
 import type { VillageAttempt, VillageContext, VillageMemory, VillageModel } from "./autonomous-world";
 import { foodMarketChoice } from "./food-market";
+import { actionObservation, effortForecast } from "./action-learning";
+import { checkForagingMemory, forageDestination, rememberForaging, type ForagingMemory } from "./foraging-memory";
 
 export type RunningEstimate = { count: number; mean: number; m2: number };
 type Observation = { at: number; site: string; cold: number; energy: number; debt: number;
   sheltered: boolean; phase: "day" | "night"; temperature: number };
 export type Experience = { from: Observation; to: Observation; action: string; salience: number; evidenceIds: string[] };
 export type AnticipationMemory = {
+  learning?: import("./action-learning").ActionLearningMemory;
+  foraging?: ForagingMemory;
   predictions?: import("./prediction-ledger").PredictionLedger;
   last?: Observation; lastAction?: string; failedTravel?: boolean; experiences: Experience[];
   coldRates: Record<string, RunningEstimate>; temperatures: Record<string, RunningEstimate>; sleepRecovery: Record<string, RunningEstimate>; travelTimes: Record<string, RunningEstimate>;
   trip?: { at: number; from: string; to: string };
-  goal?: { kind: "sleep" | "store" | "bake" | "sell"; siteId: string; startedAt: number };
+  goal?: { kind: "sleep" | "store" | "bake" | "sell" | "forage"; siteId: string; startedAt: number };
   sales: { visits: number; sales: number; failures: number; retryAt: number; offeredAt?: number };
   foodMarket?: { visitStartedAt?: number; retryAt: number };
   reasoning?: { reason: string; evidenceIds: string[]; leadHours: number; forecastCold: number;
@@ -101,10 +105,13 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
   const c = input.knownContext, memory: VillageMemory = structuredClone(input.subjectiveState);
   if (!c.needs) throw Error("anticipatory personality requires a needs context");
   const m = memory.anticipation ??= freshMemory();
+  if (c.experienceLearning) rememberForaging(m.foraging ??= { places: {} }, c, input.at);
   if (memory.day !== c.day) { memory.day = c.day; memory.done = []; }
   const evidenceIds = input.stimuli.flatMap((s) => s.causeEventIds);
   learn(m, c, input.at, evidenceIds);
   for (const stimulus of input.stimuli) {
+    if (c.experienceLearning && stimulus.action === "gather_plant" && stimulus.experience &&
+      ["completed", "failed", "rejected"].includes(stimulus.experience.phase) && m.goal?.kind === "forage") delete m.goal;
     if (stimulus.saleRevenue !== undefined) {
       m.sales.sales++; m.sales.failures = 0; m.sales.retryAt = input.at; delete m.sales.offeredAt;
       if (m.goal?.kind === "sell") delete m.goal;
@@ -146,7 +153,8 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       const cell = destination === home.siteId ? home.cell : c.visiblePlants.find((p) => p.siteId === destination)?.cell ?? m.predictions?.knownSites[destination];
       if (cell) {
         const target = travelEstimate(m, c, destination, cell);
-        const required = Math.min(c.bulkTransport.maxEnergy, (target.hours + target.margin) * loadMovement(c.carriedMass, c.bulkTransport).energyPerHour + 1);
+        const rate = c.experienceLearning ? Math.max(0, -effortForecast(m.learning, "travel", actionObservation(c)).rate) : loadMovement(c.carriedMass, c.bulkTransport).energyPerHour;
+        const required = Math.min(c.bulkTransport.maxEnergy, (target.hours + target.margin) * rate + 1);
         if (c.energy < required) { attempt = { kind: "rest" }; reason = "recover energy for predicted loaded journey"; }
       }
     }
@@ -163,6 +171,22 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     delete m.goal;
     return choose(body.sleepDebt >= 8 ? { kind: "sleep" } : undefined, "recover at selected shelter");
   }
+  if (c.experienceLearning && c.hunger > 0 && meals === 0 && c.cold < 8 && body.sleepDebt < 24) {
+    const local = c.visiblePlants.find((p) => p.siteId === c.siteId && ["herb", "wild_berry", "fruit_tree"].includes(p.species) &&
+      p.stage === "ripe" && p.available >= (p.species === "herb" ? 2 : 1) && c.bulkTransport!.bagFreeMass >= (p.species === "herb" ? 2 : 1));
+    if (local) {
+      const quantity = Math.min(local.species === "herb" ? 2 : Math.min(3, local.available), c.bulkTransport!.bagFreeMass);
+      const workRate = Math.max(0, -effortForecast(m.learning, "gather_plant", actionObservation(c)).rate);
+      const homeRate = Math.max(0, -effortForecast(m.learning, "travel", { ...actionObservation(c), mass: c.carriedMass + quantity }).rate);
+      const energy = quantity * workRate + (trip.hours + trip.margin) * homeRate + 2;
+      m.reasoning!.candidates.push({ goal: "local-food-then-shelter", cold: forecastCold(m, c.cold, input.at, quantity + trip.hours, body.sheltered).peak,
+        debt: body.sleepDebt + quantity + trip.hours, cost: quantity + trip.hours });
+      if (c.energy >= energy) {
+        m.goal = { kind: "forage", siteId: c.siteId, startedAt: input.at };
+        return choose({ kind: "gather_plant", plantId: local.id, quantity }, "obtain local food while retaining effort to reach shelter");
+      }
+    }
+  }
   const anticipate = !body.sheltered && continuing.peak >= 8 || body.sleepDebt + trip.hours + trip.margin >= 20;
   if (m.goal?.kind === "sleep" || anticipate) {
     // A distant home need not be worth the journey when the known local conditions are safe.
@@ -171,25 +195,27 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       return choose({ kind: "sleep" }, "safe local sleep outweighs distant shelter journey");
     m.goal ??= { kind: "sleep", siteId: home.siteId, startedAt: input.at };
     if (c.siteId === home.siteId) { delete m.goal; return choose({ kind: "sleep" }, "prevent predicted sleep deficit"); }
-    if (c.energy < Math.min(c.bulkTransport?.maxEnergy ?? Infinity, (trip.hours + trip.margin) * (c.bulkTransport ? loadMovement(c.carriedMass, c.bulkTransport).energyPerHour : 1 + Math.floor(c.carriedMass / 10)) + 2)) return choose({ kind: "rest" }, "recover enough energy to reach shelter");
+    const homeRate = c.experienceLearning ? Math.max(0, -effortForecast(m.learning, "travel", actionObservation(c)).rate) : c.bulkTransport ? loadMovement(c.carriedMass, c.bulkTransport).energyPerHour : 1 + Math.floor(c.carriedMass / 10);
+    if (c.energy < Math.min(c.bulkTransport?.maxEnergy ?? Infinity, (trip.hours + trip.margin) * homeRate + 2)) return choose({ kind: "rest" }, "recover enough energy to reach shelter");
     return travel(home.siteId);
   }
   if (c.energy < 6) return choose({ kind: "rest" }, "recover activity fatigue without erasing sleep debt");
   if (c.bulkTransport && c.homeStorage) {
     const grain = c.ownFoodLots!.find((lot) => lot.product === "grain");
-    if (grain && meals === 0 && (c.hunger > 0 || body.mealHours >= 16)) {
+    if (grain && meals === 0 && (c.hunger > 0 || Math.max(body.mealHours, body.needClockHours ?? 0) >= 16)) {
       const store = c.grainStores!.find((store) => store.siteId === c.siteId && store.capacity - store.grain >= grain.quantity);
       if (store) return choose({ kind: "store_grain", lotId: grain.id, storeId: store.id }, "leave heavy grain at home before seeking edible food");
     }
     const storedGrain = c.homeStorage.items.find((lot) => lot.kind === "grain");
-    if (c.ownFarm && meals > 0 && c.ownCash < 4 && (c.grainCarried ?? 0) < c.bulkTransport.plantingReserve && storedGrain) {
-      const quantity = Math.min(storedGrain.quantity, c.bulkTransport.plantingReserve - (c.grainCarried ?? 0), Math.floor(c.bulkTransport.bagFreeMass / c.bulkTransport.grainUnitMass));
+    if (c.ownFarm && meals > 0 && c.ownCash < (c.experienceLearning ? 8 : 4) && (c.grainCarried ?? 0) < c.bulkTransport.plantingReserve && storedGrain &&
+      (!c.experienceLearning || c.visiblePlants.some((p) => p.ownerId === input.actorId && (p.stage === "tilled" || p.stage === "bare")))) {
+      const quantity = Math.min(storedGrain.quantity, (c.experienceLearning ? 1 : c.bulkTransport.plantingReserve) - (c.grainCarried ?? 0), Math.floor(c.bulkTransport.bagFreeMass / c.bulkTransport.grainUnitMass));
       if (quantity > 0) return choose({ kind: "take_home", objectId: storedGrain.id, quantity }, "take grain reserve for sowing owned crops");
     }
   }
   if (c.homeStorage) {
     if (c.ownCash > 8) return choose({ kind: "store_home_cash", quantity: c.ownCash - 8 }, "leave excess cash in own home before carrying on");
-    if (c.ownCash < 4 && c.homeStorage.cash > 0) return choose({ kind: "take_home_cash", quantity: Math.min(8 - c.ownCash, c.homeStorage.cash) }, "take own stored cash for food purchases");
+    if (c.ownCash < (c.experienceLearning ? 8 : 4) && c.homeStorage.cash > 0) return choose({ kind: "take_home_cash", quantity: Math.min(8 - c.ownCash, c.homeStorage.cash) }, "take own stored cash for food purchases");
     const storedFood = c.homeStorage.items.find((lot) => !["grain", "seed", "wood"].includes(lot.kind));
     if (meals < 2 && storedFood) return choose({ kind: "take_home", objectId: storedFood.id,
       quantity: Math.min(storedFood.quantity, storedFood.kind === "herb" ? 2 : 1) }, "take edible reserve from own home");
@@ -197,8 +223,31 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     if (meals > 2 && excess) return choose({ kind: "store_home", objectId: excess.id,
       quantity: Math.min(excess.quantity, (meals - 2) * excess.mealQuantity) }, "leave surplus food in own home");
   }
-  const urgentForaging = c.bulkTransport && meals === 0 && (c.hunger > 0 || body.mealHours >= 16) &&
-    !(c.foodMarket!.bakingSkill > 0 && c.grainStores!.some((store) => store.siteId === c.siteId && store.grain > 0));
+  if (c.experienceLearning && meals === 0 && (c.hunger > 0 || Math.max(body.mealHours, body.needClockHours ?? 0) >= 16)) {
+    const local = c.visiblePlants.find((p) => p.siteId === c.siteId && ["herb", "wild_berry", "fruit_tree"].includes(p.species) &&
+      p.stage === "ripe" && p.available >= (p.species === "herb" ? 2 : 1) && c.bulkTransport!.bagFreeMass >= (p.species === "herb" ? 2 : 1));
+    if (local) {
+      m.goal = { kind: "forage", siteId: c.siteId, startedAt: input.at };
+      return choose({ kind: "gather_plant", plantId: local.id, quantity: Math.min(local.species === "herb" ? 2 : Math.min(3, local.available), c.bulkTransport!.bagFreeMass) },
+        "collect immediately available food before another journey");
+    }
+  }
+  if (c.experienceLearning && m.goal?.kind === "forage") {
+    if (meals > 0) delete m.goal;
+    else if (c.siteId !== m.goal.siteId) return travel(m.goal.siteId);
+    else {
+      const plant = c.visiblePlants.find((p) => p.siteId === c.siteId && p.stage === "ripe" &&
+        p.available >= (p.species === "herb" ? 2 : 1));
+      if (plant && (c.bulkTransport!.bagFreeMass >= (plant.species === "herb" ? 2 : 1))) {
+        return choose({ kind: "gather_plant", plantId: plant.id, quantity: Math.min(plant.species === "herb" ? 2 : Math.min(3, plant.available), c.bulkTransport!.bagFreeMass) },
+          "finish selected food gathering before reconsidering trade");
+      }
+      delete m.goal; // Actual arrival observation supersedes remembered availability.
+    }
+  }
+  const urgentForaging = c.bulkTransport && meals === 0 && (c.hunger > 0 || Math.max(body.mealHours, body.needClockHours ?? 0) >= 16) &&
+    !(c.foodMarket!.bakingSkill > 0 && (c.grainStores!.some((store) => (c.experienceLearning || store.siteId === c.siteId) && store.grain > 0) ||
+      c.experienceLearning && c.ownCash >= c.foodMarket!.grainBatchPrice));
   if (c.foodMarket && !urgentForaging) {
     const market = foodMarketChoice(c, m, input.actorId, input.at);
     if (market) return choose(market.attempt, market.reason);
@@ -222,7 +271,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     delete m.goal;
     return choose({ kind: "bake_bread", lotId: store.lots[0].id }, "prepare edible reserve before next hunger");
   }
-  const hungrySoon = meals === 0 && (c.hunger > 0 || body.mealHours >= 16);
+  const hungrySoon = meals === 0 && (c.hunger > 0 || Math.max(body.mealHours, body.needClockHours ?? 0) >= 16);
   if (hungrySoon) {
     const offer = c.visibleFoodOffers?.filter((o) => o.product !== "grain" && o.price <= c.ownCash && o.price <= 2)
       .sort((a, b) => a.price - b.price || a.id.localeCompare(b.id))[0];
@@ -235,9 +284,14 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     const ripe = c.visiblePlants.find((p) => p.ownerId === input.actorId && p.species === "grain" && p.stage === "ripe");
     if (!c.foodMarket && ripe && raw < 12) return choose(c.siteId === ripe.siteId ? { kind: "harvest_plot", plantId: ripe.id } :
       { kind: "travel", siteId: ripe.siteId! }, "obtain raw material for impending food need");
+    if (wild && c.experienceLearning) m.goal = { kind: "forage", siteId: wild.siteId!, startedAt: input.at };
     if (wild) return choose(c.siteId === wild.siteId ? { kind: "gather_plant", plantId: wild.id,
       quantity: Math.min(wild.species === "herb" ? 2 : Math.min(3, wild.available), c.bulkTransport?.bagFreeMass ?? Infinity) } :
       { kind: "travel", siteId: wild.siteId! }, "gather locally observed food for impending hunger");
+    if (c.experienceLearning && m.foraging) {
+      const target = forageDestination(m.foraging, c, input.at);
+      if (target) return choose({ kind: "travel", siteId: target.siteId }, target.reason);
+    }
     if (c.siteId !== "grove") return choose({ kind: "travel", siteId: "grove" }, "revisit known food area; no visible food");
   }
   // A personal two-meal reserve is not surplus. Poor sales reduce visits, not create synthetic demand.
@@ -256,11 +310,17 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
         (meals - 2) * lot.mealQuantity), price: 1 }, "offer only food above personal reserve");
     }
   }
-  if (c.ownFarm && (!c.bulkTransport || raw + (c.grainCarried ?? 0) < c.bulkTransport.grainYield) && (c.foodMarket ? c.ownCash < 4 && (c.grainCarried ?? 0) <= (c.bulkTransport?.plantingReserve ?? 0) : raw + meals < 12)) {
+  if (c.ownFarm && (!c.bulkTransport || raw + (c.grainCarried ?? 0) < c.bulkTransport.grainYield) && (c.foodMarket ? c.ownCash < (c.experienceLearning ? 8 : 4) && (c.grainCarried ?? 0) <= (c.bulkTransport?.plantingReserve ?? 0) : raw + meals < 12)) {
     const crops = c.visiblePlants.filter((p) => p.ownerId === input.actorId && p.farmId === c.ownFarm!.id);
     const target = crops.find((p) => p.stage === "ripe") ?? crops.find((p) => p.stage === "tilled") ?? crops.find((p) => p.stage === "bare");
-    if (target?.stage === "tilled" && c.bulkTransport && (c.grainCarried ?? 0) === 0)
+    if (target?.stage === "tilled" && c.bulkTransport && (c.grainCarried ?? 0) === 0) {
+      if (c.experienceLearning) {
+        const stock = c.grainStores!.find((s) => s.grain > 0 && s.siteId === c.siteId) ?? c.grainStores!.find((s) => s.grain > 0);
+        if (stock) return choose(c.siteId === stock.siteId ? { kind: "load_grain", lotId: stock.lots[0].id, quantity: 1 } :
+          { kind: "travel", siteId: stock.siteId }, "retrieve one stored grain for observed tilled crop");
+      }
       return choose(undefined, "sowing requires actual carried grain; retain tilled plot");
+    }
     if (target) return choose(c.siteId !== target.siteId ? { kind: "travel", siteId: target.siteId! } :
       target.stage === "ripe" ? { kind: "harvest_plot", plantId: target.id } : target.stage === "tilled" ?
       { kind: "sow_plot", plantId: target.id } : { kind: "till_plot", plantId: target.id }, "work owned crop for bounded personal reserve");
@@ -271,6 +331,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
 
 /** Validate saved subjective state without adding any knowledge of the world to it. */
 export function checkAnticipationMemory(memory: AnticipationMemory, at: number) {
+  if (memory.foraging) checkForagingMemory(memory.foraging, at);
   const estimates = [...Object.values(memory.coldRates), ...Object.values(memory.temperatures),
     ...Object.values(memory.sleepRecovery), ...Object.values(memory.travelTimes)];
   if (memory.experiences.length > 24 || estimates.some((e) => !Number.isSafeInteger(e.count) || e.count < 1 ||

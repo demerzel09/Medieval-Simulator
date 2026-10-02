@@ -251,9 +251,9 @@ test("the previous needs scene exposes the basis of anticipatory decisions", asy
 });
 
 
-test("bulk grain default shows load-dependent walking and actual field inventories", async ({ page }) => {
+test("v16 grain comparison shows load-dependent walking and actual field inventories", async ({ page }) => {
   test.setTimeout(120000);
-  await page.goto("/?village=land-economy");
+  await page.goto("/?village=land-economy&wood=load");
   await expect(page.getByLabel("表示する記録")).toHaveValue("load", { timeout: 30000 });
   await expect(page.getByRole("note")).toContainText("播種1→収穫20");
   const carried = page.getByRole("region", { name: "携帯中の所持品" });
@@ -280,4 +280,22 @@ test("bulk grain default shows load-dependent walking and actual field inventori
   await page.getByLabel("土地経済の分").fill("0");
   await expect(fields).toContainText("物品なし");
   await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("8 / 24");
+});
+
+test("v17 default shows actual time since eating and matched personal experience", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("learn", { timeout: 30000 });
+  await expect(page.getByRole("region", { name: "経験からの見込み" })).toBeVisible();
+  await page.getByLabel("土地経済の日").fill("10");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  const r = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-experience-learning-90.v2.json.gz")).toString());
+  const status = JSON.parse(r.events.filter((e: { kind: string; actors: string[]; hour: number }) => e.kind === "person_status" && e.actors[0] === "F" && e.hour === 240)[0].data.status);
+  const last = r.decisions.filter((d: { actorId: string; hour: number }) => d.actorId === "F" && d.hour <= 240).at(-1);
+  await expect(page.getByRole("region", { name: "人物の身体ステータス" })).toContainText(`食事からの経過 ${status.body.mealHours}時間`);
+  await expect(page.getByRole("region", { name: "経験からの見込み" })).toContainText(`対応した結果 ${last.response.subjectiveUpdate.anticipation.learning.totals.matched}件`);
+  await page.screenshot({ path: "/tmp/medieval-v17-experience.png", fullPage: true });
+  await page.getByRole("tab", { name: "人物の履歴" }).click();
+  await expect(page.getByRole("tabpanel")).toContainText("判断理由");
 });

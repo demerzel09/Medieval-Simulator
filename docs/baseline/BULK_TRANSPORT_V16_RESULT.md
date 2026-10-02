@@ -20,7 +20,7 @@ v15で確認した市場待機の時刻も新規則で修正。移動提案時�
 
 ## 記録と画面
 
-`land-bulk-transport` / `autonomous-village-bulk-transport-v16`。F5の「自律: 土地経済90日の生態デバッグ画面」と `/?village=land-economy` が新記録を表示する。ステータスに携帯重量から算出した歩行速度・移動体力消費、畑の実在する保管品を追加。地図にも畑の穀物庫の数量を表示する。
+`land-bulk-transport` / `autonomous-village-bulk-transport-v16`。現在は表示する記録からv16を選ぶか `/?village=land-economy&wood=load` で比較する。F5の標準は[v17](EXPERIENCE_LEARNING_V17_RESULT.md)へ進んだ。ステータスに携帯重量から算出した歩行速度・移動体力消費、畑の実在する保管品を追加。地図にも畑の穀物庫の数量を表示する。
 
 ```sh
 npm run autonomy:village -- 90 --scenario land-bulk-transport

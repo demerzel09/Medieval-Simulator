@@ -7,26 +7,30 @@ export type TravelExecution = { phase: "started" | "completed" | "failed" | "red
   startedAt?: number; elapsedHours?: number };
 export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | "observation";
   occurredAt: number; receivedAt: number; causeEventIds: string[];
+  experience?: import("./action-learning").ActionExecution;
+  trade?: { offeredAt: number; soldAt: number; quantity: number; revenue: number };
   travel?: TravelExecution; saleRevenue?: number; action?: VillageAttempt["kind"]; actionDay?: number; success?: boolean; reason?: string;
   order?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number } };
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
   anticipation?: import("./anticipatory-needs").AnticipationMemory;
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
+  experienceLearning?: true;
+  carriedInventory?: { id: string; kind: string; quantity: number; mass: number; edible: boolean; expiresDay?: number }[];
   predictionLedger?: true;
   bulkTransport?: import("../sim/load-movement").LoadTransport & { bagFreeMass: number; plantingReserve: number; maxEnergy: number };
   fieldGrainStores?: { id: string; siteId: string; cell: { x: number; y: number }; grain: number; lots: { id: string; quantity: number }[] }[];
-  homeStorage?: { cash: number; items: { id: string; kind: string; quantity: number }[] };
+  homeStorage?: { freeMass?: number; cash: number; items: { id: string; kind: string; quantity: number }[] };
   foodMarket?: { bakingSkill: number; grainBatchQuantity: number; grainBatchPrice: number; breadPrice: number };
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number;
-  needs?: { sleepDebt: number; mealHours: number; temperature: number; sheltered: boolean;
+  needs?: { sleepDebt: number; mealHours: number; needClockHours?: number; temperature: number; sheltered: boolean;
     home: { siteId: string; cell: { x: number; y: number } }; };
   breadEconomy?: true; grainCarried?: number; bakingHours?: number;
   grainStores?: { id: string; siteId: string; grain: number; capacity: number; lots: { id: string; quantity: number }[] }[];
   publicForaging?: true; spatialForaging?: true; edibleMeals?: number;
-  ownFoodLots?: { id: string; quantity: number; species: string; product?: "grain" | "bread"; mealQuantity: number; offered: boolean }[];
+  ownFoodLots?: { id: string; quantity: number; species: string; product?: "grain" | "bread"; mealQuantity: number; offered: boolean; expiresDay?: number }[];
   visibleFoodOffers?: { id: string; sellerId: VillageId; quantity: number; price: number; species: string; product?: "grain" | "bread" }[];
   woodEnabled?: false; foodResource?: number; woodResource?: number;
   visibleOrder?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number;
@@ -37,7 +41,7 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   visiblePlants: { id: string; species: string; stage: string; available: number;
     ownerId?: string; farmId?: string; siteId?: string; cell?: { x: number; y: number } }[];
   farmingSkills: Record<string, number>; foragingSkill?: number };
-export type VillageAttempt =
+type VillageAction =
   | { kind: "load_grain"; lotId: string; quantity: number }
   | { kind: "store_home" | "take_home"; objectId: string; quantity: number }
   | { kind: "store_home_cash" | "take_home_cash"; quantity: number }
@@ -61,6 +65,7 @@ export type VillageAttempt =
   | { kind: "post_surplus_offer"; lotId: string; quantity: number; price: number }
   | { kind: "buy_surplus"; offerId: string }
   | { kind: "gather_plant"; plantId: string; quantity: number };
+export type VillageAttempt = VillageAction & { experienceId?: string };
 export type VillageResponse = ActorResponse<VillageAttempt, VillageMemory, { at: number }>;
 export type VillageModel = PersonalityModel<ActorInput<VillageContext, VillageMemory, VillageStimulus>, VillageResponse>;
 
