@@ -1,3 +1,4 @@
+import { villagePersonStatus } from "./village-status";
 import { autonomousVillageV1, type VillageFixture } from "../../fixtures/autonomous-village";
 import { ordinaryVillageModel, type VillageAttempt, type VillageContext, type VillageId, type VillageMemory,
   type TravelExecution, type VillageModel, type VillageResponse, type VillageRole, type VillageStimulus } from "../ai/autonomous-world";
@@ -153,6 +154,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     ids.some((id) => !Number.isSafeInteger(fixture.foodMarket!.initialBakingSkills[id]) || fixture.foodMarket!.initialBakingSkills[id] < 0) ||
     [fixture.foodMarket.grainBatchQuantity, fixture.foodMarket.grainBatchPrice, fixture.foodMarket.breadPrice]
       .some((n) => !Number.isSafeInteger(n) || n < 1))) throw Error("invalid food market fixture");
+  if (fixture.homeStorage && (!fixture.foodMarket || !Number.isSafeInteger(fixture.homeStorage.capacity) || fixture.homeStorage.capacity < 1)) throw Error("invalid home storage fixture");
   const f = structuredClone(fixture);
   const grid = structuredClone(initialGrid);
   if (f.breadEconomy) Object.assign(grid.sites, { home_F: { x: 33, y: 6 },
@@ -234,6 +236,8 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
   // In this coarse mass unit, coins are negligible. Their count/ownership remains conserved.
   // Earlier fixtures retain their original coin mass for exact replay.
   if (f.foodMarket) types.currency.unitMass = 0;
+  if (f.homeStorage) types.home_chest = { id: "home_chest", tags: ["store"], unitMass: 0, stackable: false, ownable: true,
+    container: { acceptsTags: ["food", "wood", "seed", "currency"], maxContentsMass: f.homeStorage.capacity } };
   const objects: PhysicalState["objects"] = {};
   const add = (id: string, typeId: string, parentId: string | null, ownerId?: string) => {
     objects[id] = { id, typeId, parentId, ownerId, quantity: 1, causeEventId: "initial" };
@@ -263,6 +267,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
       add(`granary_home_${id}`, "granary", `home_${id}`, id);
       add(`granary_market_${id}`, "granary", "market", id);
     }
+    if (f.homeStorage) add(`home_chest_${id}`, "home_chest", `home_${id}`, id);
     add(bag(id), "bag", id, id); add(wallet(id), "wallet", id, id);
     const initialSeeds = farm ? farm.initialSeeds : id === "F" ? f.landEconomy?.initialSeeds ?? 2 : 0;
     const seedId = farm ? `grain_seed_initial_${id}` : "grain_seed_initial";
@@ -297,6 +302,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     initialSeeds: f.landEconomy?.initialSeeds ?? 2, seedsProduced: 0, seedsUsed: 0,
     harvestedWood: 0, burnedWood: 0,
     initialMoney: ids.reduce((n, id) => n + f.initialCash[id], 0) };
+  if (f.homeStorage) for (const id of ids) emit(w, "person_status", [id], [], { status: JSON.stringify(villagePersonStatus(w, id)) });
   checkVillageWorld(w); return w;
 }
 function startProcess(w: VillageWorld, actorId: VillageId, kind: VillageProcess["kind"], duration: number,
@@ -966,6 +972,35 @@ function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: 
       success: true, ...(w.fixture.needs ? { saleRevenue: offer.price } : {}), causeEventIds: [event.id] },
       w.fixture.foodMarket ? 1 : 0); return undefined;
   }
+  if (a.kind === "store_home_cash" || a.kind === "take_home_cash" || a.kind === "store_home" || a.kind === "take_home") {
+    if (!w.fixture.homeStorage || site !== `home_${id}` || !Number.isSafeInteger(a.quantity) || a.quantity < 1)
+      return "home transfer requires own home and positive quantity";
+    const deposit = a.kind === "store_home_cash" || a.kind === "store_home";
+    const chest = `home_chest_${id}`;
+    if (a.kind === "store_home_cash" || a.kind === "take_home_cash") {
+      const coins = coinIds(w, deposit ? wallet(id) : chest, id, a.quantity);
+      if (coins.length !== a.quantity) return "home cash unavailable";
+      const reason = tx(w, id, [], (t) => coins.forEach((coin) => t.move(coin, deposit ? chest : wallet(id))));
+      if (reason) return reason;
+      const event = emit(w, deposit ? "home_cash_stored" : "home_cash_taken", [id], [decisionId], { quantity: a.quantity, storeId: chest });
+      result(w, id, a.kind, event); return undefined;
+    }
+    if (!("objectId" in a)) return "home item unavailable";
+    const lot = w.physical.objects[a.objectId];
+    if (!lot || lot.ownerId !== id || lot.quantity < a.quantity ||
+      (deposit ? lot.parentId !== bag(id) : lot.parentId !== chest && lot.parentId !== `granary_home_${id}`) ||
+      !["food", "seed", "wood"].includes(lot.typeId)) return "home item unavailable";
+    const meta = w.foodLots[lot.id], transferred = a.quantity < lot.quantity ? uid(w, "home_item") : lot.id;
+    const reason = tx(w, id, [], (t) => {
+      if (transferred !== lot.id) t.split(lot.id, transferred, a.quantity, decisionId);
+      t.move(transferred, deposit ? chest : bag(id));
+    });
+    if (reason) return reason;
+    if (meta) w.foodLots[transferred] = { ...meta };
+    const event = emit(w, deposit ? "home_item_stored" : "home_item_taken", [id], [decisionId, lot.causeEventId],
+      { objectId: transferred, sourceId: lot.id, quantity: a.quantity, storeId: deposit ? chest : lot.parentId! });
+    result(w, id, a.kind, event); return undefined;
+  }
   if (a.kind === "store_grain") {
     const lot = w.physical.objects[a.lotId], store = w.physical.objects[a.storeId], meta = w.foodLots[a.lotId];
     if (!w.fixture.breadEconomy || !lot || !meta || meta.species !== "grain" || meta.product === "bread" ||
@@ -1019,6 +1054,10 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.homeStorage && siteId === `home_${id}` ? { homeStorage: (() => {
+      const home = villagePersonStatus(w, id).home;
+      return { cash: home.cash, items: home.items.map(({ id, kind, quantity }) => ({ id, kind, quantity })) };
+    })() } : {}),
     ...(w.fixture.foodMarket ? { foodMarket: { bakingSkill: person.bakingSkills!.bread,
       grainBatchQuantity: w.fixture.foodMarket.grainBatchQuantity, grainBatchPrice: w.fixture.foodMarket.grainBatchPrice,
       breadPrice: w.fixture.foodMarket.breadPrice } } : {}),
@@ -1309,6 +1348,7 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
         }
       }
     });
+    if (w.fixture.homeStorage) for (const id of ids) emit(w, "person_status", [id], [], { status: JSON.stringify(villagePersonStatus(w, id)) });
   }
   checkVillageWorld(w); return w;
 }
@@ -1387,6 +1427,9 @@ export function checkVillageWorld(w: VillageWorld) {
   }
   for (const id of ids) {
     const p = w.people[id];
+    const homeChest = w.physical.objects[`home_chest_${id}`];
+    if (w.fixture.homeStorage && (!homeChest || homeChest.typeId !== "home_chest" ||
+      homeChest.ownerId !== id || homeChest.parentId !== `home_${id}`)) throw Error("invalid home chest");
     if (p.memory.anticipation) checkAnticipationMemory(p.memory.anticipation, w.hour);
     if (p.memory.anticipation?.predictions) checkPredictionLedger(p.memory.anticipation.predictions, w.hour);
     if (!!w.fixture.foodMarket !== !!p.bakingSkills || p.bakingSkills &&

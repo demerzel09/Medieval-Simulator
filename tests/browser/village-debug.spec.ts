@@ -1,8 +1,37 @@
 import { expect, test } from "@playwright/test";
 
-test("the default food market records farmers selling grain and purchasing bread", async ({ page }) => {
+test("person and home status follow recorded cash, items, weight and physical needs", async ({ page }) => {
   test.setTimeout(120000);
   await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("home", { timeout: 30000 });
+  const carried = page.getByRole("region", { name: "携帯中の所持品" });
+  const home = page.getByRole("region", { name: "F の家の保管品" });
+  await expect(carried).toContainText("所持金");
+  await expect(carried).toContainText("総重量 / 容量");
+  await expect(carried).toContainText("穀物の種");
+  await expect(home).toContainText("所有者 F");
+  await expect(page.getByRole("progressbar", { name: "身体の快適さ" })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "不快", exact: true })).toBeVisible();
+  await page.getByLabel("土地経済の人物").selectOption("S");
+  await page.getByLabel("土地経済の日").fill("90");
+  await page.getByLabel("土地経済の時刻").fill("24");
+  await page.getByLabel("土地経済の分").fill("60");
+  const storedCash = page.getByRole("region", { name: "S の家の保管品" }).locator("dl div").filter({ hasText: "所持金" }).locator("dd");
+  await expect(storedCash).toHaveText(/^[1-9]\d*$/);
+  await page.getByRole("tab", { name: "人物の履歴" }).click();
+  await expect(page.getByRole("region", { name: "人物の最近の売買" })).toContainText("パン");
+  await page.getByRole("tab", { name: "ステータス" }).click();
+  await page.screenshot({ path: "/tmp/medieval-v15-status.png", fullPage: true });
+  await page.getByLabel("土地経済の日").fill("1");
+  await page.getByLabel("土地経済の時刻").fill("1");
+  await page.getByLabel("土地経済の分").fill("0");
+  await expect(carried.locator("dl div").filter({ hasText: "所持金" }).locator("dd")).toHaveText("20");
+  await expect(storedCash).toHaveText("0");
+});
+
+test("the default food market records farmers selling grain and purchasing bread", async ({ page }) => {
+  test.setTimeout(120000);
+  await page.goto("/?village=land-economy&wood=market");
   await expect(page.getByLabel("表示する記録")).toHaveValue("market", { timeout: 30000 });
   await expect(page.getByRole("note")).toContainText("農夫は穀物を市場で売り");
   await page.getByLabel("土地経済の日").fill("10");

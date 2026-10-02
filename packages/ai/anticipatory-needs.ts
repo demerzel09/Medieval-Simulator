@@ -165,6 +165,16 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     return travel(home.siteId);
   }
   if (c.energy < 6) return choose({ kind: "rest" }, "recover activity fatigue without erasing sleep debt");
+  if (c.homeStorage) {
+    if (c.ownCash > 8) return choose({ kind: "store_home_cash", quantity: c.ownCash - 8 }, "leave excess cash in own home before carrying on");
+    if (c.ownCash < 4 && c.homeStorage.cash > 0) return choose({ kind: "take_home_cash", quantity: Math.min(8 - c.ownCash, c.homeStorage.cash) }, "take own stored cash for food purchases");
+    const storedFood = c.homeStorage.items.find((lot) => !["grain", "seed", "wood"].includes(lot.kind));
+    if (meals < 2 && storedFood) return choose({ kind: "take_home", objectId: storedFood.id,
+      quantity: Math.min(storedFood.quantity, storedFood.kind === "herb" ? 2 : 1) }, "take edible reserve from own home");
+    const excess = c.ownFoodLots?.find((lot) => (lot.product === "bread" || lot.species !== "grain") && !lot.offered && lot.quantity >= lot.mealQuantity);
+    if (meals > 2 && excess) return choose({ kind: "store_home", objectId: excess.id,
+      quantity: Math.min(excess.quantity, (meals - 2) * excess.mealQuantity) }, "leave surplus food in own home");
+  }
   if (c.foodMarket) {
     const market = foodMarketChoice(c, m, input.actorId, input.at);
     if (market) return choose(market.attempt, market.reason);

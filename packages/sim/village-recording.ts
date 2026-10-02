@@ -8,7 +8,7 @@ import { advanceVillageWorld, checkVillageWorld, newVillageWorld, queueVillageCo
   type VillageWorld } from "./autonomous-world";
 
 export type VillageRecording = { formatVersion: 2; worldSchemaVersion: 2;
-  rulesetId: "autonomous-village-food-market-v14" | "autonomous-village-prediction-ledger-v13" | "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2" |
+  rulesetId: "autonomous-village-home-storage-v15" | "autonomous-village-food-market-v14" | "autonomous-village-prediction-ledger-v13" | "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2" |
     "autonomous-village-spatial-land-v3" | "autonomous-village-wide-land-v4" |
     "autonomous-village-exploring-land-v5" | "autonomous-village-ecological-land-v6" | "autonomous-village-wood-paused-v7" | "autonomous-village-owned-farms-v8" | "autonomous-village-wild-food-market-v9" | "autonomous-village-local-work-v10" | "autonomous-village-bread-storage-v11" | "autonomous-village-anticipatory-needs-v12"; seed: number;
   fixture: VillageFixture; initialGrid: GridMap; initialLand: LandEcology; untilHour: number;
@@ -34,7 +34,7 @@ export function recordedVillageActorHistory(recording: VillageRecording, actorId
 export function captureVillageRecording(w: VillageWorld): VillageRecording {
   checkVillageWorld(w);
   return structuredClone({ formatVersion: 2, worldSchemaVersion: 2,
-    rulesetId: w.fixture.foodMarket ? "autonomous-village-food-market-v14" : w.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : w.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : w.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
+    rulesetId: w.fixture.homeStorage ? "autonomous-village-home-storage-v15" : w.fixture.foodMarket ? "autonomous-village-food-market-v14" : w.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : w.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : w.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
       w.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
       w.fixture.publicForaging ? "autonomous-village-wild-food-market-v9" :
       w.fixture.landEconomy?.farms ? "autonomous-village-owned-farms-v8" :
@@ -54,7 +54,7 @@ export function captureVillageRecording(w: VillageWorld): VillageRecording {
 }
 export function replayVillageRecording(recording: VillageRecording): VillageWorld {
   if (recording.formatVersion !== 2 || recording.worldSchemaVersion !== 2 ||
-    recording.rulesetId !== (recording.fixture.foodMarket ? "autonomous-village-food-market-v14" : recording.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : recording.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : recording.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
+    recording.rulesetId !== (recording.fixture.homeStorage ? "autonomous-village-home-storage-v15" : recording.fixture.foodMarket ? "autonomous-village-food-market-v14" : recording.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : recording.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : recording.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
       recording.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
       recording.fixture.publicForaging ? "autonomous-village-wild-food-market-v9" :
       recording.fixture.landEconomy?.farms ? "autonomous-village-owned-farms-v8" :

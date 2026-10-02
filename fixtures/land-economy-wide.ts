@@ -77,3 +77,8 @@ export const foodMarket90V1: VillageFixture = {
   foodMarket: { initialBakingSkills: { S: 1, F: 0, C: 0, B1: 0, B2: 0 },
     grainBatchQuantity: 5, grainBatchPrice: 2, breadPrice: 1 },
 };
+
+/** Physical home storage and exact replay status for people and possessions. */
+export const homeStorage90V1: VillageFixture = {
+  ...structuredClone(foodMarket90V1), homeStorage: { capacity: 40 },
+};

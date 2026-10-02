@@ -14,6 +14,7 @@ export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageS
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
   predictionLedger?: true;
+  homeStorage?: { cash: number; items: { id: string; kind: string; quantity: number }[] };
   foodMarket?: { bakingSkill: number; grainBatchQuantity: number; grainBatchPrice: number; breadPrice: number };
   cell: { x: number; y: number }; ownFarm?: { id: string; ownerId: VillageId; siteId: string; plotIds: string[]; initialSeeds: number }; visiblePeople?: VillageId[];
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
@@ -35,6 +36,8 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
     ownerId?: string; farmId?: string; siteId?: string; cell?: { x: number; y: number } }[];
   farmingSkills: Record<string, number>; foragingSkill?: number };
 export type VillageAttempt =
+  | { kind: "store_home" | "take_home"; objectId: string; quantity: number }
+  | { kind: "store_home_cash" | "take_home_cash"; quantity: number }
   | { kind: "post_food_order"; quantity: number; bid: number; carrierFee: number; salePrice: number }
   | { kind: "accept_carriage"; orderId: string } | { kind: "fund_carriage"; orderId: string }
   | { kind: "post_wood_bid"; price: number } | { kind: "post_sale_quote"; price: number }
