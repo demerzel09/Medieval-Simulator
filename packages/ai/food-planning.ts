@@ -1,3 +1,4 @@
+import { canPlanSleep, forecastSleep } from "./sleep-forecast";
 import { actionObservation, effortForecast } from "./action-learning";
 import { forecastCold, travelEstimate, type AnticipationMemory } from "./anticipatory-needs";
 import type { VillageAttempt, VillageContext } from "./autonomous-world";
@@ -8,7 +9,7 @@ type FoodItem = { id: string; kind: string; quantity: number; expiresDay?: numbe
 export type FoodCandidate = {
   kind: "gather" | "home" | "buy" | "market" | "explore"; siteId: string; source: "observed" | "remembered" | "unconfirmed";
   foodHours: number; returnHours: number; meals: number; cold: number; debt: number; effort: number;
-  feasible: boolean; exclusion?: "occupied" | "expiry" | "body"; score: number;
+  sleepiness?: number; feasible: boolean; exclusion?: "occupied" | "expiry" | "body"; score: number;
 };
 export type FoodPlanningMemory = {
   home?: { seenAt: number; items: FoodItem[] };
@@ -82,14 +83,15 @@ export function foodPlanningChoice(c: VillageContext, m: AnticipationMemory, act
     const workRate = Math.max(0, -effortForecast(m.learning, kind === "gather" ? "gather_plant" : "travel", actionObservation(loaded)).rate);
     const returnRate = Math.max(0, -effortForecast(m.learning, "travel", { ...actionObservation(loaded), sheltered: false }).rate);
     const effort = toHours * travelRate + (kind === "gather" ? workHours * workRate : 0) + returnHours * returnRate;
-    const debt = body.sleepDebt + hours;
-    exclusion ??= cold >= 8 || debt >= (c.hunger > 0 ? 24 : 20) || effort + 2 > c.energy ? "body" : undefined;
+    const debt = c.sleepRegulation ? 0 : body.sleepDebt + hours;
+    const sleepiness = c.sleepRegulation ? forecastSleep(c, m.sleep!, hours, effort).peak : undefined;
+    exclusion ??= cold >= 8 || (c.sleepRegulation ? sleepiness! >= (c.hunger > 0 ? .98 : .85) : debt >= (c.hunger > 0 ? 24 : 20)) || effort + 2 > c.energy ? "body" : undefined;
     // Compare the cost per usable meal: choosing one nearby herb meal every time can
     // crowd out a small berry reserve and consume every working window in food searches.
-    const score = (Math.max(0, foodHours - (needAt - at)) * 4 + hours + effort * 0.25 + cold * 0.5 + debt * 0.1) / Math.max(1, meals) +
+    const score = (Math.max(0, foodHours - (needAt - at)) * 4 + hours + effort * 0.25 + cold * 0.5 + (sleepiness !== undefined ? sleepiness * 3 : debt * 0.1)) / Math.max(1, meals) +
       (source === "remembered" ? 2 : source === "unconfirmed" ? 8 : 0) - (m.goal?.kind === "forage" && m.goal.siteId === siteId ? 0.5 : 0) +
       personalChoiceOrder(actorId, siteId) * 0.05;
-    candidates.push({ forecast: { kind, siteId, source, foodHours, returnHours, meals, cold, debt, effort,
+    candidates.push({ forecast: { kind, siteId, source, foodHours, returnHours, meals, cold, debt, effort, ...(sleepiness !== undefined ? { sleepiness } : {}),
       feasible: exclusion === undefined, ...(exclusion ? { exclusion } : {}), score }, attempt, goal, reason });
   };
   const wild = c.visiblePlants.filter((p) => ["herb", "wild_berry", "fruit_tree"].includes(p.species) &&
@@ -145,7 +147,8 @@ export function foodPlanningChoice(c: VillageContext, m: AnticipationMemory, act
   const times = candidates.filter((p) => p.forecast.feasible).map((p) => p.forecast.foodHours + p.forecast.returnHours);
   const shortest = times.length ? Math.min(...times) : 4;
   // Compare with a sleep interval as well as acquisition: waiting until hunger can miss the working window.
-  if (needAt - at > 8 + shortest) { delete planning.evaluation; return; }
+  const sleepHours = c.sleepRegulation ? forecastSleep(c, m.sleep!, 24, 0, "sleep").expectedHours : 8;
+  if (needAt - at > sleepHours + shortest) { delete planning.evaluation; return; }
   // A baker's available ingredient has its own existing production chain.
   if (c.foodMarket!.bakingSkill > 0 && (c.grainStores!.some((s) => s.grain > 0) ||
     c.visibleFoodOffers?.some((offer) => offer.product === "grain" && offer.price <= c.ownCash))) { delete planning.evaluation; return; }
@@ -161,7 +164,7 @@ export function foodPlanningChoice(c: VillageContext, m: AnticipationMemory, act
   // ahead of this fallback; a viable check must not displace the baker's procurement work.
   if (candidates.some((p) => p.forecast.kind === "explore" && p.forecast.feasible)) return;
   const knownBodyConstraint = candidates.some((p) => p.forecast.source !== "unconfirmed" && p.forecast.exclusion === "body");
-  if (body.sheltered && knownBodyConstraint && body.sleepDebt >= 8) return { attempt: { kind: "sleep" } as VillageAttempt,
+  if (body.sheltered && knownBodyConstraint && (c.sleepRegulation ? canPlanSleep(c, m.sleep!, at) : body.sleepDebt >= 8)) return { attempt: { kind: "sleep" } as VillageAttempt,
     reason: "sleep before a food journey that would exceed the available working window" };
   if (body.sheltered && knownBodyConstraint && candidates.some((p) => p.forecast.effort + 2 > c.energy)) return {
     attempt: { kind: "rest" } as VillageAttempt, reason: "recover effort before a known food acquisition journey" };
@@ -183,6 +186,6 @@ export function checkFoodPlanning(memory: FoodPlanningMemory, at: number) {
       i.expiresDay !== undefined && (!Number.isSafeInteger(i.expiresDay) || i.expiresDay < 1))) ||
     e && (!Number.isSafeInteger(e.at) || e.at < 0 || e.at > at || !Number.isFinite(e.needAt) || e.needAt < e.at || e.candidates.length > 8 ||
       e.selected !== undefined && (!Number.isSafeInteger(e.selected) || !e.candidates[e.selected]?.feasible) ||
-      [e.usableMeals, ...e.candidates.flatMap((p) => [p.foodHours, p.returnHours, p.meals, p.cold, p.debt, p.effort, p.score])]
+      [e.usableMeals, ...e.candidates.flatMap((p) => [p.foodHours, p.returnHours, p.meals, p.cold, p.debt, p.effort, p.score, p.sleepiness ?? 0])]
         .some((n) => !Number.isFinite(n) || n < 0))) throw Error("invalid food planning memory");
 }

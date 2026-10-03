@@ -76,7 +76,17 @@ export class VillageStatusReplay {
         if (data[key] !== undefined) status.body[key] = Number(data[key]);
       status.body.sheltered = data.sheltered === 1;
       status.body.activity = String(data.activity);
+      if (status.body.sleep && data.sleepiness !== undefined) Object.assign(status.body.sleep, {
+        deficitHours: Number(data.sleepDeficit), sleepiness: Number(data.sleepiness),
+        actualHours: Number(data.actualSleep24), effectiveHours: Number(data.effectiveSleep24),
+        mode: String(data.sleepMode), awakeHours: Number(data.awakeHours),
+      });
     } else if (event.kind === "process_started") status.body.activity = String(data.action);
+    else if (event.kind === "sleep_attempted") { status.body.activity = "settling"; if (status.body.sleep) status.body.sleep.mode = "settling"; }
+    else if (event.kind === "sleep_started") { status.body.activity = "sleep"; if (status.body.sleep) status.body.sleep.mode = "asleep"; }
+    else if (["sleep_woke", "sleep_unavailable", "sleep_interrupted"].includes(event.kind) && status.body.sleep) {
+      status.body.activity = "wait"; status.body.sleep.mode = "awake";
+    }
     else if (["process_completed", "process_failed", "sleep_interrupted"].includes(event.kind)) status.body.activity = "wait";
     else if (event.kind === "rested" || event.kind === "slept") {
       status.body.energy = Number(data.energy);

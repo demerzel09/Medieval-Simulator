@@ -18,6 +18,7 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   experienceLearning?: true;
   foodJourneys?: true;
   foodPlanning?: true;
+  sleepRegulation?: true;
   visiblePlantWork?: { actorId: VillageId; plantId: string; quantity: number }[];
   carriedInventory?: { id: string; kind: string; quantity: number; mass: number; edible: boolean; expiresDay?: number }[];
   predictionLedger?: true;
@@ -29,6 +30,8 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   activeAction?: string; hunger: number; cold: number; energy: number; carriedMass: number; ownCash: number;
   ownFood: number; ownWood: number;
   needs?: { sleepDebt: number; mealHours: number; needClockHours?: number; temperature: number; sheltered: boolean;
+    sleep?: Pick<import("../sim/sleep-body").SleepSignal, "deficitHours" | "effectiveHours" | "actualHours" | "sleepiness" | "mode" | "awakeHours"> &
+      { minute: number; ownSleeps: { from: number; to: number }[] };
     home: { siteId: string; cell: { x: number; y: number } }; };
   breadEconomy?: true; grainCarried?: number; bakingHours?: number;
   grainStores?: { id: string; siteId: string; grain: number; capacity: number; lots: { id: string; quantity: number }[] }[];
@@ -60,7 +63,7 @@ type VillageAction =
   | { kind: "sell_wood"; buyerId: VillageId } | { kind: "buy_food" }
   | { kind: "store_grain"; lotId: string; storeId: string }
   | { kind: "bake_bread"; lotId: string }
-  | { kind: "sleep" } | { kind: "wake_up" }
+  | { kind: "sleep"; wakeAtMinute?: number } | { kind: "wake_up" }
   | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" }
   | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string }
   | { kind: "harvest_plot"; plantId: string }

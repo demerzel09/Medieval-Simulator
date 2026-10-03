@@ -1,3 +1,4 @@
+import { decodeVillageDocument } from "../../packages/sim/shared-village-json";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { VillageStatusReplay } from "./village-status-replay";
 import type { VillageId } from "../../packages/ai/autonomous-world";
@@ -8,12 +9,13 @@ import type { VillageRecording } from "../../packages/sim/village-recording";
 import type { ActionLearningMemory } from "../../packages/ai/action-learning";
 
 const woodQuery = new URLSearchParams(window.location.search).get("wood");
-const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" || woodQuery === "wild" || woodQuery === "local" || woodQuery === "bread" || woodQuery === "needs" || woodQuery === "market" || woodQuery === "home" || woodQuery === "load" || woodQuery === "learn" || woodQuery === "journey" ? woodQuery : "plan";
-const foodMarketRecord = ["market", "home", "load", "learn", "journey", "plan"].includes(recordMode);
-const loadRecord = ["load", "learn", "journey", "plan"].includes(recordMode);
+const recordMode = woodQuery === "legacy" || woodQuery === "paused" || woodQuery === "farms" || woodQuery === "wild" || woodQuery === "local" || woodQuery === "bread" || woodQuery === "needs" || woodQuery === "market" || woodQuery === "home" || woodQuery === "load" || woodQuery === "learn" || woodQuery === "journey" || woodQuery === "plan" ? woodQuery : "sleep";
+const foodMarketRecord = ["market", "home", "load", "learn", "journey", "plan", "sleep"].includes(recordMode);
+const loadRecord = ["load", "learn", "journey", "plan", "sleep"].includes(recordMode);
 const processedFood = recordMode === "bread" || recordMode === "needs" || foodMarketRecord;
 const legacyWood = recordMode === "legacy";
-const recordingUrl = recordMode === "plan" ?
+const recordingUrl = recordMode === "sleep" ?
+  new URL("../../fixtures/recordings/autonomous-village-sleep-regulation-90.v2.json.gz", import.meta.url).href : recordMode === "plan" ?
   new URL("../../fixtures/recordings/autonomous-village-food-planning-90.v2.json.gz", import.meta.url).href : recordMode === "journey" ?
   new URL("../../fixtures/recordings/autonomous-village-food-journeys-90.v2.json.gz", import.meta.url).href : recordMode === "learn" ?
   new URL("../../fixtures/recordings/autonomous-village-experience-learning-90.v2.json.gz", import.meta.url).href : recordMode === "load" ?
@@ -43,7 +45,7 @@ const stageNames: Record<string, string> = {
 const actionNames: Record<string, string> = {
   grain_loaded: "穀物庫から積む", home_cash_stored: "家に現金を保管", home_cash_taken: "家の現金を持ち出す", home_item_stored: "家に物品を保管", home_item_taken: "家の物品を持ち出す",
   plot_tilled: "耕作", plot_sown: "播種", crop_harvested: "収穫", foraged: "採集",
-  slept: "睡眠", sleep_interrupted: "睡眠中断", body_changed: "身体・環境", grain_stored: "穀物を保存", bread_baked: "製パン", surplus_offered: "余剰食品の提示", surplus_sold: "余剰食品の売買",
+  sleep_attempted: "入眠を試みる", sleep_started: "入眠", sleep_woke: "起床", sleep_unavailable: "入眠できず終了", slept: "睡眠実績", sleep_interrupted: "睡眠中断", body_changed: "身体・環境", grain_stored: "穀物を保存", bread_baked: "製パン", surplus_offered: "余剰食品の提示", surplus_sold: "余剰食品の売買",
   food_delivered: "食品納品", food_sold: "食品販売", ate: "食事", wood_burned: "薪使用",
   travel_step: "移動", arrived: "到着", travel_replanned: "経路再探索",
   plant_discovered: "植物発見", plant_gathered: "植物採集",
@@ -68,8 +70,8 @@ async function readRecording(): Promise<VillageRecording> {
   const text = new TextDecoder().decode(source[0] === 0x1f && source[1] === 0x8b ?
     await new Response(new Blob([bytes]).stream()
       .pipeThrough(new DecompressionStream("gzip"))).arrayBuffer() : bytes);
-  const recording = JSON.parse(text) as VillageRecording;
-  if (recording.rulesetId !== (recordMode === "plan" ? "autonomous-village-food-planning-v19" : recordMode === "journey" ? "autonomous-village-food-journeys-v18" : recordMode === "learn" ? "autonomous-village-experience-learning-v17" : recordMode === "load" ? "autonomous-village-bulk-transport-v16" : recordMode === "home" ? "autonomous-village-home-storage-v15" : recordMode === "market" ? "autonomous-village-food-market-v14" : legacyWood ? "autonomous-village-ecological-land-v6" :
+  const recording = decodeVillageDocument<VillageRecording>(JSON.parse(text), true);
+  if (recording.rulesetId !== (recordMode === "sleep" ? "autonomous-village-sleep-regulation-v20" : recordMode === "plan" ? "autonomous-village-food-planning-v19" : recordMode === "journey" ? "autonomous-village-food-journeys-v18" : recordMode === "learn" ? "autonomous-village-experience-learning-v17" : recordMode === "load" ? "autonomous-village-bulk-transport-v16" : recordMode === "home" ? "autonomous-village-home-storage-v15" : recordMode === "market" ? "autonomous-village-food-market-v14" : legacyWood ? "autonomous-village-ecological-land-v6" :
     recordMode === "paused" ? "autonomous-village-wood-paused-v7" :
     recordMode === "farms" ? "autonomous-village-owned-farms-v8" : recordMode === "wild" ? "autonomous-village-wild-food-market-v9" : recordMode === "local" ? "autonomous-village-local-work-v10" : recordMode === "bread" ? "autonomous-village-bread-storage-v11" : "autonomous-village-anticipatory-needs-v12") || recording.untilHour !== 2160)
     throw Error("土地経済90日の記録ではありません");
@@ -131,6 +133,7 @@ const reasonLabels: Record<string, string> = {
   "wait for an actual edible-food offer": "購入できる食品の提示を待つ",
   "eat personal edible reserve": "自食用の備蓄を食べる",
   "recover at selected shelter": "選んだ避難場所で回復する",
+  "wait for actual sleep readiness": "まだ入眠できる眠気ではないため待つ",
   "prevent predicted sleep deficit": "予測した睡眠不足を避ける",
   "recover enough energy to reach shelter": "避難場所まで移動できる体力を回復する",
   "safe local sleep outweighs distant shelter journey": "遠い家への移動より、安全な現在地での睡眠を選ぶ",
@@ -154,7 +157,7 @@ const reasonLabels: Record<string, string> = {
   "continue bake goal": "製パンする場所へ向かう",
   "continue sell goal": "余剰を販売する場所へ向かう",
 };
-const activityLabels: Record<string, string> = { sleep: "睡眠", rest: "休憩", travel: "移動", bake_bread: "製パン",
+const activityLabels: Record<string, string> = { settling: "入眠待ち", sleep: "睡眠", rest: "休憩", travel: "移動", bake_bread: "製パン",
   gather_plant: "採集", till_plot: "耕作", sow_plot: "播種", harvest_plot: "収穫" };
 
 const decisionLabels: Record<string, string> = { ...activityLabels, eat: "食事", wait: "待機",
@@ -177,6 +180,8 @@ function ExperienceCard({ memory }: { memory?: ActionLearningMemory }) {
         {outcome.energyChange !== undefined && <> · 体力変化 {outcome.energyChange}</>}
         {outcome.error !== undefined && <> · 予測誤差 {outcome.error.toFixed(2)}</>}</p>}
       {outcome && <p>実際の増減：食事分 {outcome.mealsChange ?? "不明"} · 原料 {outcome.rawChange ?? "不明"} · 現金 {outcome.cashChange ?? "不明"}</p>}
+      {outcome?.sleep && <p>実睡眠 {outcome.sleep.actualHours}時間 · 入眠待ち {outcome.sleep.waitHours}時間 ·
+        {outcome.sleep.reason === "natural awakening" ? "自然起床" : outcome.sleep.reason === "personal wake reservation" ? "起床予約" : outcome.sleep.reason === "cold exposure" ? "寒さで中断" : outcome.sleep.reason === "sleep onset unavailable" ? "入眠不成立" : "本人の起床"}</p>}
       <small title="自分に届いた結果で更新します。同じ重量の荷物は共通の移動経験を使います。">本人に届いた結果で更新 · 同重量の移動経験を共有</small>
     </>}
   </section>;
@@ -203,17 +208,20 @@ function InventoryCard({ title, inventory, day, owner }: { title: string; invent
           `あと${Math.max(0, item.expiresDay - day)}日`}{item.offered && <span className="village-offer-tag" title="販売提示あり" aria-label="販売提示あり"> 売</span>}</td></tr>)}</tbody></table> : <p className="village-empty-inventory">物品なし</p>}
   </section>;
 }
-function StatusCards({ status, person, day, transport, realMealClock }: { status: PersonStatus; person: VillageId; day: number; transport?: LoadTransport; realMealClock?: boolean }) {
+function StatusCards({ status, person, day, transport, realMealClock, recordMinute }: { status: PersonStatus; person: VillageId; day: number; transport?: LoadTransport; realMealClock?: boolean; recordMinute?: number }) {
   const needs = bodilyDiscomfort(status.body);
   return <div className="village-status-stack">
-    <div className="village-status-context"><small title={status.hour === 0 ? "開始時" : clock(status.hour)}>記録：{status.hour === 0 ? "開始時" : compactClock(status.hour)}</small>
+    <div className="village-status-context"><small title={recordMinute !== undefined ? replayClock(recordMinute) : status.hour === 0 ? "開始時" : clock(status.hour)}>記録：{recordMinute !== undefined ? replayClock(recordMinute) : status.hour === 0 ? "開始時" : compactClock(status.hour)}</small>
       <span title="携帯・家・市場の現金合計">現金計 <b>{status.carried.cash + status.home.cash + status.market.cash}</b></span></div>
     <InventoryCard title="携帯中の所持品" inventory={status.carried} day={day} owner={person} />
     {transport && <p aria-label="運搬負荷" title="歩行速度は無荷物時を100%とした比率">歩行速度 {Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · 移動消費 {loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
     <section className="village-status-card" aria-label="人物の身体ステータス"><h3>{person} の身体</h3>
-      <dl className="village-status-values"><div><dt>体力</dt><dd>{status.body.energy} / {status.body.maxEnergy}</dd></div>
+      <dl className="village-status-values"><div><dt>体力</dt><dd>{Number(status.body.energy.toFixed(2))} / {status.body.maxEnergy}</dd></div>
         <div><dt>気温</dt><dd>{status.body.temperature}℃</dd></div>
-        <div><dt>睡眠不足</dt><dd>{status.body.sleepDebt}時間</dd></div>
+        <div><dt>睡眠不足</dt><dd>{status.body.sleep?.deficitHours ?? status.body.sleepDebt}時間</dd></div>
+        {status.body.sleep && <><div><dt>24hの実睡眠</dt><dd>{status.body.sleep.actualHours}時間</dd></div>
+        <div><dt>連続覚醒</dt><dd>{status.body.sleep.awakeHours}時間</dd></div>
+        {status.body.sleep.effectiveHours < status.body.sleep.actualHours && <div><dt>有効睡眠</dt><dd>{status.body.sleep.effectiveHours}時間</dd></div>}</>}
         <div><dt>行動</dt><dd>{decisionLabels[status.body.activity] ?? status.body.activity}</dd></div></dl>
       <p>{status.body.sheltered ? "自宅の屋内" : "屋外"} · {realMealClock ? "食事からの経過" : "食事周期（旧記録）"} {status.body.mealHours}時間</p>
       <div className="village-need-grid"><div className="village-need-meter"><span>快適さ</span><b>{needs.comfort}%</b><progress aria-label="身体の快適さ" value={needs.comfort} max={100} /></div>
@@ -250,6 +258,7 @@ function DecisionRow({ decision: d }: { decision: VillageRecording["decisions"][
 function atHour(recording: VillageRecording, hour: number, eventFrame: number, minuteOfHour: number) {
   const statusReplay = new VillageStatusReplay(recording.fixture);
   const statuses = statusReplay.statuses;
+  const statusMinutes: Partial<Record<VillageId, number>> = {};
   const activeActions: Partial<Record<VillageId, string>> = {};
   const bodies: Partial<Record<VillageId, { temperature: number; cold: number; sleepDebt: number; sheltered: boolean }>> = {};
   const positions: Record<VillageId, GridPoint> = {
@@ -278,13 +287,19 @@ function atHour(recording: VillageRecording, hour: number, eventFrame: number, m
     if (e.hour === hour && !positionsAtHourStart)
       positionsAtHourStart = Object.fromEntries(people.map((id) => [id, { ...positions[id] }])) as
         Record<VillageId, GridPoint>;
-    if (e.hour === hour && frame++ >= eventFrame) break;
+    if (recording.fixture.sleepRegulation) {
+      if (Number(e.data.atMinute ?? e.hour * 60) > (hour - 1) * 60 + minuteOfHour) continue;
+    } else if (e.hour === hour && frame++ >= eventFrame) break;
     statusReplay.apply(e);
+    if (recording.fixture.sleepRegulation && e.actors[0] && statuses[e.actors[0] as VillageId])
+      statusMinutes[e.actors[0] as VillageId] = Number(e.data.atMinute ?? e.hour * 60);
     if (e.kind === "body_changed") bodies[e.actors[0] as VillageId] = {
       temperature: Number(e.data.temperature), cold: Number(e.data.cold), sleepDebt: Number(e.data.sleepDebt),
       sheltered: e.data.sheltered === 1 };
     if (e.kind === "process_started") activeActions[e.actors[0] as VillageId] = String(e.data.action);
-    if (e.kind === "process_completed" || e.kind === "process_failed" || e.kind === "sleep_interrupted")
+    if (recording.fixture.sleepRegulation && e.kind === "sleep_attempted") activeActions[e.actors[0] as VillageId] = "settling";
+    if (e.kind === "sleep_started") activeActions[e.actors[0] as VillageId] = "sleep";
+    if (e.kind === "process_completed" || e.kind === "process_failed" || e.kind === "sleep_interrupted" || e.kind === "sleep_woke" || e.kind === "sleep_unavailable")
       delete activeActions[e.actors[0] as VillageId];
     if (e.kind === "crop_harvested" && e.data.storeId) grainStocks[String(e.data.storeId)].quantity += Number(e.data.quantity);
     if (e.kind === "grain_loaded" || e.kind === "home_item_taken" && grainStocks[String(e.data.storeId)]) grainStocks[String(e.data.storeId)].quantity -= Number(e.data.quantity);
@@ -356,7 +371,7 @@ function atHour(recording: VillageRecording, hour: number, eventFrame: number, m
   }
   for (const plant of Object.values(plants)) if (["growing", "regrowing", "fallow", "flowering"]
     .includes(plant.stage)) plant.ageHours += Math.max(0, hour - ageAnchors[plant.id]);
-  return { positions, plants, animals, grainStocks, activeActions, bodies, statuses, totals };
+  return { positions, plants, animals, grainStocks, activeActions, bodies, statuses, statusMinutes, totals };
 }
 
 const idHasOwnedFields = (map: GridMap) => !!map.sites.field_B1;
@@ -546,8 +561,9 @@ export default function VillageDebug() {
   const eventsThisHour = useMemo(() => recording?.events.filter((e) => e.hour === hour) ?? [],
     [recording, hour]);
   const visibleFrame = Math.floor(eventsThisHour.length * minuteOfHour / 60);
-  const visibleEventIds = useMemo(() => new Set(eventsThisHour.slice(0, visibleFrame)
-    .map((e) => e.id)), [eventsThisHour, visibleFrame]);
+  const visibleEventIds = useMemo(() => new Set((recording?.fixture.sleepRegulation ?
+    eventsThisHour.filter((e) => Number(e.data.atMinute ?? e.hour * 60) <= cursorMinutes) :
+    eventsThisHour.slice(0, visibleFrame)).map((e) => e.id)), [recording, eventsThisHour, visibleFrame, cursorMinutes]);
   const snapshot = useMemo(() => recording && atHour(recording, hour, visibleFrame, minuteOfHour),
     [recording, hour, visibleFrame, minuteOfHour]);
   const gridNow = useMemo(() => {
@@ -572,7 +588,9 @@ export default function VillageDebug() {
     });
     return () => { active = false; };
   }, [gridNow, snapshot, selected, route]);
-  const dayEvents = useMemo(() => recording?.events.filter((e) => e.kind !== "person_status" && e.day === day &&
+  const dayEvents = useMemo(() => recording?.events.filter((e) => e.kind !== "person_status" &&
+    (!recording.fixture.sleepRegulation || e.kind !== "body_changed" || Number(e.data.atMinute) % 60 === 0) &&
+    (recording.fixture.sleepRegulation ? Math.min(90, Math.floor(Number(e.data.atMinute ?? e.hour * 60) / 1440) + 1) === day : e.day === day) &&
     (e.hour < hour || e.hour === hour && visibleEventIds.has(e.id)) &&
     (e.actors.includes(selected) ||
       ["crop_harvested", "plant_stage", "animal_born", "animal_died", "season_changed"].includes(e.kind))) ?? [],
@@ -606,10 +624,10 @@ export default function VillageDebug() {
     <header className="e1-top"><div><h1>土地経済90日 · 生態デバッグ</h1></div><div>
         <label>表示する記録 <select aria-label="表示する記録" value={recordMode}
           onChange={(e) => { const url = new URL(window.location.href);
-            if (e.target.value !== "plan") url.searchParams.set("wood", e.target.value);
+            if (e.target.value !== "sleep") url.searchParams.set("wood", e.target.value);
             else url.searchParams.delete("wood");
             window.location.assign(url.href); }}>
-          <option value="plan">食料の期限・採集競合・睡眠と行程比較</option><option value="journey">旧記録：農作業の目的・市場の再訪・パン購入</option><option value="learn">旧記録：経験学習・運搬・食事時計</option><option value="load">旧記録：収穫20・畑の保管・荷重と運搬</option><option value="home">旧記録：人物ステータス・自宅保管・食品市場</option><option value="market">旧記録：穀物売却・市場製パン・パン購入</option><option value="needs">旧記録：自宅製パン・欲求と経験</option><option value="bread">旧記録：穀物保存・パン加工</option><option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
+          <option value="sleep">睡眠・疲労の身体モデル</option><option value="plan">旧記録：食料の期限・採集競合・睡眠と行程比較</option><option value="journey">旧記録：農作業の目的・市場の再訪・パン購入</option><option value="learn">旧記録：経験学習・運搬・食事時計</option><option value="load">旧記録：収穫20・畑の保管・荷重と運搬</option><option value="home">旧記録：人物ステータス・自宅保管・食品市場</option><option value="market">旧記録：穀物売却・市場製パン・パン購入</option><option value="needs">旧記録：自宅製パン・欲求と経験</option><option value="bread">旧記録：穀物保存・パン加工</option><option value="local">植物セルで採集・農作業</option><option value="wild">旧記録：往復採集・余剰売買</option><option value="farms">所有畑・穀物保存</option><option value="paused">薪停止の対照記録</option><option value="legacy">旧記録：固定薪資源あり</option>
         </select></label> <a href="/">90日ゲーム</a></div></header>
     {!legacyWood && <details className="village-specification" role="note">
       <summary>記録の条件・仕様 <span>{processedFood ? "穀物＝原料・腐敗なし / パン＝3日期限 / 薪停止" : "土地・食料・作業の条件"}</span></summary>
@@ -625,12 +643,13 @@ export default function VillageDebug() {
     {recordMode === "local" && <p className="e1-map-panel">採集は植物のセルへ移動してから行い、
       その場で食事・休息できます。森・畑の中心へ自動では戻りません。
       作業対象がなければ生育・再生待ち、余剰の販売中は市場で買い手待ちになります。</p>}
+    {recordMode === "sleep" && <p>身体は15分ごとに更新。直近24時間の必要睡眠6時間、夜22〜6時の眠気、強い疲労の眠気を分けます。入眠待ちは睡眠に数えず、十分回復すると自然に起床します。休憩は睡眠不足を消しません。</p>}
     {processedFood && <p className="e1-map-panel">穀物は直接食べられません。原料として扱います。
       {loadRecord && <>播種1→収穫20、穀物1単位の重量2。袋の容量20、人物全体24。畑に収穫物を保管し、容量に収まる量を分けて運びます。荷物が重いほど歩行が遅く、体力消費が増えます。 </>}
       {foodMarketRecord ? <>農夫は穀物を市場で売り、代金でパンを購入します。初期の製パン技能はSだけが持ち、市場の穀物庫に買った原料を保存して加工します。</> : <>収穫後は本人の家か市場の穀物庫へ運び、腐敗せず保存します。</>}
       穀物1から2時間でパン1を作り、パンは製造日から3日で腐敗します。野草・ベリーは直接食べられます。
       {(recordMode === "needs" || foodMarketRecord) && <> 気温・睡眠不足・場所の回復を扱い、経験から先の冷え方と移動時間を見積もります。短い休憩と睡眠は別です。</>}</p>}
-      <p>5/15/30/60分の移動表示は、1時間内の通過セルを均等に割り当てた補間です。植物と所持品は表示中のEventで更新します。</p>
+      <p>5/15/30/60分の移動表示は、1時間内の通過セルを均等に割り当てた補間です。植物と所持品は表示中のEventで更新します。{recordMode === "sleep" && <>身体・入眠・起床は記録された15分単位の実時刻で表示します。</>}</p>
     </details>}
     <div className="e1-controls"><label>日 <input aria-label="土地経済の日" type="range" min="1" max="90" value={day}
       onChange={(e) => { setPlaying(false); setCursorMinutes((Number(e.target.value) - 1) * 1440); }} /></label>
@@ -722,7 +741,7 @@ export default function VillageDebug() {
           <section className="village-inspector-pane" aria-label="人物のステータス">
             <h2>{selected} のステータス</h2>
             {snapshot.statuses[selected] ? <StatusCards status={snapshot.statuses[selected]!} person={selected} day={day}
-              transport={recording.fixture.bulkTransport} realMealClock={!!recording.fixture.experienceLearning} /> :
+              transport={recording.fixture.bulkTransport} realMealClock={!!recording.fixture.experienceLearning} recordMinute={snapshot.statusMinutes[selected]} /> :
               <p>この旧記録には物品・身体のステータス記録がありません。行動ログの本人観察を参照できます。</p>}
             {recording.fixture.experienceLearning && <ExperienceCard memory={latestObservation?.response.subjectiveUpdate?.anticipation?.learning} />}
           </section>
@@ -743,6 +762,8 @@ export default function VillageDebug() {
             対処の見込み {latestObservation.response.subjectiveUpdate.anticipation.reasoning.leadHours.toFixed(1)}時間 ·
             先の寒さ {latestObservation.response.subjectiveUpdate.anticipation.reasoning.forecastCold.toFixed(1)} ·
             記憶 {latestObservation.response.subjectiveUpdate.anticipation.experiences.length}件</p>}
+          {anticipation?.sleep && <p aria-label="睡眠の予測学習">眠気の予測照合 {anticipation.sleep.matched}件 · 対応しない結果の除外 {anticipation.sleep.excluded}件
+            {anticipation.sleep.last && <> · 直近の予測 {Math.round(anticipation.sleep.last.expected * 100)}% / 実際 {Math.round(anticipation.sleep.last.actual * 100)}%</>}</p>}
           {anticipation?.cropPlan && <p>農作業の目的：{anticipation.cropPlan.siteId} を耕作・播種</p>}
           {anticipation?.foodPlanning?.evaluation && <details aria-label="食料行程の比較">
             <summary>食料行程の比較 · {compactClock(anticipation.foodPlanning.evaluation.at)}の見込み · 次の需要まで{Math.max(0, anticipation.foodPlanning.evaluation.needAt - hour)}時間 ·
@@ -751,7 +772,7 @@ export default function VillageDebug() {
               <tbody>{anticipation.foodPlanning.evaluation.candidates.map((p, index) => <tr key={`${p.kind}:${p.siteId}`}>
                 <td>{p.siteId}<br /><small>{p.source === "observed" ? "現地観察" : p.source === "remembered" ? "本人の記憶" : "食品は未確認"}</small></td>
                 <td>{p.foodHours.toFixed(1)}h / {p.returnHours.toFixed(1)}h</td>
-                <td>{p.cold.toFixed(1)} / {p.debt.toFixed(1)}</td>
+                <td>{p.cold.toFixed(1)} / {p.sleepiness !== undefined ? `${Math.round(p.sleepiness * 100)}%` : p.debt.toFixed(1)}</td>
                 <td>{index === anticipation.foodPlanning!.evaluation!.selected ? "選択" : p.exclusion === "occupied" ? "他人が採集中" :
                   p.exclusion === "body" ? "身体の余裕不足" : p.exclusion === "expiry" ? "期限不足" : "候補"}</td>
               </tr>)}</tbody></table>
@@ -777,7 +798,7 @@ export default function VillageDebug() {
           </section>
             <h3>{day}日目の関連Event（{dayEvents.length}件）</h3>
             {dayEvents.slice().reverse().slice(0, 120).map((e) =>
-              <div key={e.id} className="e1-row"><b>{clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b>
+              <div key={e.id} className="e1-row"><b>{e.data.atMinute !== undefined ? replayClock(Number(e.data.atMinute)) : clock(e.hour)} · {e.actors.join("、") || "世界"} · {actionNames[e.kind] ?? e.kind}</b>
                 <details className="village-event-details"><summary>{e.id} ← {e.causes.join(", ") || "起点"}</summary>
                   <code>{JSON.stringify(e.data)}</code></details></div>)}
             <p className="village-record-source">元記録: {recording.finalStateHash} · 判断 {recording.decisions.length}件 · Event {recording.events.length}件</p>
@@ -818,7 +839,8 @@ export default function VillageDebug() {
         <button type="button" className="village-legend-dismiss" onClick={() => setLegendOpen(false)}>凡例をしまう</button>
           <h2>地図の凡例</h2>
           {(recordMode === "needs" || foodMarketRecord) && <p>家：本人の家では保温と睡眠回復が有利です。帰宅時刻は固定せず、予測と身体の必要から選びます。屋外睡眠も可能です。人物の横の「Z」は睡眠中です。</p>}
-          {processedFood && <p>黄茶色の箱と数字：家・市場・畑の穀物庫と保存量。穀物は原料で直接食べられません。パンは製造日から3日で腐敗します。</p>}
+          {recordMode === "sleep" && <p>身体は15分ごとに更新。直近24時間の必要睡眠6時間、夜22〜6時の眠気、強い疲労の眠気を分けます。入眠待ちは睡眠に数えず、十分回復すると自然に起床します。休憩は睡眠不足を消しません。</p>}
+    {processedFood && <p>黄茶色の箱と数字：家・市場・畑の穀物庫と保存量。穀物は原料で直接食べられません。パンは製造日から3日で腐敗します。</p>}
           <p>1セルは32×32ピクセル。地面の色は土地の種類、セル内の形は植物や障害物を表します。</p>
           {(recordMode === "farms" || recordMode === "wild" || recordMode === "local" || processedFood) && <p>畑の枠色：Fは黄、B1は青、B2は紫。各4区画で、所有者だけが作業できます。穀物は腐敗しません。</p>}
           <h3>地面と障害物</h3>

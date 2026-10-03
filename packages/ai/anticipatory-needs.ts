@@ -1,4 +1,5 @@
 import { loadMovement, travelExperienceKey } from "../sim/load-movement";
+import { canPlanSleep, checkSleepForecast, forecastSleep, observeSleep, type SleepForecastMemory } from "./sleep-forecast";
 import type { VillageAttempt, VillageContext, VillageMemory, VillageModel } from "./autonomous-world";
 import { beginFoodMarketVisit, foodMarketChoice, observeFoodMarketVisit } from "./food-market";
 import { cultivationChoice, localFoodTransaction } from "./food-journeys";
@@ -11,6 +12,7 @@ type Observation = { at: number; site: string; cold: number; energy: number; deb
   sheltered: boolean; phase: "day" | "night"; temperature: number };
 export type Experience = { from: Observation; to: Observation; action: string; salience: number; evidenceIds: string[] };
 export type AnticipationMemory = {
+  sleep?: SleepForecastMemory;
   learning?: import("./action-learning").ActionLearningMemory;
   foraging?: ForagingMemory;
   predictions?: import("./prediction-ledger").PredictionLedger;
@@ -25,7 +27,7 @@ export type AnticipationMemory = {
     retryPurpose?: "grain-sale" | "food-buy";
     visit?: { purpose: "grain-sale" | "food-buy"; startedAt: number; arrivedAt?: number; fulfilled: boolean } };
   reasoning?: { reason: string; evidenceIds: string[]; leadHours: number; forecastCold: number;
-    forecastDebt: number; uncertainty: number; candidates: { goal: string; cold: number; debt: number; cost: number }[] };
+    forecastDebt: number; forecastSleepiness?: number; uncertainty: number; candidates: { goal: string; cold: number; debt: number; sleepiness?: number; cost: number }[] };
 };
 const freshMemory = (): AnticipationMemory => ({ experiences: [], coldRates: {}, temperatures: {}, sleepRecovery: {}, travelTimes: {},
   sales: { visits: 0, sales: 0, failures: 0, retryAt: 0 } });
@@ -83,7 +85,7 @@ function learn(m: AnticipationMemory, c: VillageContext, at: number, evidenceIds
       m.experiences = [...memorable, ...recent].sort((a, b) => a.to.at - b.to.at);
     }
     // Do not attribute mixed locations or day/night intervals to one local temperature condition.
-    if (m.lastAction === "sleep" && last.site === current.site && (!c.foodPlanning || current.debt > 0)) {
+    if (!c.sleepRegulation && m.lastAction === "sleep" && last.site === current.site && (!c.foodPlanning || current.debt > 0)) {
       const key = last.sheltered ? "inside" : "outside";
       m.sleepRecovery[key] = updateEstimate(m.sleepRecovery[key], Math.max(0, last.debt - current.debt) / elapsed);
     }
@@ -116,6 +118,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
   const c = input.knownContext, memory: VillageMemory = structuredClone(input.subjectiveState);
   if (!c.needs) throw Error("anticipatory personality requires a needs context");
   const m = memory.anticipation ??= freshMemory();
+  if (c.sleepRegulation) m.sleep = observeSleep(c, m.sleep, input.stimuli, input.at);
   if (c.foodPlanning) observeHomeFood(c, m, input.at);
   if (c.foodJourneys) observeFoodMarketVisit(c, m, input.stimuli, input.at);
   if (c.experienceLearning) rememberForaging(m.foraging ??= { places: {} }, c, input.at);
@@ -145,7 +148,15 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
   const episodes = m.experiences.filter((e) => e.from.sheltered === body.sheltered && e.from.phase === phase(input.at))
     .sort((a, b) => Math.abs(a.from.debt - body.sleepDebt) + Math.abs(a.from.cold - c.cold) -
       Math.abs(b.from.debt - body.sleepDebt) - Math.abs(b.from.cold - c.cold)).slice(0, 3);
-  m.reasoning = { reason: "", evidenceIds: [...new Set([...evidenceIds, ...episodes.flatMap((e) => e.evidenceIds)])],
+  m.reasoning = c.sleepRegulation ? { reason: "", evidenceIds: [...new Set(evidenceIds)],
+    leadHours: trip.hours + trip.margin, forecastCold: continuing.peak, forecastDebt: 0,
+    forecastSleepiness: forecastSleep(c, m.sleep!, horizon).peak, uncertainty: continuing.uncertainty, candidates: [
+      { goal: "continue", cold: continuing.peak, debt: 0, sleepiness: forecastSleep(c, m.sleep!, horizon).peak, cost: horizon },
+      { goal: "home-and-sleep", cold: returning.peak, debt: 0, sleepiness: forecastSleep(c, m.sleep!, trip.hours + trip.margin).peak, cost: trip.hours + 6.25 },
+      { goal: "local-rest", cold: continuing.peak, debt: 0, sleepiness: forecastSleep(c, m.sleep!, 2, 0, "rest").sleepiness, cost: 2 },
+      { goal: "local-sleep", cold: forecastCold(m, c.cold, input.at, 6.25, body.sheltered).peak, debt: 0,
+        sleepiness: forecastSleep(c, m.sleep!, 24, 0, "sleep").sleepiness, cost: forecastSleep(c, m.sleep!, 24, 0, "sleep").expectedHours } ] } :
+  { reason: "", evidenceIds: [...new Set([...evidenceIds, ...episodes.flatMap((e) => e.evidenceIds)])],
     leadHours: trip.hours + trip.margin, forecastCold: continuing.peak, forecastDebt: body.sleepDebt + horizon,
     uncertainty: continuing.uncertainty, candidates: [
       { goal: "continue", cold: continuing.peak, debt: body.sleepDebt + horizon, cost: horizon },
@@ -154,13 +165,16 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       { goal: "local-sleep", cold: forecastCold(m, c.cold, input.at, 8, body.sheltered).peak,
         debt: Math.max(0, body.sleepDebt - 8 * (body.sheltered ? homeRecovery : outdoorRecovery)), cost: 8 } ] };
   const choose = (attempt: VillageAttempt | undefined, reason: string) => {
+    if (c.sleepRegulation && attempt?.kind === "sleep" && !canPlanSleep(c, m.sleep!, input.at)) {
+      attempt = undefined; reason = "wait for actual sleep readiness";
+    }
     if (body.sheltered && attempt?.kind === "travel" && !(c.hunger > 0 && (c.edibleMeals ?? 0) === 0)) {
       const destination = attempt.siteId;
       const cell = c.visiblePlants.find((p) => p.siteId === destination)?.cell ?? m.predictions?.knownSites[destination];
       const target = c.foodJourneys && cell ? travelEstimate(m, c, destination, cell) : undefined;
       const hours = target ? target.hours + target.margin + 1 : 8;
       const leaving = forecastCold(m, c.cold, input.at, hours, false);
-      m.reasoning!.candidates.push({ goal: "exposed-trip", cold: leaving.peak, debt: body.sleepDebt + hours, cost: hours });
+      m.reasoning!.candidates.push({ goal: "exposed-trip", cold: leaving.peak, debt: c.sleepRegulation ? 0 : body.sleepDebt + hours, ...(c.sleepRegulation ? { sleepiness: forecastSleep(c, m.sleep!, hours).peak } : {}), cost: hours });
       if (leaving.peak >= 8) {
         attempt = undefined; reason = "defer exposed trip; predicted cold exceeds reserve benefit";
         m.reasoning!.forecastCold = leaving.peak;
@@ -205,16 +219,23 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     const food = foodPlanningChoice(c, m, input.actorId, input.at);
     if (food) return choose(food.attempt, food.reason);
   }
+  if (c.sleepRegulation && body.sleep!.sleepiness >= .65 && canPlanSleep(c, m.sleep!, input.at)) {
+    if (body.sheltered || c.cold < 4 && body.temperature >= 18 && trip.hours >= 2)
+      return choose({ kind: "sleep" }, "recover actual sleep need at a safe known place");
+    m.goal = { kind: "sleep", siteId: home.siteId, startedAt: input.at };
+  }
   if (c.foodJourneys) {
     const transaction = localFoodTransaction(c, m, input.actorId, input.at);
     if (transaction) return choose(transaction.attempt, transaction.reason);
   }
   // Maintain a selected sleep destination until sleeping, rather than oscillating to another task on arrival.
   if (m.goal?.kind === "sleep" && c.siteId === m.goal.siteId) {
+    if (c.sleepRegulation && !canPlanSleep(c, m.sleep!, input.at) && forecastSleep(c, m.sleep!, 2).peak >= .65)
+      return choose(undefined, "wait for actual sleep readiness");
     delete m.goal;
-    return choose(body.sleepDebt >= 8 ? { kind: "sleep" } : undefined, "recover at selected shelter");
+    return choose((c.sleepRegulation ? canPlanSleep(c, m.sleep!, input.at) : body.sleepDebt >= 8) ? { kind: "sleep" } : undefined, "recover at selected shelter");
   }
-  if (c.experienceLearning && c.hunger > 0 && meals === 0 && c.cold < 8 && body.sleepDebt < 24) {
+  if (c.experienceLearning && c.hunger > 0 && meals === 0 && c.cold < 8 && (c.sleepRegulation ? body.sleep!.sleepiness < .95 : body.sleepDebt < 24)) {
     const local = wildPlants.find((p) => p.siteId === c.siteId && ["herb", "wild_berry", "fruit_tree"].includes(p.species) &&
       p.stage === "ripe" && p.available >= (p.species === "herb" ? 2 : 1) && c.bulkTransport!.bagFreeMass >= (p.species === "herb" ? 2 : 1));
     if (local) {
@@ -223,18 +244,19 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       const homeRate = Math.max(0, -effortForecast(m.learning, "travel", { ...actionObservation(c), mass: c.carriedMass + quantity }).rate);
       const energy = quantity * workRate + (trip.hours + trip.margin) * homeRate + 2;
       m.reasoning!.candidates.push({ goal: "local-food-then-shelter", cold: forecastCold(m, c.cold, input.at, quantity + trip.hours, body.sheltered).peak,
-        debt: body.sleepDebt + quantity + trip.hours, cost: quantity + trip.hours });
+        debt: c.sleepRegulation ? 0 : body.sleepDebt + quantity + trip.hours, cost: quantity + trip.hours });
       if (c.energy >= energy) {
         m.goal = { kind: "forage", siteId: c.siteId, startedAt: input.at };
         return choose({ kind: "gather_plant", plantId: local.id, quantity }, "obtain local food while retaining effort to reach shelter");
       }
     }
   }
-  const anticipate = !body.sheltered && continuing.peak >= 8 || body.sleepDebt + trip.hours + trip.margin >= 20;
+  const anticipate = !body.sheltered && continuing.peak >= 8 || (c.sleepRegulation ?
+    forecastSleep(c, m.sleep!, trip.hours + trip.margin + 2).peak >= .8 : body.sleepDebt + trip.hours + trip.margin >= 20);
   if (m.goal?.kind === "sleep" || anticipate) {
     // A distant home need not be worth the journey when the known local conditions are safe.
     if (!m.goal && !body.sheltered && trip.hours >= 4 && continuing.peak < 4 &&
-      body.sleepDebt >= 16 && c.needs.temperature >= 18)
+      (c.sleepRegulation ? canPlanSleep(c, m.sleep!, input.at) : body.sleepDebt >= 16) && c.needs.temperature >= 18)
       return choose({ kind: "sleep" }, "safe local sleep outweighs distant shelter journey");
     m.goal ??= { kind: "sleep", siteId: home.siteId, startedAt: input.at };
     if (c.siteId === home.siteId) { delete m.goal; return choose({ kind: "sleep" }, "prevent predicted sleep deficit"); }
@@ -383,6 +405,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
 
 /** Validate saved subjective state without adding any knowledge of the world to it. */
 export function checkAnticipationMemory(memory: AnticipationMemory, at: number) {
+  if (memory.sleep) checkSleepForecast(memory.sleep, at);
   if (memory.foodPlanning) checkFoodPlanning(memory.foodPlanning, at);
   if (memory.foraging) checkForagingMemory(memory.foraging, at);
   const estimates = [...Object.values(memory.coldRates), ...Object.values(memory.temperatures),
@@ -404,6 +427,6 @@ export function checkAnticipationMemory(memory: AnticipationMemory, at: number) 
       market.visit.arrivedAt !== undefined && (market.visit.arrivedAt < market.visit.startedAt || market.visit.arrivedAt > at) ||
       !["grain-sale", "food-buy"].includes(market.visit.purpose) || typeof market.visit.fulfilled !== "boolean"))) throw Error("invalid food market memory");
   if (memory.reasoning && [memory.reasoning.leadHours, memory.reasoning.forecastCold, memory.reasoning.forecastDebt,
-    memory.reasoning.uncertainty, ...memory.reasoning.candidates.flatMap((c) => [c.cold, c.debt, c.cost])]
+    memory.reasoning.forecastSleepiness ?? 0, memory.reasoning.uncertainty, ...memory.reasoning.candidates.flatMap((c) => [c.cold, c.debt, c.cost, c.sleepiness ?? 0])]
     .some((n) => !Number.isFinite(n) || n < 0)) throw Error("invalid anticipation forecast");
 }

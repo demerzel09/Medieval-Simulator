@@ -4,6 +4,7 @@ export type VillageFixture = FeasibilityFixture & { informationDelayHours: numbe
   experienceLearning?: true;
   foodJourneys?: true;
   foodPlanning?: true;
+  sleepRegulation?: import("../packages/sim/sleep-body").SleepConfig;
   bulkTransport?: import("../packages/sim/load-movement").LoadTransport;
   homeStorage?: { capacity: number };
   foodMarket?: { initialBakingSkills: Record<"S" | "F" | "C" | "B1" | "B2", number>;

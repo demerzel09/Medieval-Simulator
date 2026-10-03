@@ -285,9 +285,9 @@ test("v16 grain comparison shows load-dependent walking and actual field invento
   await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("8 / 24");
 });
 
-test("v19 default shows observed food journey choices and preserves the v18 comparison", async ({ page }) => {
+test("v19 comparison shows observed food journey choices and preserves the v18 comparison", async ({ page }) => {
   test.setTimeout(180000);
-  await page.goto("/?village=land-economy");
+  await page.goto("/?village=land-economy&wood=plan");
   await expect(page.getByLabel("表示する記録")).toHaveValue("plan", { timeout: 60000 });
   const r = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-food-planning-90.v2.json.gz")).toString());
   const choice = r.decisions.find((d: { actorId: string; response: { subjectiveUpdate: { anticipation: { foodPlanning?: { evaluation?: { selected?: number } } } } } }) =>
@@ -478,4 +478,40 @@ test("inspector panes resize together with the map and the independent legend pu
   await clickCell(map, 36, 4);
   await expect(page.getByRole("heading", { name: "選択セル 36,4" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(800);
+});
+
+test("v20 default replays settling and actual sleep at their recorded quarter-hour times", async ({ page }) => {
+  test.setTimeout(180000);
+  const { decodeVillageDocument } = await import("../../packages/sim/shared-village-json");
+  const r = decodeVillageDocument<import("../../packages/sim/village-recording").VillageRecording>(
+    JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-sleep-regulation-90.v2.json.gz")).toString()), true);
+  const attempt = r.events.find((e) => e.kind === "sleep_attempted" && e.actors[0] === "F")!;
+  const onset = r.events.find((e) => e.kind === "sleep_started" && e.actors[0] === "F")!;
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("sleep", { timeout: 60000 });
+  const body = page.getByRole("region", { name: "人物の身体ステータス" });
+  await expect(body).toContainText("24hの実睡眠");
+  await page.getByLabel("移動の刻み").selectOption("5");
+  const seek = async (minutes: number) => {
+    await page.getByLabel("土地経済の日").fill(String(Math.floor(minutes / 1440) + 1));
+    await page.getByLabel("土地経済の時刻").fill(String(Math.floor(minutes % 1440 / 60) + 1));
+    await page.getByLabel("土地経済の分").fill(String(minutes % 60));
+  };
+  await seek(Number(attempt.data.atMinute) + 5);
+  await expect(body.locator("dl div").filter({ hasText: /^行動/ }).locator("dd")).toHaveText("入眠待ち");
+  const at = Number(onset.data.atMinute) + 15;
+  await seek(at);
+  await expect(body.locator("dl div").filter({ hasText: /^行動/ }).locator("dd")).toHaveText("睡眠");
+  const checkpoint = r.events.filter((e) => e.actors[0] === "F" && e.kind === "body_changed" && Number(e.data.atMinute) <= at).at(-1)!;
+  await expect(page.locator(".village-status-context")).toContainText(`${Math.floor(at / 1440) + 1}日目 ${String(Math.floor(at % 1440 / 60)).padStart(2, "0")}:${String(at % 60).padStart(2, "0")}`);
+  await expect(body.locator("dl div").filter({ hasText: /^24hの実睡眠/ }).locator("dd")).toHaveText(`${checkpoint.data.actualSleep24}時間`);
+  await expect(body.locator("dl div").filter({ hasText: /^睡眠不足/ }).locator("dd")).toHaveText(`${checkpoint.data.sleepDeficit}時間`);
+  await expect(page.getByRole("progressbar", { name: "眠気", exact: true })).toHaveAttribute("value", String(Math.round(Number(checkpoint.data.sleepiness) * 100)));
+  await expect(page.getByLabel("睡眠の予測学習")).toBeVisible();
+  await page.screenshot({ path: "/tmp/medieval-village-sleep-regulation.png", fullPage: true });
+  await seek(Number(attempt.data.atMinute) + 5);
+  await expect(body.locator("dl div").filter({ hasText: /^行動/ }).locator("dd")).toHaveText("入眠待ち");
+  await page.getByLabel("表示する記録").selectOption("plan");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("plan", { timeout: 60000 });
+  await expect(body).not.toContainText("24hの実睡眠");
 });

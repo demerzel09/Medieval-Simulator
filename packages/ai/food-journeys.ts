@@ -1,3 +1,4 @@
+import { forecastSleep } from "./sleep-forecast";
 import { forecastCold, travelEstimate, type AnticipationMemory } from "./anticipatory-needs";
 import { actionObservation, effortForecast } from "./action-learning";
 import type { VillageAttempt, VillageContext } from "./autonomous-world";
@@ -24,8 +25,8 @@ export function localFoodTransaction(c: VillageContext, m: AnticipationMemory, a
   const hours = 1 + trip.hours + trip.margin;
   const cold = forecastCold(m, c.cold, at, hours, false).peak;
   const effort = Math.max(0, -effortForecast(m.learning, "travel", actionObservation(loaded)).rate);
-  if (cold >= 8 || c.needs!.sleepDebt + hours >= 20 || c.energy < (trip.hours + trip.margin) * effort + 2) return;
-  m.reasoning?.candidates.push({ goal: purchase ? "buy-food-then-shelter" : "offer-grain-then-shelter", cold, debt: c.needs!.sleepDebt + hours, cost: hours });
+  if (cold >= 8 || (c.sleepRegulation ? forecastSleep(loaded, m.sleep!, hours).peak >= .85 : c.needs!.sleepDebt + hours >= 20) || c.energy < (trip.hours + trip.margin) * effort + 2) return;
+  m.reasoning?.candidates.push({ goal: purchase ? "buy-food-then-shelter" : "offer-grain-then-shelter", cold, debt: c.sleepRegulation ? 0 : c.needs!.sleepDebt + hours, ...(c.sleepRegulation ? { sleepiness: forecastSleep(loaded, m.sleep!, hours).peak } : {}), cost: hours });
   return purchase ? { attempt: { kind: "buy_surplus", offerId: purchase.id }, reason: "buy locally observed food while retaining a safe shelter journey" } :
     { attempt: { kind: "post_surplus_offer", lotId: grain!.id, quantity,
       price: Math.max(1, Math.ceil(c.foodMarket!.grainBatchPrice * quantity / c.foodMarket!.grainBatchQuantity)) },

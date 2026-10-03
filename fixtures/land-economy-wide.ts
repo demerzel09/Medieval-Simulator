@@ -97,3 +97,8 @@ export const foodJourneys90V1: VillageFixture = { ...structuredClone(experienceL
 
 /** Compare food acquisition with the next meal, shelter and sleep; observe local gathering work. */
 export const foodPlanning90V1: VillageFixture = { ...structuredClone(foodJourneys90V1), foodPlanning: true };
+
+/** v20 changes sleep physiology only; resources, money, crops and transport inherit v19. */
+export const sleepRegulation90V1: VillageFixture = { ...structuredClone(foodPlanning90V1),
+  sleepRegulation: { version: 1, requiredMinutes: 360, wakeTauMinutes: 1080, sleepTauMinutes: 180,
+    initialPressure: 90031, initialHistory: [{ from: -1440, to: -360, quality: 0 }, { from: -360, to: 0, quality: 1000 }] } };

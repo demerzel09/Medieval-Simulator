@@ -8,7 +8,7 @@ import { advanceVillageWorld, checkVillageWorld, newVillageWorld, queueVillageCo
   type VillageWorld } from "./autonomous-world";
 
 export type VillageRecording = { formatVersion: 2; worldSchemaVersion: 2;
-  rulesetId: "autonomous-village-food-planning-v19" | "autonomous-village-food-journeys-v18" | "autonomous-village-experience-learning-v17" | "autonomous-village-bulk-transport-v16" | "autonomous-village-home-storage-v15" | "autonomous-village-food-market-v14" | "autonomous-village-prediction-ledger-v13" | "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2" |
+  rulesetId: "autonomous-village-sleep-regulation-v20" | "autonomous-village-food-planning-v19" | "autonomous-village-food-journeys-v18" | "autonomous-village-experience-learning-v17" | "autonomous-village-bulk-transport-v16" | "autonomous-village-home-storage-v15" | "autonomous-village-food-market-v14" | "autonomous-village-prediction-ledger-v13" | "autonomous-village-grid-land-v1" | "autonomous-village-land-economy-v2" |
     "autonomous-village-spatial-land-v3" | "autonomous-village-wide-land-v4" |
     "autonomous-village-exploring-land-v5" | "autonomous-village-ecological-land-v6" | "autonomous-village-wood-paused-v7" | "autonomous-village-owned-farms-v8" | "autonomous-village-wild-food-market-v9" | "autonomous-village-local-work-v10" | "autonomous-village-bread-storage-v11" | "autonomous-village-anticipatory-needs-v12"; seed: number;
   fixture: VillageFixture; initialGrid: GridMap; initialLand: LandEcology; untilHour: number;
@@ -31,10 +31,10 @@ export function villageActorHistory(w: VillageWorld, actorId: VillageId) {
 export function recordedVillageActorHistory(recording: VillageRecording, actorId: VillageId) {
   return actorHistory(recording.events, recording.decisions, actorId);
 }
-export function captureVillageRecording(w: VillageWorld): VillageRecording {
+export function captureVillageRecording(w: VillageWorld, options: { copy?: boolean } = {}): VillageRecording {
   checkVillageWorld(w);
-  return structuredClone({ formatVersion: 2, worldSchemaVersion: 2,
-    rulesetId: w.fixture.foodPlanning ? "autonomous-village-food-planning-v19" : w.fixture.foodJourneys ? "autonomous-village-food-journeys-v18" : w.fixture.experienceLearning ? "autonomous-village-experience-learning-v17" : w.fixture.bulkTransport ? "autonomous-village-bulk-transport-v16" : w.fixture.homeStorage ? "autonomous-village-home-storage-v15" : w.fixture.foodMarket ? "autonomous-village-food-market-v14" : w.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : w.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : w.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
+  const record: VillageRecording = { formatVersion: 2, worldSchemaVersion: 2,
+    rulesetId: w.fixture.sleepRegulation ? "autonomous-village-sleep-regulation-v20" : w.fixture.foodPlanning ? "autonomous-village-food-planning-v19" : w.fixture.foodJourneys ? "autonomous-village-food-journeys-v18" : w.fixture.experienceLearning ? "autonomous-village-experience-learning-v17" : w.fixture.bulkTransport ? "autonomous-village-bulk-transport-v16" : w.fixture.homeStorage ? "autonomous-village-home-storage-v15" : w.fixture.foodMarket ? "autonomous-village-food-market-v14" : w.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : w.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : w.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
       w.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
       w.fixture.publicForaging ? "autonomous-village-wild-food-market-v9" :
       w.fixture.landEconomy?.farms ? "autonomous-village-owned-farms-v8" :
@@ -50,11 +50,12 @@ export function captureVillageRecording(w: VillageWorld): VillageRecording {
     commands: w.commands.map(({ id, actorId, at, attempt }) => ({ id, actorId, at, attempt })),
     terrainCommands: w.terrainCommands.map(({ id, at, cell, blocked }) => ({ id, at, cell, blocked })),
     decisions: w.decisions, events: w.events,
-    finalStateHash: villageHash(w), finalEventHash: hash(w.events) });
+    finalStateHash: villageHash(w), finalEventHash: hash(w.events) };
+  return options.copy === false ? record : structuredClone(record);
 }
 export function replayVillageRecording(recording: VillageRecording): VillageWorld {
   if (recording.formatVersion !== 2 || recording.worldSchemaVersion !== 2 ||
-    recording.rulesetId !== (recording.fixture.foodPlanning ? "autonomous-village-food-planning-v19" : recording.fixture.foodJourneys ? "autonomous-village-food-journeys-v18" : recording.fixture.experienceLearning ? "autonomous-village-experience-learning-v17" : recording.fixture.bulkTransport ? "autonomous-village-bulk-transport-v16" : recording.fixture.homeStorage ? "autonomous-village-home-storage-v15" : recording.fixture.foodMarket ? "autonomous-village-food-market-v14" : recording.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : recording.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : recording.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
+    recording.rulesetId !== (recording.fixture.sleepRegulation ? "autonomous-village-sleep-regulation-v20" : recording.fixture.foodPlanning ? "autonomous-village-food-planning-v19" : recording.fixture.foodJourneys ? "autonomous-village-food-journeys-v18" : recording.fixture.experienceLearning ? "autonomous-village-experience-learning-v17" : recording.fixture.bulkTransport ? "autonomous-village-bulk-transport-v16" : recording.fixture.homeStorage ? "autonomous-village-home-storage-v15" : recording.fixture.foodMarket ? "autonomous-village-food-market-v14" : recording.fixture.predictionLedger ? "autonomous-village-prediction-ledger-v13" : recording.fixture.needs ? "autonomous-village-anticipatory-needs-v12" : recording.fixture.breadEconomy ? "autonomous-village-bread-storage-v11" :
       recording.fixture.spatialForaging ? "autonomous-village-local-work-v10" :
       recording.fixture.publicForaging ? "autonomous-village-wild-food-market-v9" :
       recording.fixture.landEconomy?.farms ? "autonomous-village-owned-farms-v8" :
@@ -80,7 +81,8 @@ export function replayVillageRecording(recording: VillageRecording): VillageWorl
       JSON.stringify(d.knownContext) !== JSON.stringify(input.knownContext) ||
       JSON.stringify(d.subjectiveBefore) !== JSON.stringify(input.subjectiveState))
       throw Error(`village recording diverged at ${input.at}:${input.actorId}`);
-    return structuredClone(d.response);
+    // A compact recording may share immutable snapshot values. Expand the live response independently.
+    return recording.fixture.sleepRegulation ? JSON.parse(JSON.stringify(d.response)) : structuredClone(d.response);
   } };
   advanceVillageWorld(w, recording.untilHour, playback);
   if (index !== recording.decisions.length || villageHash(w) !== recording.finalStateHash ||

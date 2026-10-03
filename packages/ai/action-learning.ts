@@ -1,15 +1,17 @@
 import type { VillageAttempt, VillageContext, VillageStimulus } from "./autonomous-world";
 
 /** Self-observation only. Neither observations nor model keys contain hidden world state. */
-export type ActionObservation = { site: string; energy: number; maxEnergy: number; cold: number;
+export type ActionObservation = { sleepiness?: number; sleepDeficit?: number; site: string; energy: number; maxEnergy: number; cold: number;
   debt: number; hunger: number; mass: number; cash: number; meals: number; raw: number; sheltered: boolean };
 export function actionObservation(c: VillageContext): ActionObservation {
   return { site: c.siteId, energy: c.energy, maxEnergy: c.bulkTransport?.maxEnergy ?? c.energy,
+    ...(c.needs?.sleep ? { sleepiness: c.needs.sleep.sleepiness, sleepDeficit: c.needs.sleep.deficitHours } : {}),
     cold: c.cold, debt: c.needs?.sleepDebt ?? 0, hunger: c.hunger, mass: c.carriedMass,
     cash: c.ownCash, meals: c.edibleMeals ?? 0, raw: (c.grainCarried ?? 0) + (c.grainStores ?? []).reduce((n, s) => n + s.grain, 0),
     sheltered: c.needs?.sheltered ?? false };
 }
 export type ActionExecution = { phase: "started" | "completed" | "failed" | "rejected" | "interrupted" | "superseded";
+  sleep?: { actualHours: number; waitHours: number; endedMinute: number; reason: string };
   predictionId?: string; attemptEventId: string; processId?: string; startedAt: number; elapsedHours: number;
   before: ActionObservation; after: ActionObservation };
 type Mean = { count: number; mean: number };
@@ -19,6 +21,7 @@ export type ActionPrediction = { id: string; action: VillageAttempt["kind"]; key
   expiresAt: number; before: ActionObservation; expectedHours: number; priorRate: number; learnedRate?: number;
   selected: "prior" | "experience"; processId?: string; attemptEventId?: string };
 export type ActionOutcome = { prediction: ActionPrediction; status: ActionExecution["phase"] | "unobserved";
+  sleep?: ActionExecution["sleep"];
   at: number; evidenceIds: string[]; elapsedHours?: number; energyChange?: number; error?: number;
   mealsChange?: number; cashChange?: number; massChange?: number; debtChange?: number; rawChange?: number };
 export type ActionLearningMemory = { version: 1; nextId: number; pending: ActionPrediction[];
@@ -30,14 +33,15 @@ const mean = (m: Mean | undefined, value: number): Mean => ({ count: (m?.count ?
   mean: (m?.mean ?? 0) + (value - (m?.mean ?? 0)) / ((m?.count ?? 0) + 1) });
 export function actionCondition(action: VillageAttempt["kind"], o: ActionObservation) {
   // A load of grain and the same load of another item share one effort model.
-  return `${action}:load${Math.floor(o.mass / 4)}:${o.sheltered ? "inside" : "outside"}:cold${o.cold >= 8 ? 1 : 0}:debt${o.debt >= 24 ? 1 : 0}`;
+  return o.sleepiness !== undefined ? `${action}:v20:load${Math.floor(o.mass / 4)}:${o.sheltered ? "inside" : "outside"}:cold${o.cold >= 8 ? 1 : 0}:sleepy${o.sleepiness >= .65 ? 1 : 0}` :
+    `${action}:load${Math.floor(o.mass / 4)}:${o.sheltered ? "inside" : "outside"}:cold${o.cold >= 8 ? 1 : 0}:debt${o.debt >= 24 ? 1 : 0}`;
 }
 function priorRate(action: VillageAttempt["kind"], o: ActionObservation): number {
   const exposure = o.cold >= 8 ? 1 : !o.sheltered ? 0.4 : 0;
-  const debt = o.debt >= 20 ? 0.25 : 0;
+  const debt = (o.sleepiness !== undefined ? o.sleepiness >= .65 : o.debt >= 20) ? 0.25 : 0;
   if (action === "travel") return -(1 + o.mass / 8 + exposure + debt);
   if (action === "rest") return 2 - exposure - debt;
-  if (action === "sleep") return (o.sheltered ? 2 : 1) - exposure;
+  if (action === "sleep") return (o.sleepiness !== undefined ? 2 * Math.max(.5, 1 - .5 * o.cold / 12) : o.sheltered ? 2 : 1) - exposure;
   if (["gather_plant", "harvest_plot", "till_plot", "sow_plot", "bake_bread"].includes(action)) return -(1 + exposure + debt);
   return 0;
 }
@@ -89,6 +93,7 @@ export function receiveActionOutcomes(m: ActionLearningMemory, stimuli: VillageS
     if (["completed", "failed", "interrupted"].includes(e.phase)) {
       const actual = e.after.energy - e.before.energy;
       Object.assign(outcome, { elapsedHours: e.elapsedHours, energyChange: actual, mealsChange: e.after.meals - e.before.meals,
+        ...(e.sleep ? { sleep: structuredClone(e.sleep) } : {}),
         cashChange: e.after.cash - e.before.cash, massChange: e.after.mass - e.before.mass, debtChange: e.after.debt - e.before.debt,
         rawChange: e.after.raw - e.before.raw });
       // Failed/redirected durations describe observed effort, never time to successful completion.

@@ -1,6 +1,7 @@
 import type { VillageId } from "../ai/autonomous-world";
 import type { VillageWorld } from "./autonomous-world";
 import { needsTemperature } from "./needs-body";
+import { sleepSignal, type SleepSignal } from "./sleep-body";
 import { capacityReport, totalMass } from "./physical";
 
 export type InventoryItem = { id: string; kind: string; quantity: number; mass: number; ownerId: string;
@@ -9,7 +10,7 @@ export type InventoryStatus = { cash: number; mass: number; capacity: number; it
 export type PersonStatus = { hour: number; carried: InventoryStatus; home: InventoryStatus; market: InventoryStatus;
   field?: InventoryStatus;
   body: { energy: number; maxEnergy: number; hunger: number; cold: number; sleepDebt: number; mealHours: number;
-    temperature: number; sheltered: boolean; activity: string } };
+    temperature: number; sheltered: boolean; activity: string; sleep?: SleepSignal } };
 
 /** A debug snapshot of actual physical objects. It does not grant an actor access to others' inventories. */
 export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatus {
@@ -40,14 +41,15 @@ export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatu
     ...(w.fixture.bulkTransport ? { field: inventory(Object.values(w.physical.objects).filter((o) => o.id.startsWith("granary_field_") && o.ownerId === id).map((o) => o.id)) } : {}),
     body: { energy: person.energy, maxEnergy: w.fixture.body.maxEnergy, hunger: person.hunger, cold: person.cold,
       sleepDebt: person.needs?.sleepDebt ?? 0, mealHours: person.needs?.mealHours ?? 0, temperature, sheltered,
-      activity: person.activeProcessId ? w.processes[person.activeProcessId]?.kind ?? "wait" : "wait" } };
+      ...(person.sleep ? { sleep: sleepSignal(person.sleep, w.fixture.sleepRegulation!, person.energy, w.fixture.body.maxEnergy) } : {}),
+      activity: person.sleep?.mode === "settling" ? "settling" : person.activeProcessId ? w.processes[person.activeProcessId]?.kind ?? "wait" : "wait" } };
 }
 
 /** Display indices of physical needs, not a new emotion or a learned subjective value. */
 export function bodilyDiscomfort(body: PersonStatus["body"]) {
   const clamp = (n: number) => Math.round(Math.max(0, Math.min(1, n)) * 100);
   const hunger = clamp(body.hunger / 3), cold = clamp(body.cold / 12);
-  const fatigue = clamp(1 - body.energy / body.maxEnergy), sleepiness = clamp(body.sleepDebt / 24);
+  const fatigue = clamp(1 - body.energy / body.maxEnergy), sleepiness = clamp(body.sleep?.sleepiness ?? body.sleepDebt / 24);
   const discomfort = Math.max(hunger, cold, fatigue, sleepiness);
   return { hunger, cold, fatigue, sleepiness, discomfort, comfort: 100 - discomfort };
 }
