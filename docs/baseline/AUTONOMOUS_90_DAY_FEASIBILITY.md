@@ -1,5 +1,7 @@
 # 5人の90日生活: 実行可能性の数表
 
+> 資料区分：旧版・旧段階の実験記録／計画。本文の「現行」「最新」「次の作業」は記載時点のもの。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+
 更新: 2026-09-27。[90日計画](AUTONOMOUS_90_DAY_PLAN.md)の段階0。版付き仮定は[fixture](../../fixtures/autonomous-90.ts)、90日分の算術検算は `npm run autonomy:feasibility`（`-- --daily` で日別）で再現する。**これは一連の行動が可能な資源・時間・通貨の条件を示す計算であり、人物がその行動を選ぶことや世界が90日続いたことの証拠ではない。**
 
 その後の物理的な実行では、待ち時間に対応するため初期現金・体力を変えた[実行fixture](../../fixtures/autonomous-village.ts)を使用した。実測は[90日の実行結果](AUTONOMOUS_VILLAGE_RESULT.md)に記録する。この数表の通貨22と体力8/10は実行fixtureの値ではない。

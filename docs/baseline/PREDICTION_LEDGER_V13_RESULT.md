@@ -1,5 +1,7 @@
 # 移動の事前予測と実結果の対応 v13
 
+> 資料区分：旧版・旧段階の実験記録／計画。本文の「現行」「最新」「次の作業」は記載時点のもの。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+
 更新: 2026-10-02。[小モデルの設計](MODULAR_PREDICTION_AND_ACTION_PLAN.md)の**段階A**を実装した。新しいCLIシナリオは `land-predictions`、規則版は `autonomous-village-prediction-ledger-v13`。画面の標準は引き続きv12。複数モデルの競合・切替と快・不快による行動評価の学習は未実装。
 
 ## 実装したこと

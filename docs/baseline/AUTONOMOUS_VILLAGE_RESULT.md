@@ -1,5 +1,7 @@
 # 5人の自律生活世界: 実行結果
 
+> 資料区分：旧版・旧段階の実験記録／計画。本文の「現行」「最新」「次の作業」は記載時点のもの。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+
 更新: 2026-09-27。[計画](AUTONOMOUS_90_DAY_PLAN.md)の段階1〜4を、`autonomous_village` モードで実装した。以下は版1時点の測定。版2の経路・土地・履歴の追加後の数値は[版2記録](VILLAGE_RECORDING_AND_LAND_V2.md)と[STATUS](../STATUS.md)を参照。実行は `npm run autonomy:village -- 90`、日別の食事・採集・取引・拒否は `npm run autonomy:village -- 90 --daily`、因果Event全体は `--events` で再現できる。seedは240924。通常のrule人格は乱数を使わないため、このseedを変えても同じ結果になる。
 
 ## 境界と初期条件

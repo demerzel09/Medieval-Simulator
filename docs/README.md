@@ -1,34 +1,33 @@
-# 文書案内
+# 文書の入口と読む範囲
 
-`docs/` 直下は現在の正本です。実装時は [設計基準](DESIGN.md)、[採用中の判断](DECISIONS.md)、[実測と未達](STATUS.md) を最初に確認してください。[次セッション](NEXT_SESSION.md)は再開用の要約で、実装後に更新します。旧版の指示より、現行コードと実測・本表を優先します。
+更新: 2026-10-03。新しいチャットでは、文書全体をまとめて読み込まず、今回の課題に必要な正本と実測を読む。
 
-新しいチャットで採集／穀物売却→パン購入の判断改善を進める準備は[次セッション](NEXT_SESSION.md)に集約した。確認済みの原因、実装範囲、維持する原則、コード、検証と起動方法をまとめ、以前の長い引き継ぎは[履歴](archive/NEXT_SESSION_HISTORY_2026-10-03.md)へ保存した。
+## 再開時に使う正本
 
-最新の[体力0で死亡v23](baseline/MORTALITY_V23_RESULT.md)は、B1の採集／穀物売却の切替条件と実際の経過を説明し、死亡時刻・身体・所有物を保存して行動を停止する。採集と売却の共同比較は未実装。標準画面はv23、旧v22は `&wood=energy`。
-
-直近の[栄養不足の原因と供給・取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)は、食料の供給不足と、食品があっても本人が取得・摂食できない状態を分ける。v22の最初の10日を保存判断から再実行し、可食供給の空白、未加工穀物、採集競合と枯渇後の余力を照合した。読取監査と文書を追加し、身体・判断の規則は変更していない。
-
-v20段階のFの分析と設計は[不快の解消・荷重・我慢による行動選択](baseline/AVERSION_AND_EFFORT_ACTION_DESIGN.md)。90日の未売却往復をEventで確認し、販売提示3に対して現物2になる不整合を特定した。身体の消耗と現在の重さの不快、快・安堵、目的のために耐える理由を分け、研究・OSSの参考と実装の順序を記載する。その後の修正と新しい身体・判断の初版は[v21/v22の実装と実測](baseline/ENERGY_EFFORT_V22_RESULT.md)を参照。
-
-追加の身体と動機の整理は[栄養エネルギー・体力・疲労と遅延報酬](baseline/ENERGY_EFFORT_AND_DELAYED_REWARD_DESIGN.md)。v20の体力と疲労の関係、当時は食事に未接続だった代謝収支、身体・認知の労力、遅れて得る現金と食品の価値を研究とコードから整理した。食事で補給する栄養と休息で回復する活動能力を分け、全行程の費用と成果を比較する設計で、身体と限定した行程比較の初版をv22で実装した。認知作業のモデルは後続。
-
-| 場所 | 内容 | 扱い |
+| 順序 | 文書 | 確認すること |
 |---|---|---|
-| [baseline](baseline/) | 現在の個人経済・生活市場の結果、食料生態の拡張順、M3試遊記録票 | 実装と照合する現在の実験資料 |
-| [foundations](foundations/) | 人格、認識、ルーティン、物体、行動・動力、元の企画思想 | 長期の設計原則または未実装の設計案。実装済みとは限らない |
-| [archive](archive/) | 古いインターフェース、E0/E1/A3の契約・監査、時系列STATUS/DECISIONS、初版企画の複製 | 判断の経緯と回帰資料。古い「次の作業」は現行指示ではない |
+| 1 | [NEXT_SESSION](NEXT_SESSION.md) | 今回の課題、確認済みの原因、次の実装範囲、コードと検証方法 |
+| 2 | [STATUS](STATUS.md) | 現在の版、実装済み、実測、未達、最後に確認した検証範囲 |
+| 3 | [DESIGN](DESIGN.md) | 自律・世界・時計・制度の境界と開発の目的 |
+| 4 | [DECISIONS](DECISIONS.md) | 食品・身体・死亡・所有・経験更新など、維持する具体的条件 |
 
-買主B1/B2の薪仕事と所得は人物間の因果で成立しました。[生活市場](baseline/LIVING_MARKET_EXPERIMENT.md)の90日結果はなお生活の安定に失敗し、中央給付や帳尻合わせで成功扱いしません。未実装の境界は[STATUS](STATUS.md)に記録します。
+今回の採集／売却→パンの改修では、[B1の分析と死亡v23](baseline/MORTALITY_V23_RESULT.md)、[供給と取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)を追加で読む。栄養・活動疲労のコードを変更・検証するときは[v22の実装](baseline/ENERGY_EFFORT_V22_RESULT.md)も参照する。
 
-現在の実装順は[穀物・パン、技能獲得と職選択](baseline/FOOD_ECONOMY_SKILLS_PLAN.md)にまとめています。直近の実装設計は[状況別の予測モデルと快・不快による行動選択](baseline/MODULAR_PREDICTION_AND_ACTION_PLAN.md)。予測と実結果の対応、小モデルの競合、短い行動列、食品経済との統合の順で進める。移動の対応記録は[v13](baseline/PREDICTION_LEDGER_V13_RESULT.md)で実装済み、[v17](baseline/EXPERIENCE_LEARNING_V17_RESULT.md)で体力モデルの誤差比較と短い採集目的を初実装した。[v18](baseline/FOOD_JOURNEYS_V18_RESULT.md)で農作業・市場訪問の目的を保持し、[v19](baseline/FOOD_PLANNING_V19_RESULT.md)で食品の期限・採集競合・睡眠・帰路を含む限定した行程比較を追加した。理論上の参考と現行コードの対応は予測モデル設計の「理論・設計・現行コードの対応」に記載。統合した快不快の行動評価と技能・職選択は後続。判断・身体モデルの基礎設計は[身体・環境の欲求から行動を選ぶ計画](baseline/NEEDS_AND_ACTION_SELECTION_PLAN.md)を参照してください。[土地の生産を90日の生活へつなぐ計画](baseline/LAND_ECONOMY_NEXT_PLAN.md)は完了済みの旧段階です。[自律する90日生活世界への旧計画](baseline/AUTONOMOUS_90_DAY_PLAN.md)の段階0〜4は完了済みで、[5人の収支・時間の実行可能性](baseline/AUTONOMOUS_90_DAY_FEASIBILITY.md)は当時の算術条件、[5人の自律生活世界](baseline/AUTONOMOUS_VILLAGE_RESULT.md)は実行・対照の結果です。[履歴・経路・土地の版2](baseline/VILLAGE_RECORDING_AND_LAND_V2.md)は、その後の記録再生、矩形グリッド、植物・動物の実装範囲を説明します。
+ユーザーの最新の指定を優先する。設計文書は採用する境界・条件、STATUSは確認した事実、NEXT_SESSIONは直近の作業を記す。食い違いがあれば現行コードと記録を照合して文書を更新する。古い記録の数値・「次の作業」を現在へ読み替えない。
 
-土地経済計画の順1〜4は完了しました。[90日収支の算術候補](baseline/LAND_ECONOMY_FEASIBILITY_V1.md)と[5人・90日の実走と対照](baseline/LAND_ECONOMY_V3_RESULT.md)を分けて記録しています。次の候補と未達は[STATUS](STATUS.md)を参照してください。
+## 必要時にだけ参照する資料
 
-睡眠不足が増えやすい指摘を受け、次の身体設計を[睡眠・眠気・活動疲労の身体モデル](baseline/SLEEP_AND_FATIGUE_BODY_MODEL.md)へまとめた。24時間に6時間の睡眠、睡眠圧、昼夜のリズム、強い活動疲労からの眠気を分け、入眠待ち・実睡眠・自然起床・中断を扱う。[v20の実装と検証](baseline/SLEEP_REGULATION_V20_RESULT.md)で身体単体→Processと保存→本人の見込み→90日比較まで実装した。旧v19は比較基準として残す。
+| 場所 | 資料の役割 | 読むとき |
+|---|---|---|
+| [baselineの案内](baseline/README.md) | 現行結果、前版の対照、研究に基づく設計、将来計画、旧実験の版別結果 | 対象機能の根拠・測定・回帰を調べるとき。各文書の区分を確認する |
+| [foundationsの案内](foundations/README.md) | 人格契約、物体モデル、研究、長期設計・初版企画 | 境界や理論を詳しく検討するとき。設計案は実装の証明ではない |
+| [archiveの案内](archive/README.md) | 過去の正本・引き継ぎ・監査と別系列の経緯 | 変更理由や旧実験を調べるとき。通常の再開では読まない |
 
-画面と世界が同じセルを使い、生活拠点を地図に分散した現在の実装は[1280×768の全域版](baseline/WIDE_WORLD_V5_RESULT.md)から始まった。現在の画面は[体力0で死亡v23](baseline/MORTALITY_V23_RESULT.md)を標準表示する。旧v22は `&wood=energy`。旧v20は `&wood=sleep`、提示整合だけのv21は `&wood=integrity`。旧[食品の需要・期限と行程比較v19](baseline/FOOD_PLANNING_V19_RESULT.md)は `&wood=plan` で比較できる。人物履歴で、観察・記憶・未確認を区別した候補と選択の見込みを確認できる。旧v18は `&wood=journey`、旧v17は `&wood=learn` で比較する。ステータスで、初期・経験の見込みと対応した実結果を確認できる。旧[穀物・荷重運搬v16](baseline/BULK_TRANSPORT_V16_RESULT.md)は比較用に残す。身体・快不快と携帯・家・市場・畑の所持金、物品の数量・重量・期限を確認できる。播種1→収穫20を畑で保管し、重さに応じ歩行が遅く体力消費が増す運搬を表示する。農夫は穀物を売ってパンを買い、初期製パン技能を持つSが市場で加工する。v12の自宅加工は比較用の旧記録として残す。気温と睡眠不足、経験と予測の初期実装を追加し、判断の根拠も確認できる。穀物は直接食べられず、家・市場へ保存後に加工し、パンには製造日基準の腐敗期限を設けた。[食用植物の局所探索](baseline/PLANT_EXPLORATION_RESULT.md)と[生育周期・畑の休止・分散採集](baseline/ECOLOGICAL_LAND_V6_RESULT.md)、所有畑・現地作業も引き継ぐ。中央に集中した旧[空間版](baseline/SPATIAL_GRID_V4_RESULT.md)と旧5×5土地経済は再現用の別規則・記録として残しています。
+## 整理と更新のルール
 
+- DESIGNは原則、DECISIONSは現行条件、STATUSは現在の結果、NEXT_SESSIONは次の課題に絞る。作業経過は版別結果かarchiveへ保存する。
+- baselineの文書には現行実測／前版の対照／継承した設計／将来計画／旧段階／別系列の区分を付ける。後続実装の達成度はSTATUSで確認する。
+- 現行の正本へ旧版の「最新」「次」を積み重ねない。版別文書は記録された時点の証拠として保ち、実験結果そのものを書き換えない。
+- 文書の削除や大量の移動で過去の参照を壊さず、既存の版別文書のパスを維持する。変更時はローカルリンクと差分を検査する。
 
-現在の不自然な動きと次の修正は、[v16の行動監査と経験学習の改善計画](baseline/V16_BEHAVIOR_AUDIT_AND_LEARNING_PLAN.md)を参照。ログの具体例、食事時刻の不一致、積み戻し、疲労・採集・販売・腐敗の原因と汎用学習への実装順を整理した。
-
-監査後の初版は[v17の実装と実測](baseline/EXPERIENCE_LEARNING_V17_RESULT.md)、直近の修正と未達は[v19の実装と実測](baseline/FOOD_PLANNING_V19_RESULT.md)を参照してください。
+今回の整理前の正本は[旧DESIGN](archive/DESIGN_HISTORY_2026-10-03.md)、[旧DECISIONS](archive/DECISIONS_HISTORY_2026-10-03.md)、[旧STATUS](archive/STATUS_HISTORY_2026-10-03.md)、[旧文書案内](archive/README_HISTORY_2026-10-03.md)に保存した。

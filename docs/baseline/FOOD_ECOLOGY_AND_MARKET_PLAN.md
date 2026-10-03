@@ -1,5 +1,7 @@
 # 食料・仕事契約・空間資源の拡張順
 
+> 資料区分：旧版・旧段階の実験記録／計画。本文の「現行」「最新」「次の作業」は記載時点のもの。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+
 2026-09-27。個人市場の小fixtureから、家計を含む箱庭へ進むための設計。`PhysicalState` の包含・所有と `PersonalityModel` の入出力を保ち、食品・職業ごとに世界の中央処理を増やさない。
 
 この文書の「現行」「次」は当時の `individual_market` 小fixtureを指す。後続の5人世界では全員の食事・情報配送と、版2の土地・穀物技能まで実装した。現在の実装順は[土地経済の計画](LAND_ECONOMY_NEXT_PLAN.md)、達成度は[STATUS](../STATUS.md)を参照。

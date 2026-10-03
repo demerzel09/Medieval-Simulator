@@ -1,5 +1,7 @@
 # 所有農夫の畑と腐敗しない穀物
 
+> 資料区分：旧版・旧段階の実験記録／計画。本文の「現行」「最新」「次の作業」は記載時点のもの。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+
 更新: 2026-10-01。雇用を導入せず、F・B1・B2が各自の畑を管理する別fixture `land-owned-farms`、規則版 `autonomous-village-owned-farms-v8` を追加した。薪は停止を継続する。旧v6・薪停止対照v7の設定・記録は保存している。
 
 ## 設定と権限

@@ -6,7 +6,7 @@
 
 - 作業ディレクトリ：`/home/demerzel/workspace/Medieval-Simulator`。実装の基点はmainの `ed56a57`（死亡v23、origin/mainへ反映済み）。引き継ぎ整理のcommitがこの後に加わる。まず `git status -sb`、`git log -3 --oneline`、適用される `AGENTS.md` を確認する。
 - Nodeが見つからない場合：`export PATH="$HOME/.local/node/bin:$PATH"`。
-- 最初にこの文書と[B1の切替条件・死亡v23の結果](baseline/MORTALITY_V23_RESULT.md)を読む。[食料供給と取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)も原因判定に使う。原則は[DESIGN](DESIGN.md)と[DECISIONS](DECISIONS.md)。研究・遅延報酬の設計を詳しく確認する場合は[栄養と努力の設計](baseline/ENERGY_EFFORT_AND_DELAYED_REWARD_DESIGN.md)。
+- 最初にこの文書と[STATUS](STATUS.md)で現在と次の作業を確認し、短く整理した[DESIGN](DESIGN.md)・[DECISIONS](DECISIONS.md)で原則・維持条件を読む。今回の分析には[B1と死亡v23](baseline/MORTALITY_V23_RESULT.md)と[供給・取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)を使う。追加の設計・研究・旧版は[文書案内](README.md)から必要なときにだけ参照する。
 - 以前の長い引き継ぎは[履歴](archive/NEXT_SESSION_HISTORY_2026-10-03.md)へ保存した。通常の再開では読み込まなくてよい。旧版の「最新」「次の作業」は現行指示ではない。
 
 ## 次の目的と確認済みの原因

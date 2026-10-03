@@ -1,5 +1,7 @@
 # 土地経済90日の実行可能性 — 算術候補版1
 
+> 資料区分：旧版・旧段階の実験記録／計画。本文の「現行」「最新」「次の作業」は記載時点のもの。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+
 更新: 2026-09-27。[土地経済の実装計画](LAND_ECONOMY_NEXT_PLAN.md)の順1。条件は[候補fixture](../../fixtures/land-economy-90.ts)に固定し、`npm run autonomy:land-feasibility`（`-- --daily` で90日分）で[計算器](../../packages/tools/land-economy-feasibility-model.ts)を実行する。これは**必要な物量・時間・体力・通貨の候補条件**であり、人物の判断や時刻別の合流を実行するsimの90日受入ではない。
 
 ## 現行版2から変える初期条件

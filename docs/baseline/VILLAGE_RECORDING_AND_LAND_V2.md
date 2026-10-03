@@ -1,5 +1,7 @@
 # 5人世界の履歴・経路・土地の版2
 
+> 資料区分：旧版・旧段階の実験記録／計画。本文の「現行」「最新」「次の作業」は記載時点のもの。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+
 更新: 2026-09-27。`autonomous_village` の世界セーブを `schemaVersion: 2`、リプレイ記録を `formatVersion: 2` とする。旧版のセーブを暗黙変換しない。版1の[90日結果](AUTONOMOUS_VILLAGE_RESULT.md)は比較基準として維持する。
 
 ## 行動履歴と再実行

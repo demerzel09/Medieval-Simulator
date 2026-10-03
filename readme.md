@@ -107,7 +107,7 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 `packages/sim` はDOM/UI/ネットワーク非依存、`contracts` は入力契約、`content` は固定設定、`ai` はObservationを受け取る通常AIとMock、`apps/web` はReact/Canvas/Workerです。世界状態の更新は検証されたCommandとシミュレーション内処理のみで行います。
 
-設計と実測の入口は [docsの案内](docs/README.md) です。[現行設計](docs/DESIGN.md)、[現在の状態](docs/STATUS.md)、[採用中の判断](docs/DECISIONS.md)を参照してください。初版企画書、人格・物体・行動の設計基盤、過去の監査は案内から辿れます。次の受入作業である人間試遊は[記録票](docs/baseline/PLAYTEST.md)を使用します。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
+設計と実測の入口は [docsの案内](docs/README.md) です。[現行設計](docs/DESIGN.md)、[現在の状態](docs/STATUS.md)、[採用中の判断](docs/DECISIONS.md)を参照してください。初版企画書、人格・物体・行動の設計基盤、過去の監査は案内から辿れます。別系列の本編M3で未実施の人間試遊は[記録票](docs/baseline/PLAYTEST.md)を使用します。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
 
 **A1小fixture:** ブラウザの`/?a1=debug`、またはVS Code「自律 A1: 作業場デバッグ画面」で、二人と共有道具の6分間を再生できます。人物・道具を選ぶと利用権、体力、仕事の進捗、因果Eventを確認できます。`npm run autonomy:a1`（VS Code「自律 A1: 二人と一つの道具」）は同じ結果のテキスト表示です。A1のコードは[autonomy-a1.ts](packages/sim/autonomy-a1.ts)。A1自体は独立した小世界で、90日安定の検証ではありません。
 
