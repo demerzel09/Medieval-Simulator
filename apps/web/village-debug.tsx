@@ -212,13 +212,16 @@ function StatusCards({ status, person, day, transport, realMealClock }: { status
     {transport && <p aria-label="運搬負荷" title="歩行速度は無荷物時を100%とした比率">歩行速度 {Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · 移動消費 {loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
     <section className="village-status-card" aria-label="人物の身体ステータス"><h3>{person} の身体</h3>
       <dl className="village-status-values"><div><dt>体力</dt><dd>{status.body.energy} / {status.body.maxEnergy}</dd></div>
-        <div><dt>気温</dt><dd>{status.body.temperature}℃</dd></div><div><dt>空腹</dt><dd>{status.body.hunger}</dd></div>
+        <div><dt>気温</dt><dd>{status.body.temperature}℃</dd></div>
         <div><dt>睡眠不足</dt><dd>{status.body.sleepDebt}時間</dd></div>
-        <div><dt>寒さ</dt><dd>{status.body.cold}</dd></div><div><dt>行動</dt><dd>{decisionLabels[status.body.activity] ?? status.body.activity}</dd></div></dl>
+        <div><dt>行動</dt><dd>{decisionLabels[status.body.activity] ?? status.body.activity}</dd></div></dl>
       <p>{status.body.sheltered ? "自宅の屋内" : "屋外"} · {realMealClock ? "食事からの経過" : "食事周期（旧記録）"} {status.body.mealHours}時間</p>
       <div className="village-need-grid"><div className="village-need-meter"><span>快適さ</span><b>{needs.comfort}%</b><progress aria-label="身体の快適さ" value={needs.comfort} max={100} /></div>
       {([["不快", needs.discomfort], ["空腹の負担", needs.hunger], ["寒さの負担", needs.cold], ["疲労", needs.fatigue], ["眠気", needs.sleepiness]] as const).map(([label, value]) =>
-        <div className="village-need-meter discomfort" key={label}><span>{label.replace("の負担", "")}</span><b>{value}%</b><progress aria-label={label} value={value} max={100} /></div>)}</div>
+        <div className="village-need-meter discomfort" key={label}
+          title={label === "空腹の負担" ? `空腹の記録値 ${status.body.hunger} · 表示の目安：3以上で100%` :
+            label === "寒さの負担" ? `寒さの記録値 ${status.body.cold} · 表示の目安：12以上で100%` : undefined}>
+          <span>{label.replace("の負担", "")}</span><b>{value}%</b><progress aria-label={label} value={value} max={100} /></div>)}</div>
       <small title="快・不快は身体の負担の目安。不快は4項目の最大値、快適さは100−不快。">不快＝最大負担 · 快適さ＝100−不快</small>
     </section>
     {status.field && <InventoryCard title="畑の保管品" inventory={status.field} day={day} owner={person} />}
