@@ -108,3 +108,5 @@ export const sleepRegulation90V1: VillageFixture = { ...structuredClone(foodPlan
 export const offerIntegrity90V1: VillageFixture = { ...structuredClone(sleepRegulation90V1), offerIntegrity: true };
 /** v22 separates dietary supply, activity fatigue, present effort and delayed outcomes. */
 export const energyEffort90V1: VillageFixture = { ...structuredClone(offerIntegrity90V1), effortBody: { ...defaultEffortConfig } };
+/** v23 keeps v22 choices and adds terminal death at zero activity capacity. */
+export const mortality90V1: VillageFixture = { ...structuredClone(energyEffort90V1), deathOnZeroEnergy: true };

@@ -10,7 +10,8 @@ export type InventoryItem = { id: string; kind: string; quantity: number; mass: 
 export type InventoryStatus = { cash: number; mass: number; capacity: number; items: InventoryItem[] };
 export type PersonStatus = { hour: number; carried: InventoryStatus; home: InventoryStatus; market: InventoryStatus;
   field?: InventoryStatus; ground?: InventoryStatus;
-  body: { energy: number; maxEnergy: number; hunger: number; cold: number; sleepDebt: number; mealHours: number;
+  body: { life?: { alive: true } | { alive: false; atMinute: number; eventId: string; cause: "activity_capacity_zero" };
+    energy: number; maxEnergy: number; hunger: number; cold: number; sleepDebt: number; mealHours: number;
     temperature: number; sheltered: boolean; activity: string; sleep?: SleepSignal; effort?: ReturnType<typeof effortSensation> & { reserve: number; capacity: number; intake: number; absorbed: number; consumed: number; lost: number; unmet: number; pendingNutrition: number } } };
 
 /** A debug snapshot of actual physical objects. It does not grant an actor access to others' inventories. */
@@ -34,7 +35,7 @@ export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatu
   };
   const person = w.people[id];
   const sheltered = w.physical.objects[id].parentId === `home_${id}`;
-  const temperature = w.fixture.needs ? needsTemperature(Math.max(1, w.hour), w.fixture.needs, sheltered) : 0;
+  const temperature = w.fixture.needs ? needsTemperature(Math.max(1, person.death ? Math.ceil(person.death.atMinute / 60) : w.hour), w.fixture.needs, sheltered) : 0;
   const carried = inventory([`bag_${id}`, `wallet_${id}`]);
   carried.capacity = w.physical.types.person.container!.maxContentsMass!;
   return { hour: w.hour, carried, home: inventory([`home_chest_${id}`, `granary_home_${id}`]),
@@ -42,13 +43,14 @@ export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatu
     ...(w.fixture.bulkTransport ? { field: inventory(Object.values(w.physical.objects).filter((o) => o.id.startsWith("granary_field_") && o.ownerId === id).map((o) => o.id)) } : {}),
     ...(person.effort ? { ground: inventory(Object.values(w.physical.objects).filter((o) => o.id.startsWith(`ground_${id}_`)).map((o) => o.id)) } : {}),
     body: { energy: person.energy, maxEnergy: w.fixture.body.maxEnergy, hunger: person.hunger, cold: person.cold,
+      ...(w.fixture.deathOnZeroEnergy ? { life: person.death ? { alive: false as const, ...person.death } : { alive: true as const } } : {}),
       sleepDebt: person.needs?.sleepDebt ?? 0, mealHours: person.needs?.mealHours ?? 0, temperature, sheltered,
       ...(person.effort ? { effort: { ...effortSensation(person.effort, w.fixture.effortBody!, carried.mass), reserve: person.effort.reserve / 1000,
         capacity: w.fixture.effortBody!.reserveCapacity / 1000, intake: person.effort.intake / 1000, absorbed: person.effort.absorbed / 1000,
         consumed: person.effort.consumed / 1000, lost: person.effort.lost / 1000, unmet: person.effort.unmet / 1000,
         pendingNutrition: person.effort.digestion.reduce((n, d) => n + d.amount, 0) / 1000 } } : {}),
       ...(person.sleep ? { sleep: sleepSignal(person.sleep, w.fixture.sleepRegulation!, person.energy, w.fixture.body.maxEnergy, person.effort ? person.effort.fatigue / 1_000_000 : undefined) } : {}),
-      activity: person.sleep?.mode === "settling" ? "settling" : person.activeProcessId ? w.processes[person.activeProcessId]?.kind ?? "wait" : "wait" } };
+      activity: person.death ? "dead" : person.sleep?.mode === "settling" ? "settling" : person.activeProcessId ? w.processes[person.activeProcessId]?.kind ?? "wait" : "wait" } };
 }
 
 /** Display indices of physical needs, not a new emotion or a learned subjective value. */

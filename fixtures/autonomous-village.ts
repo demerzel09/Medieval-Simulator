@@ -7,6 +7,7 @@ export type VillageFixture = FeasibilityFixture & { informationDelayHours: numbe
   sleepRegulation?: import("../packages/sim/sleep-body").SleepConfig;
   offerIntegrity?: true;
   effortBody?: import("../packages/sim/effort-body").EffortConfig;
+  deathOnZeroEnergy?: true;
   effortLearning?: false;
   bulkTransport?: import("../packages/sim/load-movement").LoadTransport;
   homeStorage?: { capacity: number };

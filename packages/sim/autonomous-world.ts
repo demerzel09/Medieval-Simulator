@@ -26,6 +26,7 @@ import { checkPhysical, contentsQuantity, physicalTransaction, siteOf, totalMass
 export type VillageEvent = { id: string; hour: number; day: number; kind: string; actors: string[];
   causes: string[]; data: Record<string, string | number> };
 type VillagePerson = { id: VillageId; role: VillageRole; nextWakeAt: number; hunger: number; cold: number;
+  death?: { atMinute: number; eventId: string; cause: "activity_capacity_zero" };
   execution?: { predictionId?: string; attemptEventId: string; startedAt: number; action: VillageAttempt["kind"]; before: ActionObservation; processId?: string };
   bakingSkills?: { bread: number };
   energy: number; cell: GridPoint; farmingSkills: Record<string, number>;
@@ -101,6 +102,7 @@ function emit(w: VillageWorld, kind: string, actors: string[], causes: string[] 
 }
 function send(w: VillageWorld, recipientId: VillageId, stimulus: Omit<VillageStimulus, "id" | "occurredAt" | "receivedAt">,
   delay = 1) {
+  if (w.people[recipientId].death) return;
   w.pending.push({ recipientId, stimulus: { id: uid(w, "s"), occurredAt: w.hour,
     receivedAt: w.hour + delay, ...stimulus } });
 }
@@ -142,9 +144,9 @@ function coinIds(w: VillageWorld, parentId: string, ownerId: string, quantity: n
 function moveCoins(t: PhysicalTransaction, coinIds: string[], targetWallet: string, ownerId: string) {
   for (const id of coinIds) { t.move(id, targetWallet); t.changeOwner(id, ownerId); }
 }
-function cancelFoodOffer(w: VillageWorld, offer: FoodOffer, reason: string, causeId: string) {
+function cancelFoodOffer(w: VillageWorld, offer: FoodOffer, reason: string, causeId: string, atMinute?: number) {
   const event = emit(w, "surplus_offer_cancelled", [offer.sellerId], [offer.postedEventId, causeId],
-    { offerId: offer.id, lotId: offer.lotId, quantity: offer.quantity, reason });
+    { offerId: offer.id, lotId: offer.lotId, quantity: offer.quantity, reason, ...(atMinute === undefined ? {} : { atMinute }) });
   offer.cancelledEventId = event.id;
   send(w, offer.sellerId, { kind: "result", action: "withdraw_surplus_offer", success: true,
     reason, ...(w.fixture.effortBody ? { offerChange: { id: offer.id, valid: false } } : {}), causeEventIds: [event.id] }, 1);
@@ -175,6 +177,35 @@ function effortEvent(w: VillageWorld, id: VillageId, causes: string[] = []) {
     pendingNutrition: b.digestion.reduce((n, d) => n + d.amount, 0) / 1000,
     fatigue: sensation.fatigue, nutritionNeed: sensation.nutritionNeed, loadDiscomfort: sensation.loadDiscomfort,
     pleasure: sensation.pleasure, relief: sensation.relief, energy: w.people[id].energy, hunger: w.people[id].hunger });
+}
+/** Terminal game rule requested by the user. Inventory and ownership remain physical evidence. */
+function dieAtZeroEnergy(w: VillageWorld, id: VillageId, atMinute: number, causeId: string) {
+  const person = w.people[id];
+  if (!w.fixture.deathOnZeroEnergy || person.death || person.energy !== 0) return false;
+  const process = w.processes[person.activeProcessId ?? ""];
+  const death = emit(w, "person_died", [id], [causeId], { atMinute, reason: "activity capacity reached zero",
+    energy: person.energy, reserve: person.effort!.reserve / 1000, fatigue: person.effort!.fatigue / 1_000_000,
+    x: person.cell.x, y: person.cell.y });
+  person.death = { atMinute, eventId: death.id, cause: "activity_capacity_zero" };
+  if (person.sleep!.mode !== "awake") {
+    const transition = endSleep(person.sleep!, "actor died", "sleep_interrupted");
+    emit(w, "sleep_interrupted", [id], [death.id], { atMinute, reason: "actor died",
+      sleepMinutes: transition.sleepMinutes, effectiveMinutes: transition.effectiveMinutes, waitMinutes: transition.waitMinutes });
+  }
+  if (process) {
+    if (process.kind === "forage") w.resources[process.resource!].reserved -= process.quantity!;
+    emit(w, "process_interrupted", [id], [death.id, process.startEventId],
+      { atMinute, processId: process.id, action: process.kind, progress: process.progress, reason: "actor died" });
+    delete w.processes[process.id];
+  }
+  delete person.activeProcessId; delete person.execution;
+  person.nextWakeAt = w.fixture.days * 24 + 1;
+  person.inbox = [];
+  w.pending = w.pending.filter((p) => p.recipientId !== id);
+  for (const offer of Object.values(w.foodOffers ?? {})) if (offer.sellerId === id && !offer.purchasedEventId && !offer.cancelledEventId)
+    cancelFoodOffer(w, offer, "seller died", death.id, atMinute);
+  death.data.body = JSON.stringify(villagePersonStatus(w, id).body);
+  return true;
 }
 function transferUnit(t: PhysicalTransaction, lotId: string, quantity: number, unitId: string,
   parentId: string, ownerId: string, causeEventId: string): string {
@@ -389,7 +420,11 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     initialSeeds: f.landEconomy?.initialSeeds ?? 2, seedsProduced: 0, seedsUsed: 0,
     harvestedWood: 0, burnedWood: 0,
     initialMoney: ids.reduce((n, id) => n + f.initialCash[id], 0) };
+  if (f.deathOnZeroEnergy) for (const id of ids) syncEffort(w, id);
   if (f.homeStorage) for (const id of ids) emit(w, "person_status", [id], [], { status: JSON.stringify(villagePersonStatus(w, id)) });
+  if (f.deathOnZeroEnergy) for (const id of ids) {
+    if (w.people[id].energy === 0) { effortEvent(w, id); dieAtZeroEnergy(w, id, 0, w.events.at(-1)!.id); }
+  }
   checkVillageWorld(w); return w;
 }
 function startProcess(w: VillageWorld, actorId: VillageId, kind: VillageProcess["kind"], duration: number,
@@ -690,6 +725,7 @@ function progressProcesses(w: VillageWorld) {
       const next = p.path[p.pathIndex! + 1];
       const roadCell = !Object.values(w.grid.sites).some((site) => sameCell(site, next));
       const blocker = roadCell ? ids.find((other) => other !== p.actorId &&
+        !w.people[other].death &&
         sameCell(w.people[other].cell, next) &&
         siteOf(w.physical, other).startsWith("transit_")) : undefined;
       if (blocker) {
@@ -726,6 +762,7 @@ function progressProcesses(w: VillageWorld) {
         const next = p.path[p.pathIndex! + 1];
         const roadCell = !Object.values(w.grid.sites).some((site) => sameCell(site, next));
         const blocker = roadCell ? ids.find((other) => other !== p.actorId &&
+          !w.people[other].death &&
           sameCell(w.people[other].cell, next) &&
           siteOf(w.physical, other).startsWith("transit_")) : undefined;
         if (!traversable(w.grid, next) || blocker) {
@@ -830,11 +867,13 @@ function regulatedBodyHour(w: VillageWorld, id: VillageId) {
       activity: s.mode === "settling" ? "settling" : s.mode === "asleep" ? "sleep" : w.processes[p.activeProcessId ?? ""]?.kind ?? "wait",
       mealHours: p.needs!.mealHours });
     effortEvent(w, id, [event.id]);
+    if (dieAtZeroEnergy(w, id, p.sleep!.minute, w.events.at(-1)!.id)) break;
     if (quarter === 3 && (updated.mealDue || p.cold >= 6 || s.sleepiness >= .65)) send(w, id, { kind: "body", causeEventIds: [event.id] }, 0);
   }
   p.needs!.sleptHours = Math.floor(p.sleep!.totalSleepMinutes / 60);
 }
 function attempt(w: VillageWorld, id: VillageId, a: VillageAttempt, decisionId: string): string | undefined {
+  if (w.people[id].death) return "actor deceased";
   const day = dayAt(w.hour), site = siteOf(w.physical, id);
   const current = latestOrder(w);
   if (w.fixture.woodEnabled === false && (a.kind === "post_wood_bid" ||
@@ -1341,7 +1380,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
             w.foodLots[lot.id].harvestedDay + w.fixture.foodShelfLifeDays } : {}) })),
       visibleFoodOffers: siteId === "market" ? offers.filter((offer) => {
         const lot = w.physical.objects[offer.lotId];
-        return !offer.purchasedEventId && !offer.cancelledEventId && offer.sellerId !== id && atSite(w, offer.sellerId, "market") &&
+        return !offer.purchasedEventId && !offer.cancelledEventId && !w.people[offer.sellerId].death && offer.sellerId !== id && atSite(w, offer.sellerId, "market") &&
           lot?.ownerId === offer.sellerId && lot.quantity >= offer.quantity && siteOf(w.physical, lot.id) === "market";
       }).map((offer) => ({ id: offer.id, sellerId: offer.sellerId, quantity: offer.quantity,
         price: offer.price, species: w.foodLots[offer.lotId].species!, ...(w.fixture.breadEconomy ? { product: w.foodLots[offer.lotId].product ?? (w.foodLots[offer.lotId].species === "grain" ? "grain" as const : undefined) } : {}),
@@ -1385,7 +1424,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
     ...(w.fixture.landEconomy?.exploreWildPlants ?
       { foragingSkill: person.foragingSkill ?? 0 } : {}),
     ...(w.fixture.landEconomy ? { visiblePeople: ids.filter((other) =>
-      siteOf(w.physical, other) === siteId) } : {}) };
+      !w.people[other].death && siteOf(w.physical, other) === siteId) } : {}) };
 }
 function observe(w: VillageWorld, id: VillageId, c: VillageContext): VillageStimulus {
   const event = emit(w, "observed", [id], [], { siteId: c.siteId, x: c.cell.x, y: c.cell.y,
@@ -1519,6 +1558,7 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
       command.status = "applied";
     }
     if (w.fixture.needs) for (const id of ids) {
+      if (w.people[id].death) continue;
       if (w.fixture.sleepRegulation) { regulatedBodyHour(w, id); continue; }
       const p = w.people[id], sheltered = siteOf(w.physical, id) === `home_${id}`;
       const activity = p.activeProcessId ? w.processes[p.activeProcessId]?.kind : undefined;
@@ -1534,7 +1574,14 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
         send(w, id, { kind: "body", causeEventIds: [event.id] }, 0);
     }
     progressProcesses(w);
+    if (w.fixture.deathOnZeroEnergy) for (const id of ids) {
+      if (!w.people[id].death && w.people[id].energy === 0) {
+        effortEvent(w, id);
+        dieAtZeroEnergy(w, id, w.hour * 60, w.events.at(-1)!.id);
+      }
+    }
     if (w.fixture.sleepRegulation) for (const id of ids) {
+      if (w.people[id].death) continue;
       const p = w.people[id], s = sleepSignal(p.sleep!, w.fixture.sleepRegulation, p.energy, w.fixture.body.maxEnergy, p.effort ? p.effort.fatigue / 1_000_000 : undefined);
       emit(w, "body_changed", [id], [], { atMinute: w.hour * 60, energy: p.energy, hunger: p.hunger, cold: p.cold, sleepDebt: 0,
         temperature: needsTemperature(w.hour, w.fixture.needs!, siteOf(w.physical, id) === `home_${id}`),
@@ -1543,9 +1590,16 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
         sleepMode: s.mode, awakeHours: s.awakeHours, activity: s.mode === "settling" ? "settling" : w.processes[p.activeProcessId ?? ""]?.kind ?? "wait" });
       effortEvent(w, id);
     }
-    for (const command of w.commands) if (command.status === "queued" && command.at === w.hour)
-      w.people[command.actorId].nextWakeAt = Math.min(w.people[command.actorId].nextWakeAt, w.hour);
-    wakeActors(w.hour, w.people, w.pending, (actorId, delivered) => {
+    for (const command of w.commands) if (command.status === "queued" && command.at === w.hour) {
+      const person = w.people[command.actorId];
+      if (person.death) {
+        const rejected = emit(w, "command_rejected", [command.actorId], [person.death.eventId],
+          { commandId: command.id, reason: "actor deceased", atMinute: w.hour * 60 });
+        command.status = "applied"; command.eventId = rejected.id;
+      } else person.nextWakeAt = Math.min(person.nextWakeAt, w.hour);
+    }
+    const livingPeople = w.fixture.deathOnZeroEnergy ? Object.fromEntries(Object.entries(w.people).filter(([, p]) => !p.death)) : w.people;
+    wakeActors(w.hour, livingPeople, w.pending, (actorId, delivered) => {
       const id = actorId as VillageId, person = w.people[id];
       const command = w.commands.find((c) => c.status === "queued" && c.at === w.hour && c.actorId === id);
       const seenStimuli = new Set(person.receivedStimulusIds);
@@ -1652,6 +1706,7 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
   checkVillageWorld(w); return w;
 }
 export function checkVillageWorld(w: VillageWorld) {
+  if (w.fixture.deathOnZeroEnergy && (!w.fixture.effortBody || !w.fixture.sleepRegulation)) throw Error("mortality requires effort and sleep bodies");
   if (w.fixture?.sleepRegulation) checkSleepConfig(w.fixture.sleepRegulation);
   if (w.fixture?.effortBody) checkEffortConfig(w.fixture.effortBody);
   if (w.schemaVersion !== 2 || w.mode !== "autonomous_village" || !Number.isSafeInteger(w.hour) || w.hour < 0 ||
@@ -1744,8 +1799,12 @@ export function checkVillageWorld(w: VillageWorld) {
   }
   for (const id of ids) {
     const p = w.people[id];
+    if (p.death && (!w.fixture.deathOnZeroEnergy || p.death.cause !== "activity_capacity_zero" ||
+      !Number.isSafeInteger(p.death.atMinute) || p.death.atMinute < 0 || p.death.atMinute > w.hour * 60 ||
+      !eventIds.has(p.death.eventId) || p.energy !== 0 || p.activeProcessId || p.execution ||
+      Object.values(w.foodOffers ?? {}).some((o) => o.sellerId === id && !o.purchasedEventId && !o.cancelledEventId))) throw Error("invalid deceased person");
     if (!!w.fixture.effortBody !== !!p.effort) throw Error("effort body feature mismatch");
-    if (p.effort) { checkEffortBody(p.effort, w.fixture.effortBody!, w.hour * 60);
+    if (p.effort) { checkEffortBody(p.effort, w.fixture.effortBody!, p.death?.atMinute ?? w.hour * 60);
       if (p.energy !== effortEnergy(p.effort, w.fixture.effortBody!, w.fixture.body.maxEnergy) ||
         p.hunger !== effortAppetite(p.effort, w.fixture.effortBody!)) throw Error("effort body signal mismatch"); }
     const homeChest = w.physical.objects[`home_chest_${id}`];
@@ -1762,7 +1821,7 @@ export function checkVillageWorld(w: VillageWorld) {
       (!Number.isSafeInteger(p.bakingSkills.bread) || p.bakingSkills.bread < 0)) throw Error("invalid baking skill");
     if (!!w.fixture.sleepRegulation !== !!p.sleep) throw Error("sleep body feature mismatch");
     if (p.sleep) {
-      checkSleepBody(p.sleep, w.hour * 60);
+      checkSleepBody(p.sleep, p.death?.atMinute ?? w.hour * 60);
       if ((p.sleep.mode !== "awake") !== (w.processes[p.activeProcessId ?? ""]?.kind === "sleep")) throw Error("sleep process mismatch");
     }
     if (!!w.fixture.needs !== !!p.needs || p.needs && (Object.values(p.needs).some((n) => !Number.isSafeInteger(n) || n < 0) ||
@@ -1857,6 +1916,7 @@ export function villageSummary(w: VillageWorld) { return { day: w.hour ? dayAt(w
     animalBirths: w.land.animalBirths, animalDeaths: w.land.animalDeaths } } : {}),
   resource: Object.fromEntries(Object.entries(w.resources).map(([k, v]) => [k, v.available])),
   people: Object.fromEntries(ids.map((id) => [id, { site: siteOf(w.physical, id), cash: ownCash(w, id),
+    ...(w.fixture.deathOnZeroEnergy ? { alive: !w.people[id].death, ...(w.people[id].death ? { death: structuredClone(w.people[id].death) } : {}) } : {}),
     hunger: w.people[id].hunger, cold: w.people[id].cold, energy: w.people[id].energy,
     ...(w.people[id].sleep ? { sleep: { ...sleepSignal(w.people[id].sleep!, w.fixture.sleepRegulation!, w.people[id].energy, w.fixture.body.maxEnergy, w.people[id].effort ? w.people[id].effort!.fatigue / 1_000_000 : undefined), totalActualHours: w.people[id].sleep!.totalSleepMinutes / 60 } } : {}),
     meals: w.people[id].meals, fuelUsed: w.people[id].fuelUsed,

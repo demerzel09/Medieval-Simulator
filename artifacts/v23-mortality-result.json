@@ -1,0 +1,968 @@
+{
+  "rulesetId": "autonomous-village-mortality-v23",
+  "seed": 240924,
+  "untilHour": 2160,
+  "stateHash": "1a773125",
+  "eventHash": "80241c8f",
+  "eventCount": 91443,
+  "deaths": [
+    {
+      "actorId": "B1",
+      "hour": 156,
+      "atMinute": 9330,
+      "eventId": "e_017502",
+      "reserve": 0,
+      "fatigue": 0.275937,
+      "position": {
+        "x": 12,
+        "y": 8
+      }
+    },
+    {
+      "actorId": "C",
+      "hour": 179,
+      "atMinute": 10710,
+      "eventId": "e_019725",
+      "reserve": 0,
+      "fatigue": 0.214359,
+      "position": {
+        "x": 12,
+        "y": 12
+      }
+    },
+    {
+      "actorId": "F",
+      "hour": 189,
+      "atMinute": 11325,
+      "eventId": "e_020542",
+      "reserve": 0,
+      "fatigue": 0.48,
+      "position": {
+        "x": 18,
+        "y": 10
+      }
+    }
+  ],
+  "summary": {
+    "day": 90,
+    "hour": 2160,
+    "harvestedFood": 520,
+    "eatenFood": 409,
+    "spoiledFood": 8,
+    "harvestedWood": 0,
+    "burnedWood": 0,
+    "landEconomy": {
+      "cultivatedFood": 100,
+      "wildFood": 100,
+      "fieldGrain": 89,
+      "seedsHeld": 0,
+      "seedsUsed": 2,
+      "seedsProduced": 0,
+      "season": "autumn",
+      "animals": 8,
+      "animalBirths": 11,
+      "animalDeaths": 5
+    },
+    "resource": {
+      "food": 12,
+      "wood": 0
+    },
+    "people": {
+      "S": {
+        "site": "home_S",
+        "cash": 19,
+        "alive": true,
+        "hunger": 0,
+        "cold": 0,
+        "energy": 16.0888,
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0.3505,
+          "awakeDrive": 0,
+          "circadian": 1,
+          "fatigue": 0.3812,
+          "mode": "asleep",
+          "awakeHours": 0,
+          "totalActualHours": 544
+        },
+        "meals": 125,
+        "fuelUsed": 0,
+        "food": 2,
+        "wood": 0
+      },
+      "F": {
+        "site": "transit_020453",
+        "cash": 4,
+        "alive": false,
+        "death": {
+          "atMinute": 11325,
+          "eventId": "e_020542",
+          "cause": "activity_capacity_zero"
+        },
+        "hunger": 3,
+        "cold": 0,
+        "energy": 0,
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0,
+          "awakeDrive": 0,
+          "circadian": 0,
+          "fatigue": 0.48,
+          "mode": "awake",
+          "awakeHours": 14.5,
+          "totalActualHours": 43.75
+        },
+        "meals": 8,
+        "fuelUsed": 0,
+        "food": 0,
+        "wood": 0
+      },
+      "C": {
+        "site": "transit_019565",
+        "cash": 0,
+        "alive": false,
+        "death": {
+          "atMinute": 10710,
+          "eventId": "e_019725",
+          "cause": "activity_capacity_zero"
+        },
+        "hunger": 3,
+        "cold": 3,
+        "energy": 0,
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0,
+          "awakeDrive": 0,
+          "circadian": 0,
+          "fatigue": 0.2144,
+          "mode": "awake",
+          "awakeHours": 5.25,
+          "totalActualHours": 42.75
+        },
+        "meals": 8,
+        "fuelUsed": 0,
+        "food": 0,
+        "wood": 0
+      },
+      "B1": {
+        "site": "herb_patch_2",
+        "cash": 1,
+        "alive": false,
+        "death": {
+          "atMinute": 9330,
+          "eventId": "e_017502",
+          "cause": "activity_capacity_zero"
+        },
+        "hunger": 3,
+        "cold": 1,
+        "energy": 0,
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0,
+          "awakeDrive": 0,
+          "circadian": 0,
+          "fatigue": 0.2759,
+          "mode": "awake",
+          "awakeHours": 6.25,
+          "totalActualHours": 37.5
+        },
+        "meals": 7,
+        "fuelUsed": 0,
+        "food": 0,
+        "wood": 0
+      },
+      "B2": {
+        "site": "home_B2",
+        "cash": 2,
+        "alive": true,
+        "hunger": 0,
+        "cold": 0,
+        "energy": 16.4907,
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 7.1143,
+          "actualHours": 7.25,
+          "sleepiness": 0.3229,
+          "awakeDrive": 0,
+          "circadian": 1,
+          "fatigue": 0.3657,
+          "mode": "asleep",
+          "awakeHours": 0,
+          "totalActualHours": 547.25
+        },
+        "meals": 126,
+        "fuelUsed": 0,
+        "food": 4,
+        "wood": 0
+      }
+    }
+  },
+  "finalPersonStatus": {
+    "S": {
+      "hour": 2160,
+      "carried": {
+        "cash": 19,
+        "mass": 2,
+        "capacity": 24,
+        "items": [
+          {
+            "id": "food_103307",
+            "kind": "wild_berry",
+            "quantity": 2,
+            "mass": 2,
+            "ownerId": "S",
+            "containerId": "bag_S",
+            "expiresDay": 93,
+            "offered": false
+          }
+        ]
+      },
+      "home": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 168,
+        "items": []
+      },
+      "market": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 136,
+        "items": []
+      },
+      "field": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 0,
+        "items": []
+      },
+      "ground": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 0,
+        "items": []
+      },
+      "body": {
+        "energy": 16.0888,
+        "maxEnergy": 26,
+        "hunger": 0,
+        "cold": 0,
+        "life": {
+          "alive": true
+        },
+        "sleepDebt": 0,
+        "mealHours": 11,
+        "temperature": 21,
+        "sheltered": true,
+        "effort": {
+          "fatigue": 0.3812,
+          "nutritionNeed": 0,
+          "digesting": false,
+          "loadDiscomfort": 0.07524800000000001,
+          "pleasure": 1e-06,
+          "relief": 0.019,
+          "reserve": 58.599,
+          "capacity": 96,
+          "intake": 3102,
+          "absorbed": 3102,
+          "consumed": 3103.401,
+          "lost": 0,
+          "unmet": 0,
+          "pendingNutrition": 0
+        },
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0.3505,
+          "awakeDrive": 0,
+          "circadian": 1,
+          "fatigue": 0.3812,
+          "mode": "asleep",
+          "awakeHours": 0
+        },
+        "activity": "sleep"
+      }
+    },
+    "F": {
+      "hour": 2160,
+      "carried": {
+        "cash": 4,
+        "mass": 0,
+        "capacity": 24,
+        "items": []
+      },
+      "home": {
+        "cash": 0,
+        "mass": 8,
+        "capacity": 168,
+        "items": [
+          {
+            "id": "grain_seed_initial_F",
+            "kind": "grain",
+            "quantity": 4,
+            "mass": 8,
+            "ownerId": "F",
+            "containerId": "granary_home_F",
+            "offered": false
+          }
+        ]
+      },
+      "market": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 128,
+        "items": []
+      },
+      "field": {
+        "cash": 0,
+        "mass": 78,
+        "capacity": 512,
+        "items": [
+          {
+            "id": "food_001710",
+            "kind": "grain",
+            "quantity": 19,
+            "mass": 38,
+            "ownerId": "F",
+            "containerId": "granary_field_grain_plot",
+            "offered": false
+          },
+          {
+            "id": "food_004514",
+            "kind": "grain",
+            "quantity": 20,
+            "mass": 40,
+            "ownerId": "F",
+            "containerId": "granary_field_grain_plot_2",
+            "offered": false
+          }
+        ]
+      },
+      "ground": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 0,
+        "items": []
+      },
+      "body": {
+        "energy": 0,
+        "maxEnergy": 26,
+        "hunger": 3,
+        "cold": 0,
+        "life": {
+          "alive": false,
+          "atMinute": 11325,
+          "eventId": "e_020542",
+          "cause": "activity_capacity_zero"
+        },
+        "sleepDebt": 0,
+        "mealHours": 53,
+        "temperature": 17,
+        "sheltered": false,
+        "effort": {
+          "fatigue": 0.48,
+          "nutritionNeed": 1,
+          "digesting": false,
+          "loadDiscomfort": 0,
+          "pleasure": 1e-06,
+          "relief": 1e-06,
+          "reserve": 0,
+          "capacity": 96,
+          "intake": 228,
+          "absorbed": 228,
+          "consumed": 288,
+          "lost": 0,
+          "unmet": 0.221,
+          "pendingNutrition": 0
+        },
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0,
+          "awakeDrive": 0,
+          "circadian": 0,
+          "fatigue": 0.48,
+          "mode": "awake",
+          "awakeHours": 14.5
+        },
+        "activity": "dead"
+      }
+    },
+    "C": {
+      "hour": 2160,
+      "carried": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 24,
+        "items": []
+      },
+      "home": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 168,
+        "items": []
+      },
+      "market": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 128,
+        "items": []
+      },
+      "field": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 0,
+        "items": []
+      },
+      "ground": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 0,
+        "items": []
+      },
+      "body": {
+        "energy": 0,
+        "maxEnergy": 26,
+        "hunger": 3,
+        "cold": 3,
+        "life": {
+          "alive": false,
+          "atMinute": 10710,
+          "eventId": "e_019725",
+          "cause": "activity_capacity_zero"
+        },
+        "sleepDebt": 0,
+        "mealHours": 22,
+        "temperature": 17,
+        "sheltered": false,
+        "effort": {
+          "fatigue": 0.214359,
+          "nutritionNeed": 1,
+          "digesting": false,
+          "loadDiscomfort": 0,
+          "pleasure": 1e-06,
+          "relief": 1e-06,
+          "reserve": 0,
+          "capacity": 96,
+          "intake": 192,
+          "absorbed": 192,
+          "consumed": 252,
+          "lost": 0,
+          "unmet": 0.008,
+          "pendingNutrition": 0
+        },
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0,
+          "awakeDrive": 0,
+          "circadian": 0,
+          "fatigue": 0.2144,
+          "mode": "awake",
+          "awakeHours": 5.25
+        },
+        "activity": "dead"
+      }
+    },
+    "B1": {
+      "hour": 2160,
+      "carried": {
+        "cash": 1,
+        "mass": 0,
+        "capacity": 24,
+        "items": []
+      },
+      "home": {
+        "cash": 0,
+        "mass": 8,
+        "capacity": 168,
+        "items": [
+          {
+            "id": "grain_seed_initial_B1",
+            "kind": "grain",
+            "quantity": 4,
+            "mass": 8,
+            "ownerId": "B1",
+            "containerId": "granary_home_B1",
+            "offered": false
+          }
+        ]
+      },
+      "market": {
+        "cash": 0,
+        "mass": 6,
+        "capacity": 128,
+        "items": [
+          {
+            "id": "loaded_grain_004127",
+            "kind": "grain",
+            "quantity": 3,
+            "mass": 6,
+            "ownerId": "B1",
+            "containerId": "granary_market_B1",
+            "offered": false
+          }
+        ]
+      },
+      "field": {
+        "cash": 0,
+        "mass": 28,
+        "capacity": 512,
+        "items": [
+          {
+            "id": "food_002441",
+            "kind": "grain",
+            "quantity": 14,
+            "mass": 28,
+            "ownerId": "B1",
+            "containerId": "granary_field_grain_plot_5",
+            "offered": false
+          }
+        ]
+      },
+      "ground": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 0,
+        "items": []
+      },
+      "body": {
+        "energy": 0,
+        "maxEnergy": 26,
+        "hunger": 3,
+        "cold": 1,
+        "life": {
+          "alive": false,
+          "atMinute": 9330,
+          "eventId": "e_017502",
+          "cause": "activity_capacity_zero"
+        },
+        "sleepDebt": 0,
+        "mealHours": 24,
+        "temperature": 19,
+        "sheltered": false,
+        "effort": {
+          "fatigue": 0.275937,
+          "nutritionNeed": 1,
+          "digesting": false,
+          "loadDiscomfort": 0,
+          "pleasure": 1e-06,
+          "relief": 1e-06,
+          "reserve": 0,
+          "capacity": 96,
+          "intake": 180,
+          "absorbed": 180,
+          "consumed": 240,
+          "lost": 0,
+          "unmet": 0.161,
+          "pendingNutrition": 0
+        },
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 6,
+          "actualHours": 6,
+          "sleepiness": 0,
+          "awakeDrive": 0,
+          "circadian": 0,
+          "fatigue": 0.2759,
+          "mode": "awake",
+          "awakeHours": 6.25
+        },
+        "activity": "dead"
+      }
+    },
+    "B2": {
+      "hour": 2160,
+      "carried": {
+        "cash": 2,
+        "mass": 4,
+        "capacity": 24,
+        "items": [
+          {
+            "id": "food_103469",
+            "kind": "herb",
+            "quantity": 2,
+            "mass": 2,
+            "ownerId": "B2",
+            "containerId": "bag_B2",
+            "expiresDay": 93,
+            "offered": false
+          },
+          {
+            "id": "food_103659",
+            "kind": "herb",
+            "quantity": 2,
+            "mass": 2,
+            "ownerId": "B2",
+            "containerId": "bag_B2",
+            "expiresDay": 93,
+            "offered": false
+          }
+        ]
+      },
+      "home": {
+        "cash": 0,
+        "mass": 8,
+        "capacity": 168,
+        "items": [
+          {
+            "id": "grain_seed_initial_B2",
+            "kind": "grain",
+            "quantity": 4,
+            "mass": 8,
+            "ownerId": "B2",
+            "containerId": "granary_home_B2",
+            "offered": false
+          }
+        ]
+      },
+      "market": {
+        "cash": 0,
+        "mass": 6,
+        "capacity": 128,
+        "items": [
+          {
+            "id": "loaded_grain_021152",
+            "kind": "grain",
+            "quantity": 3,
+            "mass": 6,
+            "ownerId": "B2",
+            "containerId": "granary_market_B2",
+            "offered": false
+          }
+        ]
+      },
+      "field": {
+        "cash": 0,
+        "mass": 72,
+        "capacity": 512,
+        "items": [
+          {
+            "id": "food_001808",
+            "kind": "grain",
+            "quantity": 15,
+            "mass": 30,
+            "ownerId": "B2",
+            "containerId": "granary_field_grain_plot_9",
+            "offered": false
+          },
+          {
+            "id": "food_006747",
+            "kind": "grain",
+            "quantity": 17,
+            "mass": 34,
+            "ownerId": "B2",
+            "containerId": "granary_field_grain_plot_10",
+            "offered": false
+          },
+          {
+            "id": "loaded_grain_004251",
+            "kind": "grain",
+            "quantity": 1,
+            "mass": 2,
+            "ownerId": "B2",
+            "containerId": "granary_field_grain_plot_11",
+            "offered": false
+          },
+          {
+            "id": "loaded_grain_006775",
+            "kind": "grain",
+            "quantity": 3,
+            "mass": 6,
+            "ownerId": "B2",
+            "containerId": "granary_field_grain_plot_10",
+            "offered": false
+          }
+        ]
+      },
+      "ground": {
+        "cash": 0,
+        "mass": 0,
+        "capacity": 0,
+        "items": []
+      },
+      "body": {
+        "energy": 16.4907,
+        "maxEnergy": 26,
+        "hunger": 0,
+        "cold": 0,
+        "life": {
+          "alive": true
+        },
+        "sleepDebt": 0,
+        "mealHours": 12,
+        "temperature": 21,
+        "sheltered": true,
+        "effort": {
+          "fatigue": 0.365743,
+          "nutritionNeed": 0,
+          "digesting": false,
+          "loadDiscomfort": 0.14925944,
+          "pleasure": 1e-06,
+          "relief": 0.019,
+          "reserve": 53.167,
+          "capacity": 96,
+          "intake": 3156,
+          "absorbed": 3156,
+          "consumed": 3162.833,
+          "lost": 0,
+          "unmet": 0,
+          "pendingNutrition": 0
+        },
+        "sleep": {
+          "deficitHours": 0,
+          "effectiveHours": 7.1143,
+          "actualHours": 7.25,
+          "sleepiness": 0.3229,
+          "awakeDrive": 0,
+          "circadian": 1,
+          "fatigue": 0.3657,
+          "mode": "asleep",
+          "awakeHours": 0
+        },
+        "activity": "sleep"
+      }
+    }
+  },
+  "v22B1Trace": {
+    "source": "fixtures/recordings/autonomous-village-energy-effort-90.v2.json.gz",
+    "sourceStateHash": "bda36c39",
+    "untilHour": 240,
+    "rows": [
+      {
+        "hour": 33,
+        "site": "grain_plot_5",
+        "cash": 0,
+        "food": 2,
+        "capacity": 21.4084,
+        "fatigue": 0.1766,
+        "action": {
+          "kind": "load_grain",
+          "lotId": "food_002441",
+          "quantity": 3,
+          "experienceId": "B1:action:21"
+        },
+        "reason": "accept bounded effort for useful food purchasing power after comparing complete journeys"
+      },
+      {
+        "hour": 35,
+        "site": "market",
+        "cash": 0,
+        "food": 2,
+        "capacity": 18.6628,
+        "fatigue": 0.2822,
+        "action": {
+          "kind": "post_surplus_offer",
+          "lotId": "loaded_grain_003699",
+          "quantity": 3,
+          "price": 2,
+          "experienceId": "B1:action:23"
+        },
+        "reason": "offer actual cargo for bounded sale then food purchase and return"
+      },
+      {
+        "hour": 36,
+        "site": "market",
+        "cash": 2,
+        "food": 2,
+        "capacity": 18.4964,
+        "fatigue": 0.2886,
+        "action": {
+          "kind": "travel",
+          "siteId": "grain_plot_5",
+          "predictionId": "B1:travel:13",
+          "experienceId": "B1:action:24"
+        },
+        "reason": "visit own stored surplus during a safe window; compare complete sale journey before loading"
+      },
+      {
+        "hour": 37,
+        "site": "grain_plot_5",
+        "cash": 2,
+        "food": 2,
+        "capacity": 16.4164,
+        "fatigue": 0.3686,
+        "action": {
+          "kind": "load_grain",
+          "lotId": "food_002441",
+          "quantity": 3,
+          "experienceId": "B1:action:25"
+        },
+        "reason": "accept bounded effort for useful food purchasing power after comparing complete journeys"
+      },
+      {
+        "hour": 38,
+        "site": "grain_plot_5",
+        "cash": 2,
+        "food": 2,
+        "capacity": 15.7508,
+        "fatigue": 0.3942,
+        "action": {
+          "kind": "eat",
+          "experienceId": "B1:action:26"
+        },
+        "reason": "relieve current hunger with actual edible food; absorption follows later"
+      },
+      {
+        "hour": 39,
+        "site": "grain_plot_5",
+        "cash": 2,
+        "food": 1,
+        "capacity": 15.1684,
+        "fatigue": 0.4166,
+        "action": {
+          "kind": "travel",
+          "siteId": "market",
+          "predictionId": "B1:travel:14",
+          "experienceId": "B1:action:27"
+        },
+        "reason": "continue finite sale purpose while burden remains tolerable"
+      },
+      {
+        "hour": 40,
+        "site": "market",
+        "cash": 2,
+        "food": 1,
+        "capacity": 13.0884,
+        "fatigue": 0.4966,
+        "action": {
+          "kind": "buy_surplus",
+          "offerId": "food_offer_004271",
+          "experienceId": "B1:action:28"
+        },
+        "reason": "buy locally observed food; cash is a means to nutrition"
+      },
+      {
+        "hour": 41,
+        "site": "market",
+        "cash": 1,
+        "food": 2,
+        "capacity": 12.4228,
+        "fatigue": 0.5222,
+        "action": {
+          "kind": "post_surplus_offer",
+          "lotId": "loaded_grain_004127",
+          "quantity": 3,
+          "price": 2,
+          "experienceId": "B1:action:29"
+        },
+        "reason": "offer actual cargo for bounded sale then food purchase and return"
+      },
+      {
+        "hour": 43,
+        "site": "market",
+        "cash": 1,
+        "food": 2,
+        "capacity": 11.0916,
+        "fatigue": 0.5734,
+        "action": {
+          "kind": "withdraw_surplus_offer",
+          "offerId": "food_offer_004532",
+          "experienceId": "B1:action:30"
+        },
+        "reason": "recover independent activity fatigue before further work"
+      },
+      {
+        "hour": 44,
+        "site": "market",
+        "cash": 1,
+        "food": 2,
+        "capacity": 10.426,
+        "fatigue": 0.599,
+        "action": {
+          "kind": "store_grain",
+          "lotId": "loaded_grain_004127",
+          "storeId": "granary_market_B1",
+          "experienceId": "B1:action:31"
+        },
+        "reason": "recover independent activity fatigue before further work"
+      },
+      {
+        "hour": 48,
+        "site": "home_B1",
+        "cash": 1,
+        "food": 2,
+        "capacity": 11.7988,
+        "fatigue": 0.5462,
+        "action": {
+          "kind": "sleep",
+          "experienceId": "B1:action:34"
+        },
+        "reason": "sleep when actually ready; nutrition is still consumed during sleep"
+      },
+      {
+        "hour": 96,
+        "site": "herb_patch",
+        "cash": 1,
+        "food": 0,
+        "capacity": 15.3167,
+        "fatigue": 0.410898,
+        "action": {
+          "kind": "travel",
+          "siteId": "home_B1",
+          "predictionId": "B1:travel:35",
+          "experienceId": "B1:action:64"
+        },
+        "reason": "return before forecast cold or sleepiness becomes severe"
+      },
+      {
+        "hour": 132,
+        "site": "herb_patch_6",
+        "cash": 1,
+        "food": 1,
+        "capacity": 13.336,
+        "fatigue": 0.365,
+        "action": {
+          "kind": "eat",
+          "experienceId": "B1:action:87"
+        },
+        "reason": "relieve current hunger with actual edible food; absorption follows later"
+      },
+      {
+        "hour": 150,
+        "site": "home_B1",
+        "cash": 1,
+        "food": 0,
+        "capacity": 17.6969,
+        "fatigue": 0.075937,
+        "action": {
+          "kind": "travel",
+          "siteId": "herb_patch_6",
+          "predictionId": "B1:travel:63",
+          "experienceId": "B1:action:98"
+        },
+        "reason": "explore beyond locally depleted food cells"
+      },
+      {
+        "hour": 155,
+        "site": "herb_patch_2",
+        "cash": 1,
+        "food": 0,
+        "capacity": 0.5318,
+        "fatigue": 0.275937,
+        "action": null,
+        "reason": "insufficient nutritional supply for observed work; waiting for a possible food opportunity"
+      },
+      {
+        "hour": 156,
+        "site": "herb_patch_2",
+        "cash": 1,
+        "food": 0,
+        "capacity": 0,
+        "fatigue": 0.275937,
+        "action": null,
+        "reason": "insufficient nutritional supply for observed work; waiting for a possible food opportunity"
+      }
+    ]
+  }
+}

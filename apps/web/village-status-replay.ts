@@ -71,7 +71,11 @@ export class VillageStatusReplay {
     if (!status) return; // Older recordings do not contain physical inventory checkpoints.
     status.hour = event.hour;
     const quantity = Number(data.quantity);
-    if (event.kind === "body_changed") {
+    if (event.kind === "person_died") {
+      if (data.body) status.body = JSON.parse(String(data.body)) as PersonStatus["body"];
+      status.body.life = { alive: false, atMinute: Number(data.atMinute), eventId: event.id, cause: "activity_capacity_zero" };
+      status.body.energy = 0; status.body.activity = "dead";
+    } else if (event.kind === "body_changed") {
       for (const key of ["energy", "hunger", "cold", "sleepDebt", "temperature", "mealHours"] as const)
         if (data[key] !== undefined) status.body[key] = Number(data[key]);
       status.body.sheltered = data.sheltered === 1;
@@ -166,5 +170,6 @@ export class VillageStatusReplay {
       this.refresh(status.carried); this.refresh(buyer.carried);
       buyer.hour = event.hour;
     }
+    if (status.body.life?.alive === false) status.body.activity = "dead";
   }
 }

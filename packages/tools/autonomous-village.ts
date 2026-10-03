@@ -6,7 +6,7 @@ import { autonomousVillageV1 } from "../../fixtures/autonomous-village";
 import { landEconomy90V1 } from "../../fixtures/land-economy-90";
 import { spatialLandEconomy90V1 } from "../../fixtures/land-economy-spatial";
 import { ecologicalLandEconomy90V1, exploringLandEconomy90V1,
-  energyEffort90V1, offerIntegrity90V1, sleepRegulation90V1, foodPlanning90V1, foodJourneys90V1, experienceLearning90V1, bulkTransport90V1, homeStorage90V1, foodMarket90V1, predictionLedger90V1, anticipatoryNeeds90V1, breadStorage90V1, localWork90V1, wildFoodMarket90V1, ownedFarms90V1, woodPausedLandEconomy90V1, wideLandEconomy90V1 } from "../../fixtures/land-economy-wide";
+  mortality90V1, energyEffort90V1, offerIntegrity90V1, sleepRegulation90V1, foodPlanning90V1, foodJourneys90V1, experienceLearning90V1, bulkTransport90V1, homeStorage90V1, foodMarket90V1, predictionLedger90V1, anticipatoryNeeds90V1, breadStorage90V1, localWork90V1, wildFoodMarket90V1, ownedFarms90V1, woodPausedLandEconomy90V1, wideLandEconomy90V1 } from "../../fixtures/land-economy-wide";
 import { learningNeedsVillageModel } from "../ai/learning-needs";
 import { trackedNeedsVillageModel } from "../ai/tracked-needs";
 import { anticipatoryNeedsVillageModel } from "../ai/anticipatory-needs";
@@ -59,7 +59,7 @@ if (!Number.isSafeInteger(days) || days < 1 || days > 90) throw Error("days must
 const scenarioIndex = args.indexOf("--scenario");
 const scenario = scenarioIndex < 0 ? "baseline" : args[scenarioIndex + 1];
 const ownedScenario = ["land-owned-farms", "land-wild-food", "land-local-work", "land-bread", "land-needs",
-  "land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport", "land-experience-learning", "land-food-journeys", "land-food-planning", "land-sleep-regulation", "land-offer-integrity", "land-energy-effort"].includes(scenario);
+  "land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport", "land-experience-learning", "land-food-journeys", "land-food-planning", "land-sleep-regulation", "land-offer-integrity", "land-energy-effort", "land-mortality"].includes(scenario);
 const fixture = structuredClone(autonomousVillageV1);
 let grid = defaultVillageGrid();
 let land = newLandEcology(grid, fixture.resources.food.initial, fixture.resources.food.capacity);
@@ -73,7 +73,7 @@ else if (scenario === "carrier-refuses") model = { decide(input) {
   return ordinaryVillageModel.decide(input);
 } };
 else if (scenario === "cultivation") model = cultivatorVillageModel;
-else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-ecology", "land-wood-paused", "land-owned-farms", "land-wild-food", "land-local-work", "land-bread", "land-needs", "land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport", "land-experience-learning", "land-food-journeys", "land-food-planning", "land-sleep-regulation", "land-offer-integrity", "land-energy-effort", "land-few-plots", "land-few-seeds", "land-poor-yield",
+else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-ecology", "land-wood-paused", "land-owned-farms", "land-wild-food", "land-local-work", "land-bread", "land-needs", "land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport", "land-experience-learning", "land-food-journeys", "land-food-planning", "land-sleep-regulation", "land-offer-integrity", "land-energy-effort", "land-mortality", "land-few-plots", "land-few-seeds", "land-poor-yield",
   "land-long-field", "land-road-blocked", "land-farmer-refuses", "land-no-skill",
   "land-late-information", "land-starvation"].includes(scenario)) {
   Object.assign(fixture, structuredClone(landEconomy90V1.world));
@@ -95,7 +95,7 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
     grid = ecologicalVillageGrid();
   }
   if (ownedScenario) {
-    Object.assign(fixture, structuredClone(scenario === "land-energy-effort" ? energyEffort90V1 : scenario === "land-offer-integrity" ? offerIntegrity90V1 : scenario === "land-sleep-regulation" ? sleepRegulation90V1 : scenario === "land-food-planning" ? foodPlanning90V1 : scenario === "land-food-journeys" ? foodJourneys90V1 : scenario === "land-experience-learning" ? experienceLearning90V1 : scenario === "land-bulk-transport" ? bulkTransport90V1 : scenario === "land-home-storage" ? homeStorage90V1 : scenario === "land-food-market" ? foodMarket90V1 : scenario === "land-predictions" ? predictionLedger90V1 : scenario === "land-needs" ? anticipatoryNeeds90V1 : scenario === "land-bread" ? breadStorage90V1 : scenario === "land-local-work" ? localWork90V1 : scenario === "land-wild-food" ? wildFoodMarket90V1 : ownedFarms90V1));
+    Object.assign(fixture, structuredClone(scenario === "land-mortality" ? mortality90V1 : scenario === "land-energy-effort" ? energyEffort90V1 : scenario === "land-offer-integrity" ? offerIntegrity90V1 : scenario === "land-sleep-regulation" ? sleepRegulation90V1 : scenario === "land-food-planning" ? foodPlanning90V1 : scenario === "land-food-journeys" ? foodJourneys90V1 : scenario === "land-experience-learning" ? experienceLearning90V1 : scenario === "land-bulk-transport" ? bulkTransport90V1 : scenario === "land-home-storage" ? homeStorage90V1 : scenario === "land-food-market" ? foodMarket90V1 : scenario === "land-predictions" ? predictionLedger90V1 : scenario === "land-needs" ? anticipatoryNeeds90V1 : scenario === "land-bread" ? breadStorage90V1 : scenario === "land-local-work" ? localWork90V1 : scenario === "land-wild-food" ? wildFoodMarket90V1 : ownedFarms90V1));
     grid = ownedFarmsVillageGrid();
   }
   if (scenario === "land-few-plots") fixture.landEconomy!.grainPlots = 3;
@@ -117,7 +117,7 @@ else if (["land-economy", "land-spatial", "land-wide", "land-explore", "land-eco
       patch.initialAvailable = 0; patch.available = 0; patch.growthQuantity = 0;
       patch.stage = "regrowing";
     }
-  model = ["land-experience-learning", "land-food-journeys", "land-food-planning", "land-sleep-regulation", "land-offer-integrity", "land-energy-effort"].includes(scenario) ? learningNeedsVillageModel : ["land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport"].includes(scenario) ? trackedNeedsVillageModel : scenario === "land-needs" ? anticipatoryNeedsVillageModel : scenario === "land-bread" ? breadStorageVillageModel :
+  model = ["land-experience-learning", "land-food-journeys", "land-food-planning", "land-sleep-regulation", "land-offer-integrity", "land-energy-effort", "land-mortality"].includes(scenario) ? learningNeedsVillageModel : ["land-predictions", "land-food-market", "land-home-storage", "land-bulk-transport"].includes(scenario) ? trackedNeedsVillageModel : scenario === "land-needs" ? anticipatoryNeedsVillageModel : scenario === "land-bread" ? breadStorageVillageModel :
     scenario === "land-wild-food" || scenario === "land-local-work" ? wildFoodMarketVillageModel :
     scenario === "land-owned-farms" ? ownedFarmsVillageModel :
     scenario === "land-ecology" || scenario === "land-wood-paused" ? ecologicalLandEconomyVillageModel :

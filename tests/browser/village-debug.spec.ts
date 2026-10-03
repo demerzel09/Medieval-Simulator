@@ -516,12 +516,12 @@ test("v20 archive replays settling and actual sleep at their recorded quarter-ho
   await expect(body).not.toContainText("24hの実睡眠");
 });
 
-test("v22 default shows separate nutrition, fatigue, load discomfort and pleasure from saved events", async ({ page }) => {
+test("v22 comparison shows separate nutrition, fatigue, load discomfort and pleasure from saved events", async ({ page }) => {
   test.setTimeout(180000);
   const { decodeVillageDocument } = await import("../../packages/sim/shared-village-json");
   const r = decodeVillageDocument<import("../../packages/sim/village-recording").VillageRecording>(
     JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-energy-effort-90.v2.json.gz")).toString()), true);
-  await page.goto("/?village=land-economy");
+  await page.goto("/?village=land-economy&wood=energy");
   await expect(page.getByLabel("表示する記録")).toHaveValue("energy", { timeout: 90000 });
   const body = page.getByRole("region", { name: "人物の身体ステータス" });
   await expect(body).toContainText("栄養備蓄"); await expect(body).toContainText("吸収待ち");
@@ -546,4 +546,39 @@ test("v22 default shows separate nutrition, fatigue, load discomfort and pleasur
   await page.getByLabel("表示する記録").selectOption("sleep");
   await expect(page.getByLabel("表示する記録")).toHaveValue("sleep", { timeout: 60000 });
   await expect(body).not.toContainText("栄養備蓄");
+});
+
+test("v23 default displays death at its saved minute, freezes the body and retains the estate", async ({ page }) => {
+  test.setTimeout(180000);
+  const { decodeVillageDocument } = await import("../../packages/sim/shared-village-json");
+  const r = decodeVillageDocument<import("../../packages/sim/village-recording").VillageRecording>(
+    JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-mortality-90.v2.json.gz")).toString()), true);
+  const death = r.events.find((e) => e.kind === "person_died" && e.actors[0] === "B1")!;
+  const minute = Number(death.data.atMinute);
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("mortality", { timeout: 90000 });
+  await page.getByLabel("土地経済の人物").selectOption("B1");
+  const body = page.getByRole("region", { name: "人物の身体ステータス" });
+  const seek = async (at: number) => {
+    await page.getByLabel("土地経済の日").fill(String(Math.floor(at / 1440) + 1));
+    await page.getByLabel("土地経済の時刻").fill(String(Math.floor(at % 1440 / 60) + 1));
+    await page.getByLabel("土地経済の分").fill(String(at % 60));
+  };
+  await seek(minute - 5);
+  await expect(body.locator("dl div").filter({ hasText: /^生死/ }).locator("dd")).toHaveText("生存");
+  await expect(page.getByLabel("死亡の記録")).toHaveCount(0);
+  await seek(minute);
+  await expect(body.locator("dl div").filter({ hasText: /^生死/ }).locator("dd")).toHaveText("死亡");
+  await expect(body.locator("dl div").filter({ hasText: /^行動/ }).locator("dd")).toHaveText("死亡");
+  await expect(body.locator("dl div").filter({ hasText: /^体力/ }).locator("dd")).toHaveText("0 / 26");
+  await expect(page.getByLabel("死亡の記録")).toContainText("死亡時の記録");
+  const frozen = await body.innerText();
+  await seek(minute + 1440);
+  await expect(body).toHaveText(frozen, { useInnerText: true });
+  await expect(page.getByRole("region", { name: "畑の保管品" })).toContainText("穀物");
+  await expect(page.getByLabel("運搬負荷")).toContainText("歩行速度 0%");
+  await page.screenshot({ path: "/tmp/medieval-village-mortality.png", fullPage: true });
+  await page.getByLabel("表示する記録").selectOption("energy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("energy", { timeout: 90000 });
+  await expect(body).not.toContainText("生死");
 });
