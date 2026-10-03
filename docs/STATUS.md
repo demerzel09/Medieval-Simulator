@@ -98,7 +98,7 @@ M0〜M2の機構受入とM3の通常AIによる90日自動シナリオは実装�
 
 本編M3の人間試遊は[記録票](baseline/PLAYTEST.md)で別途実施するが、当面の設計・実装の優先度は下げる。
 
-生態版は `npm run autonomy:village -- 90 --scenario land-ecology`、再実行は `npm run autonomy:village -- replay fixtures/recordings/autonomous-village-ecological-90.v2.json.gz`。F5の「自律: 土地経済90日の生態デバッグ画面」では現在[v20の睡眠・疲労版](baseline/SLEEP_REGULATION_V20_RESULT.md)を標準表示し、選択で旧往復採集版・所有畑版・薪停止対照・旧生態版と比較できる。人物・動物の移動、植物の生育・再生・畑の休止、矩形障害物と任意表示のA*経路、Event・判断を日/時刻/分の再生位置で追える。画面は保存済み記録の閲覧であり、その場で新たな人格判断を実行しない。旧 `living` や版2通常世界は[readme](../readme.md)。変更後は対応テストと保存/再実行・保存則の対照を実行し、結果を本ファイルへ更新する。
+生態版は `npm run autonomy:village -- 90 --scenario land-ecology`、再実行は `npm run autonomy:village -- replay fixtures/recordings/autonomous-village-ecological-90.v2.json.gz`。F5の「自律: デバッグ画面（最新 v20）」では現在[v20の睡眠・疲労版](baseline/SLEEP_REGULATION_V20_RESULT.md)を標準表示し、選択で旧往復採集版・所有畑版・薪停止対照・旧生態版と比較できる。人物・動物の移動、植物の生育・再生・畑の休止、矩形障害物と任意表示のA*経路、Event・判断を日/時刻/分の再生位置で追える。画面は保存済み記録の閲覧であり、その場で新たな人格判断を実行しない。旧 `living` や版2通常世界は[readme](../readme.md)。変更後は対応テストと保存/再実行・保存則の対照を実行し、結果を本ファイルへ更新する。
 
 穀物保存・パン加工v11では、旧版の穀物直接摂食を修正した。[実測](baseline/BREAD_STORAGE_V11_RESULT.md)に新しい受入条件と限界を記載。F5標準表示もv11へ更新した。
 

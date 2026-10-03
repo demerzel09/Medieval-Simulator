@@ -2,11 +2,15 @@
 
 更新: 2026-10-03。作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。再開時はHEAD、`git status --short`、適用される `AGENTS.md` を確認する。Nodeが見つからない場合は `export PATH="$HOME/.local/node/bin:$PATH"`。
 
+## 起動設定の整理
+
+[launch.json](../.vscode/launch.json)を38設定から15設定へ整理した。F5の先頭は「自律: デバッグ画面（最新 v20）」で、v20の90日計測・同梱記録の再実行を続けて配置する。直前のv19比較、本編ゲーム、検証、性能を別グループに置く。旧試作の8画面・17計測と本編の3経路は起動時の選択へまとめ、元の実行条件を保つ。旧文書の起動設定名は「旧試作」の選択肢で探せる。現在の起動案内は[README](../readme.md#起動)。JSONの構文、選択肢と初期値、npmスクリプト・URL・記録ファイル、従来コマンドの保持と差分を確認した。身体・判断・保存記録は変更していない。
+
 ## 最新の実装：睡眠・眠気・活動疲労 v20
 
 [身体モデルの設計](baseline/SLEEP_AND_FATIGUE_BODY_MODEL.md)の順1〜4を実装した。[実装と検証](baseline/SLEEP_REGULATION_V20_RESULT.md)を再開時に読む。直近24時間の有効睡眠に対する不足（必要量6時間）、内部の睡眠圧、夜22〜6時のリズム、活動疲労、現在の眠気を分ける。固定15分で身体を更新し、入眠待ち・実睡眠・自然起床・本人の予約／命令・寒さの中断を保存する。休憩を睡眠に数えず、短い昼寝で睡眠圧を完全回復へリセットしない。人格は自分の現在の信号と睡眠時刻だけを使い、世界の内部の睡眠圧・質や未来の正解を受け取らない。
 
-F5の「自律: 土地経済90日の生態デバッグ画面」と `/?village=land-economy` はv20が標準。睡眠不足・眠気・24hの実睡眠・連続覚醒、入眠待ちと実睡眠、予測と結果を確認できる。旧v19は `&wood=plan`。CLIは `land-sleep-regulation`、保存記録は `fixtures/recordings/autonomous-village-sleep-regulation-90.v2.json.gz`。新記録は共有JSONの外包 `village-shared-state-v1` を復号して、従来と同じ世界／記録schema 2で扱う。CLIと画面は自動復号する。独自ツールは `decodeVillageDocument` を使う。可変の世界は各参照を独立に復元する。
+F5の「自律: デバッグ画面（最新 v20）」と `/?village=land-economy` はv20が標準。睡眠不足・眠気・24hの実睡眠・連続覚醒、入眠待ちと実睡眠、予測と結果を確認できる。旧v19は `&wood=plan`。CLIは `land-sleep-regulation`、保存記録は `fixtures/recordings/autonomous-village-sleep-regulation-90.v2.json.gz`。新記録は共有JSONの外包 `village-shared-state-v1` を復号して、従来と同じ世界／記録schema 2で扱う。CLIと画面は自動復号する。独自ツールは `decodeVillageDocument` を使う。可変の世界は各参照を独立に復元する。
 
 検証：新しい身体・保存・本人の対照23/23、旧v19/v12の対照と90日再実行、新v20の90日再実行、対象ブラウザ3/3、型検査を含む本番ビルド、コンテンツ・文書リンク・差分検査。状態 `4a72d32c`、Event `c55ad1ab`。平均実睡眠5.98〜6.05時間/日、終了した睡眠の照合は各人89回。食事はS87・C85、他3人90で、最長間隔S93・C112時間。食品持続を成立扱いにしない。今回の全体テストは実行していない。
 
@@ -163,7 +167,7 @@ v7時点では薪の固定森資源を停止した対照を追加し、F5で標�
 
 [土地経済計画](baseline/LAND_ECONOMY_NEXT_PLAN.md)の順1〜4を実装した。順1は[90日収支の算術候補](baseline/LAND_ECONOMY_FEASIBILITY_V1.md)、順2〜4は[5人の実走と対照](baseline/LAND_ECONOMY_V3_RESULT.md)を正本とする。従来の版2基準90日は野生ベリー中心の独立fixtureとして保存し、[同梱記録](../fixtures/recordings/autonomous-village-90.v2.json.gz)を引き続き再実行できる。
 
-F5の「自律: 土地経済90日の生態デバッグ画面」は[全域版](baseline/WIDE_WORLD_V5_RESULT.md)と[局所探索版](baseline/PLANT_EXPLORATION_RESULT.md)を継いだ[生態版](baseline/ECOLOGICAL_LAND_V6_RESULT.md)の90日記録を40×24セル・1280×768ピクセルで描く。ベリーは4株の別セルで7日再生、野草は8地点で4日再生し2単位/食、畑12区画は6日生育・収穫後3日休止。Fは最初の3日に野草・果樹を採り、取引用ベリーも3日間で別の株を採る。画面では5/15/30/60分刻み、再生・停止・4倍速で `travel_step` の記録を追える。分表示は時間内の移動順から割り当てる目安。黄色いA*経路線は任意表示で、通過履歴とは区別する。現在は右側の可変幅パネルに人物・経路選択、ステータスと判断履歴を同時表示し、独立した凡例の引き出しで生育・地面・障害物・人物の見分け方を示す。セルをクリックすると地形と植物の生育段階を読める。URLは `/?village=land-economy`。
+旧生態版（画面の記録選択または `&wood=legacy`）は[全域版](baseline/WIDE_WORLD_V5_RESULT.md)と[局所探索版](baseline/PLANT_EXPLORATION_RESULT.md)を継いだ[生態版](baseline/ECOLOGICAL_LAND_V6_RESULT.md)の90日記録を40×24セル・1280×768ピクセルで描く。ベリーは4株の別セルで7日再生、野草は8地点で4日再生し2単位/食、畑12区画は6日生育・収穫後3日休止。Fは最初の3日に野草・果樹を採り、取引用ベリーも3日間で別の株を採る。画面では5/15/30/60分刻み、再生・停止・4倍速で `travel_step` の記録を追える。分表示は時間内の移動順から割り当てる目安。黄色いA*経路線は任意表示で、通過履歴とは区別する。現在は右側の可変幅パネルに人物・経路選択、ステータスと判断履歴を同時表示し、独立した凡例の引き出しで生育・地面・障害物・人物の見分け方を示す。セルをクリックすると地形と植物の生育段階を読める。URLは `/?village=land-economy`。
 
 旧5×5の土地経済fixtureでは、4つの穀物区画、Fの初期種4と穀物技能2、野生ベリー初期20・再生0で5人の90日を実行した。全員が各日1食と薪1を使用し、食料450食の内訳は穀物435・野生ベリー15。日61〜90の150食は穀物。通貨26保存、正常系の拒否・失敗0。栽培・所有・運搬・販売・食事を食品ロットの産地まで追跡し、途中保存と[90日記録](../fixtures/recordings/autonomous-village-land-90.v2.json.gz)の再実行が一致した。
 

@@ -2,6 +2,60 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "自律: デバッグ画面（最新 v20）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?village=land-economy&wood=sleep",
+        "action": "debugWithChrome"
+      },
+      "presentation": {
+        "group": "01 自律生活（現在）",
+        "order": 1
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
+    },
+    {
+      "name": "自律: 90日計測（v20）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "01 自律生活（現在）",
+        "order": 2
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:village -- 90 --scenario land-sleep-regulation"
+    },
+    {
+      "name": "自律: 保存記録の再実行（v20）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "01 自律生活（現在）",
+        "order": 3
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:village -- replay fixtures/recordings/autonomous-village-sleep-regulation-90.v2.json.gz"
+    },
+    {
+      "name": "比較: デバッグ画面（v19・食料行程）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?village=land-economy&wood=plan",
+        "action": "debugWithChrome"
+      },
+      "presentation": {
+        "group": "02 比較",
+        "order": 1
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
+    },
+    {
       "name": "ゲーム: ブラウザで起動",
       "type": "node-terminal",
       "request": "launch",
@@ -12,385 +66,21 @@
         "action": "debugWithChrome"
       },
       "presentation": {
-        "group": "ゲーム",
+        "group": "03 本編ゲーム",
         "order": 1
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
     },
     {
-      "name": "90日: 外交",
+      "name": "ゲーム: 90日計測（外交・軍事・無策を選択）",
       "type": "node-terminal",
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "ゲーム",
+        "group": "03 本編ゲーム",
         "order": 2
       },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run sim -- --scenario pass_and_harvest --seed 240924 --days 90 --path diplomacy"
-    },
-    {
-      "name": "90日: 軍事",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "ゲーム",
-        "order": 3
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run sim -- --scenario pass_and_harvest --seed 240924 --days 90 --path military"
-    },
-    {
-      "name": "90日: 無策",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "ゲーム",
-        "order": 4
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run sim -- --scenario pass_and_harvest --seed 240924 --days 90 --path idle"
-    },
-    {
-      "name": "自律: 制度なし採集生活の空間デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?individual=life",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "個人経済",
-        "order": 1
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "自律: 制度なし採集生活の30日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 2
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:life -- 30"
-    },
-    {
-      "name": "自律: S個人市場の空間デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?individual=market",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "個人経済",
-        "order": 3
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "自律: S個人市場の7日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 4
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:market -- 7"
-    },
-    {
-      "name": "自律: 食事と個人備蓄の空間デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?individual=living",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "個人経済",
-        "order": 5
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "自律: 食事と個人備蓄の30日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 6
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:living -- 30"
-    },
-    {
-      "name": "自律: 食事と個人備蓄の90日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 7
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:living -- 90"
-    },
-    {
-      "name": "自律: 起床と情報到達の8時間実験",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 8
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:work -- 8"
-    },
-    {
-      "name": "自律: 90日生活の算術実行可能性",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 9
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:feasibility"
-    },
-    {
-      "name": "自律: 5人の90日生活",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 10
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:village -- 90"
-    },
-    {
-      "name": "自律: 土地経済90日の生態デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?village=land-economy",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "個人経済",
-        "order": 11
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "自律: 睡眠・疲労の90日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "個人経済",
-        "order": 12
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:village -- 90 --scenario land-sleep-regulation"
-    },
-    {
-      "name": "自律 A1: 作業場デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?a1=debug",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "自律 A1–A3",
-        "order": 1
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "自律 A1: 二人と一つの道具",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "自律 A1–A3",
-        "order": 2
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a1"
-    },
-    {
-      "name": "自律 A2: 20人経済の空間デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?e1=a2",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "自律 A1–A3",
-        "order": 3
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "自律 A2: 20人経済の3日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "自律 A1–A3",
-        "order": 4
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a2"
-    },
-    {
-      "name": "自律 A3: 所得試作の空間デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?e1=a3-income",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "自律 A1–A3",
-        "order": 5
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "自律 A3: 所得と欠食の3日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "自律 A1–A3",
-        "order": 6
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a3:income"
-    },
-    {
-      "name": "自律 A3: 20人経済の90日計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "自律 A1–A3",
-        "order": 7
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:a3:income -- baseline --days 90"
-    },
-    {
-      "name": "経済 E0: 90日基準計測",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 1
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:baseline"
-    },
-    {
-      "name": "経済 E1: 空間デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?e1=debug",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 2
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "経済 E1: 基準3日",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 3
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:e1 -- baseline"
-    },
-    {
-      "name": "経済 E1: 運搬人欠勤",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 4
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:e1 -- carrier-absent"
-    },
-    {
-      "name": "経済 E1: 買物係の資金不足",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 5
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:e1 -- buyer-no-money"
-    },
-    {
-      "name": "経済 E1: 農民欠勤",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 6
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:e1 -- farmer-absent"
-    },
-    {
-      "name": "経済 L1: 物体木デバッグ画面",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "serverReadyAction": {
-        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
-        "uriFormat": "http://127.0.0.1:%s/?e1=v2",
-        "action": "debugWithChrome"
-      },
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 7
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
-    },
-    {
-      "name": "経済 L1: 物体木の基準3日",
-      "type": "node-terminal",
-      "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "presentation": {
-        "group": "経済 E0–L1",
-        "order": 8
-      },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run economy:e1:v2 -- baseline"
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run sim -- --scenario pass_and_harvest --seed 240924 --days 90 --path ${input:gamePath}"
     },
     {
       "name": "検証: 型検査",
@@ -398,7 +88,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "検証",
+        "group": "04 検証",
         "order": 1
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run typecheck"
@@ -409,7 +99,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "検証",
+        "group": "04 検証",
         "order": 2
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm test"
@@ -420,7 +110,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "検証",
+        "group": "04 検証",
         "order": 3
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run build"
@@ -431,7 +121,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "検証",
+        "group": "04 検証",
         "order": 4
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run content:validate"
@@ -442,7 +132,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "検証",
+        "group": "04 検証",
         "order": 5
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run fixtures"
@@ -453,7 +143,7 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "検証",
+        "group": "04 検証",
         "order": 6
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run test:browser"
@@ -464,10 +154,175 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "presentation": {
-        "group": "性能",
+        "group": "05 性能",
         "order": 1
       },
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run bench -- --profile world-1000 --days 100 --warmup-days 10"
+    },
+    {
+      "name": "旧試作: デバッグ画面を選択",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?${input:legacyScreen}",
+        "action": "debugWithChrome"
+      },
+      "presentation": {
+        "group": "90 旧試作",
+        "order": 1
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
+    },
+    {
+      "name": "旧試作: CLI計測を選択",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "90 旧試作",
+        "order": 2
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" ${input:legacyMeasurement}"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "gamePath",
+      "type": "pickString",
+      "description": "本編ゲームの90日計測経路を選択",
+      "options": [
+        {
+          "label": "外交",
+          "value": "diplomacy"
+        },
+        {
+          "label": "軍事",
+          "value": "military"
+        },
+        {
+          "label": "無策",
+          "value": "idle"
+        }
+      ],
+      "default": "diplomacy"
+    },
+    {
+      "id": "legacyScreen",
+      "type": "pickString",
+      "description": "旧試作の画面を選択（現在のv20とは独立）",
+      "options": [
+        {
+          "label": "自律: 制度なし採集生活の空間デバッグ画面",
+          "value": "individual=life"
+        },
+        {
+          "label": "自律: S個人市場の空間デバッグ画面",
+          "value": "individual=market"
+        },
+        {
+          "label": "自律: 食事と個人備蓄の空間デバッグ画面",
+          "value": "individual=living"
+        },
+        {
+          "label": "自律 A1: 作業場デバッグ画面",
+          "value": "a1=debug"
+        },
+        {
+          "label": "自律 A2: 20人経済の空間デバッグ画面",
+          "value": "e1=a2"
+        },
+        {
+          "label": "自律 A3: 所得試作の空間デバッグ画面",
+          "value": "e1=a3-income"
+        },
+        {
+          "label": "経済 E1: 空間デバッグ画面",
+          "value": "e1=debug"
+        },
+        {
+          "label": "経済 L1: 物体木デバッグ画面",
+          "value": "e1=v2"
+        }
+      ],
+      "default": "individual=living"
+    },
+    {
+      "id": "legacyMeasurement",
+      "type": "pickString",
+      "description": "旧試作のCLI計測を選択（現在のv20とは独立）",
+      "options": [
+        {
+          "label": "自律: 制度なし採集生活の30日計測",
+          "value": "npm run autonomy:life -- 30"
+        },
+        {
+          "label": "自律: S個人市場の7日計測",
+          "value": "npm run autonomy:market -- 7"
+        },
+        {
+          "label": "自律: 食事と個人備蓄の30日計測",
+          "value": "npm run autonomy:living -- 30"
+        },
+        {
+          "label": "自律: 食事と個人備蓄の90日計測",
+          "value": "npm run autonomy:living -- 90"
+        },
+        {
+          "label": "自律: 起床と情報到達の8時間実験",
+          "value": "npm run autonomy:work -- 8"
+        },
+        {
+          "label": "自律: 90日生活の算術実行可能性",
+          "value": "npm run autonomy:feasibility"
+        },
+        {
+          "label": "自律: 5人の90日生活",
+          "value": "npm run autonomy:village -- 90"
+        },
+        {
+          "label": "自律 A1: 二人と一つの道具",
+          "value": "npm run autonomy:a1"
+        },
+        {
+          "label": "自律 A2: 20人経済の3日計測",
+          "value": "npm run autonomy:a2"
+        },
+        {
+          "label": "自律 A3: 所得と欠食の3日計測",
+          "value": "npm run autonomy:a3:income"
+        },
+        {
+          "label": "自律 A3: 20人経済の90日計測",
+          "value": "npm run autonomy:a3:income -- baseline --days 90"
+        },
+        {
+          "label": "経済 E0: 90日基準計測",
+          "value": "npm run economy:baseline"
+        },
+        {
+          "label": "経済 E1: 基準3日",
+          "value": "npm run economy:e1 -- baseline"
+        },
+        {
+          "label": "経済 E1: 運搬人欠勤",
+          "value": "npm run economy:e1 -- carrier-absent"
+        },
+        {
+          "label": "経済 E1: 買物係の資金不足",
+          "value": "npm run economy:e1 -- buyer-no-money"
+        },
+        {
+          "label": "経済 E1: 農民欠勤",
+          "value": "npm run economy:e1 -- farmer-absent"
+        },
+        {
+          "label": "経済 L1: 物体木の基準3日",
+          "value": "npm run economy:e1:v2 -- baseline"
+        }
+      ],
+      "default": "npm run autonomy:village -- 90"
     }
   ]
 }

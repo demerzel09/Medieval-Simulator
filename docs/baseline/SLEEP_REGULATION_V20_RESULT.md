@@ -19,7 +19,7 @@
 
 ## 記録と実行方法
 
-F5の **「自律: 土地経済90日の生態デバッグ画面」** と `/?village=land-economy` はv20を表示する。旧v19は `/?village=land-economy&wood=plan`。記録選択欄からも切り替えられる。CLIの90日計測をlaunch.jsonに追加した。
+F5の **「自律: デバッグ画面（最新 v20）」** と `/?village=land-economy` はv20を表示する。旧v19は `/?village=land-economy&wood=plan`。記録選択欄からも切り替えられる。CLIの90日計測をlaunch.jsonに追加した。
 
 ```sh
 npm run autonomy:village -- 90 --scenario land-sleep-regulation
