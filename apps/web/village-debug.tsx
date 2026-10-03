@@ -219,14 +219,14 @@ function ExperienceCard({ memory }: { memory?: ActionLearningMemory }) {
       {p && <dl className="village-experience-values">
         <div><dt>行動 / 重量</dt><dd>{decisionLabels[p.action] ?? p.action} / {p.before.mass}</dd></div>
         <div><dt>採用モデル</dt><dd>{p.selected === "experience" ? "本人の経験" : "初期の見込み"}</dd></div>
-        <div><dt>体力見込み / 時間</dt><dd>{(p.selected === "experience" ? p.learnedRate! : p.priorRate).toFixed(2)}</dd></div>
+        <div><dt>体力見込み / 時間</dt><dd>{(p.selected === "experience" ? p.learnedRate! : p.priorRate).toFixed(1)}</dd></div>
         <div><dt>予定期間</dt><dd>{p.expectedHours.toFixed(1)}時間</dd></div>
       </dl>}
       {outcome && <p>結果 {outcome.status === "completed" ? "完了" : outcome.status === "failed" ? "失敗" : outcome.status === "interrupted" ? "中断" : "学習対象外"}
-        {outcome.energyChange !== undefined && <> · 体力変化 {outcome.energyChange}</>}
-        {outcome.error !== undefined && <> · 予測誤差 {outcome.error.toFixed(2)}</>}</p>}
+        {outcome.energyChange !== undefined && <> · 体力変化 {outcome.energyChange.toFixed(1)}</>}
+        {outcome.error !== undefined && <> · 予測誤差 {outcome.error.toFixed(1)}</>}</p>}
       {outcome && <p>実際の増減：食事分 {outcome.mealsChange ?? "不明"} · 原料 {outcome.rawChange ?? "不明"} · 現金 {outcome.cashChange ?? "不明"}</p>}
-      {outcome?.sleep && <p>実睡眠 {outcome.sleep.actualHours}時間 · 入眠待ち {outcome.sleep.waitHours}時間 ·
+      {outcome?.sleep && <p>実睡眠 {outcome.sleep.actualHours.toFixed(1)}時間 · 入眠待ち {outcome.sleep.waitHours.toFixed(1)}時間 ·
         {outcome.sleep.reason === "natural awakening" ? "自然起床" : outcome.sleep.reason === "personal wake reservation" ? "起床予約" : outcome.sleep.reason === "cold exposure" ? "寒さで中断" : outcome.sleep.reason === "sleep onset unavailable" ? "入眠不成立" : "本人の起床"}</p>}
       <small title="自分に届いた結果で更新します。同じ重量の荷物は共通の移動経験を使います。">本人に届いた結果で更新 · 同重量の移動経験を共有</small>
     </>}
@@ -260,34 +260,34 @@ function StatusCards({ status, person, day, transport, realMealClock, recordMinu
     <div className="village-status-context"><small title={recordMinute !== undefined ? replayClock(recordMinute) : status.hour === 0 ? "開始時" : clock(status.hour)}>記録：{recordMinute !== undefined ? replayClock(recordMinute) : status.hour === 0 ? "開始時" : compactClock(status.hour)}</small>
       <span title="携帯・家・市場の現金合計">現金計 <b>{status.carried.cash + status.home.cash + status.market.cash}</b></span></div>
     {status.body.life?.alive === false && <p aria-label="死亡の記録"><b>死亡 · {replayClock(status.body.life.atMinute)}</b> · 体力が0に到達。身体欄は死亡時の記録です。</p>}
-    <InventoryCard title="携帯中の所持品" inventory={status.carried} day={day} owner={person} />
-    {transport && <p aria-label="運搬負荷" title="歩行速度は無荷物時を100%とした比率">歩行速度 {status.body.life?.alive === false ? 0 : Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · {status.body.effort ? "歩行の作業強度" : "移動消費"} {loadMovement(status.carried.mass, transport).energyPerHour}/時間</p>}
     <section className="village-status-card" aria-label="人物の身体ステータス"><h3>{person} の身体</h3>
-      <dl className="village-status-values">{status.body.life && <div><dt>生死</dt><dd>{status.body.life.alive ? "生存" : "死亡"}</dd></div>}<div><dt>体力</dt><dd>{Number(status.body.energy.toFixed(2))} / {status.body.maxEnergy}</dd></div>
-        <div><dt>気温</dt><dd>{status.body.temperature}℃</dd></div>
-        <div><dt>睡眠不足</dt><dd>{status.body.sleep?.deficitHours ?? status.body.sleepDebt}時間</dd></div>
-        {status.body.sleep && <><div><dt>24hの実睡眠</dt><dd>{status.body.sleep.actualHours}時間</dd></div>
-        <div><dt>連続覚醒</dt><dd>{status.body.sleep.awakeHours}時間</dd></div>
-        {status.body.sleep.effectiveHours < status.body.sleep.actualHours && <div><dt>有効睡眠</dt><dd>{status.body.sleep.effectiveHours}時間</dd></div>}</>}
+      <dl className="village-status-values">{status.body.life && <div><dt>生死</dt><dd>{status.body.life.alive ? "生存" : "死亡"}</dd></div>}<div><dt>体力</dt><dd>{status.body.energy.toFixed(1)} / {status.body.maxEnergy.toFixed(1)}</dd></div>
+        <div><dt>気温</dt><dd>{status.body.temperature.toFixed(1)}℃</dd></div>
+        <div><dt>睡眠不足</dt><dd>{(status.body.sleep?.deficitHours ?? status.body.sleepDebt).toFixed(1)}時間</dd></div>
+        {status.body.sleep && <><div><dt>24hの実睡眠</dt><dd>{status.body.sleep.actualHours.toFixed(1)}時間</dd></div>
+        <div><dt>連続覚醒</dt><dd>{status.body.sleep.awakeHours.toFixed(1)}時間</dd></div>
+        {status.body.sleep.effectiveHours < status.body.sleep.actualHours && <div><dt>有効睡眠</dt><dd>{status.body.sleep.effectiveHours.toFixed(1)}時間</dd></div>}</>}
         <div><dt>行動</dt><dd>{decisionLabels[status.body.activity] ?? status.body.activity}</dd></div></dl>
-      <p>{status.body.sheltered ? "自宅の屋内" : "屋外"} · {realMealClock ? "食事からの経過" : "食事周期（旧記録）"} {status.body.mealHours}時間</p>
+      <p>{status.body.sheltered ? "自宅の屋内" : "屋外"} · {realMealClock ? "食事からの経過" : "食事周期（旧記録）"} {status.body.mealHours.toFixed(1)}時間</p>
       {status.body.effort && <dl className="village-status-values" aria-label="栄養の帳簿">
-        <div><dt>栄養備蓄</dt><dd>{status.body.effort.reserve.toFixed(2)} / {status.body.effort.capacity}</dd></div>
-        <div><dt>吸収待ち</dt><dd>{status.body.effort.pendingNutrition.toFixed(2)}</dd></div>
-        <div><dt>累計吸収</dt><dd>{status.body.effort.absorbed.toFixed(2)}</dd></div>
-        <div><dt>累計消費</dt><dd>{status.body.effort.consumed.toFixed(2)}</dd></div>
-        {(status.body.effort.lost > 0 || status.body.effort.unmet > 0) && <><div><dt>吸収損失</dt><dd>{status.body.effort.lost.toFixed(2)}</dd></div><div><dt>供給不足累計</dt><dd>{status.body.effort.unmet.toFixed(2)}</dd></div></>}
+        <div><dt>栄養備蓄</dt><dd>{status.body.effort.reserve.toFixed(1)} / {status.body.effort.capacity.toFixed(1)}</dd></div>
+        <div><dt>吸収待ち</dt><dd>{status.body.effort.pendingNutrition.toFixed(1)}</dd></div>
+        <div><dt>累計吸収</dt><dd>{status.body.effort.absorbed.toFixed(1)}</dd></div>
+        <div><dt>累計消費</dt><dd>{status.body.effort.consumed.toFixed(1)}</dd></div>
+        {(status.body.effort.lost > 0 || status.body.effort.unmet > 0) && <><div><dt>吸収損失</dt><dd>{status.body.effort.lost.toFixed(1)}</dd></div><div><dt>供給不足累計</dt><dd>{status.body.effort.unmet.toFixed(1)}</dd></div></>}
       </dl>}
       <div className="village-need-grid"><div className="village-need-meter"><span>{status.body.effort ? "快" : "快適さ"}</span><b>{needs.comfort}%</b><progress aria-label={status.body.effort ? "身体の快" : "身体の快適さ"} value={needs.comfort} max={100} /></div>
       {([["不快", needs.discomfort], ["空腹の負担", needs.hunger], ["寒さの負担", needs.cold], ["疲労", needs.fatigue], ["眠気", needs.sleepiness]] as const).map(([label, value]) =>
         <div className="village-need-meter discomfort" key={label}
-          title={label === "空腹の負担" ? `空腹の記録値 ${status.body.hunger} · 表示の目安：3以上で100%` :
-            label === "寒さの負担" ? `寒さの記録値 ${status.body.cold} · 表示の目安：12以上で100%` : undefined}>
+          title={label === "空腹の負担" ? `空腹の記録値 ${status.body.hunger.toFixed(1)} · 表示の目安：3以上で100%` :
+            label === "寒さの負担" ? `寒さの記録値 ${status.body.cold.toFixed(1)} · 表示の目安：12以上で100%` : undefined}>
           <span>{label.replace("の負担", "")}</span><b>{value}%</b><progress aria-label={label} value={value} max={100} /></div>)}</div>
       {status.body.effort ? <><div className="village-need-grid">
         {([["荷重の不快", status.body.effort.loadDiscomfort], ["負担軽減", status.body.effort.relief]] as const).map(([label, value]) => <div className="village-need-meter" key={label}><span>{label}</span><b>{Math.round(value * 100)}%</b><progress aria-label={label} value={Math.round(value * 100)} max={100} /></div>)}
       </div><small>栄養は仮の単位。体力は活動余力。快・負担軽減は不快と別の感覚です。</small></> : <small title="快・不快は身体の負担の目安。不快は4項目の最大値、快適さは100−不快。">不快＝最大負担 · 快適さ＝100−不快</small>}
     </section>
+    <InventoryCard title="携帯中の所持品" inventory={status.carried} day={day} owner={person} />
+    {transport && <p aria-label="運搬負荷" title="歩行速度は無荷物時を100%とした比率">歩行速度 {status.body.life?.alive === false ? 0 : Math.round(loadMovement(status.carried.mass, transport).speedRatio * 100)}% · {status.body.effort ? "歩行の作業強度" : "移動消費"} {loadMovement(status.carried.mass, transport).energyPerHour.toFixed(1)}/時間</p>}
     {status.ground && status.ground.items.length > 0 && <InventoryCard title="地面に置いた所有物" inventory={status.ground} day={day} owner={person} />}
     {status.field && <InventoryCard title="畑の保管品" inventory={status.field} day={day} owner={person} />}
     <InventoryCard title={`${person} の家の保管品`} inventory={status.home} day={day} owner={person} />
@@ -828,12 +828,12 @@ export default function VillageDebug() {
           {selectedFarm && <p>所有する畑: {selectedFarm.id} · {selectedFarm.plotIds.length}区画 · 穀物は腐敗なし</p>}
           {foodMarketRecord && <p>製パン技能：{recording.fixture.foodMarket!.initialBakingSkills[selected]} · 市場で加工</p>}
           {!snapshot.statuses[selected] && latestObservation && <p>最新の本人観察（{clock(latestObservation.hour)}）:
-            所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger} ·
-            体力 {latestObservation.knownContext.energy} ·
+            所持金 {latestObservation.knownContext.ownCash} · 空腹 {latestObservation.knownContext.hunger.toFixed(1)} ·
+            体力 {latestObservation.knownContext.energy.toFixed(1)} ·
             判断 {latestObservation.chosen?.kind ?? "待機"} ·
             進行中 {activityLabels[snapshot.activeActions[selected] ?? ""] ?? snapshot.activeActions[selected] ?? "なし"}</p>}
-          {!snapshot.statuses[selected] && snapshot.bodies[selected] && <p>表示時点の身体：気温 {snapshot.bodies[selected]!.temperature}℃ ·
-            寒さ {snapshot.bodies[selected]!.cold} · 睡眠不足 {snapshot.bodies[selected]!.sleepDebt} ·
+          {!snapshot.statuses[selected] && snapshot.bodies[selected] && <p>表示時点の身体：気温 {snapshot.bodies[selected]!.temperature.toFixed(1)}℃ ·
+            寒さ {snapshot.bodies[selected]!.cold.toFixed(1)} · 睡眠不足 {snapshot.bodies[selected]!.sleepDebt.toFixed(1)} ·
             {snapshot.bodies[selected]!.sheltered ? "自宅の屋内" : "屋外"}</p>}
           {localGroundItems.length > 0 && <p>選択セルの置き荷：{localGroundItems.map((i) => `${i.ownerId} の ${itemNames[i.kind] ?? i.kind} ${i.quantity}`).join("、")}</p>}
           {latestObservation?.response.subjectiveUpdate?.anticipation?.reasoning && <p>

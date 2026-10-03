@@ -265,7 +265,7 @@ test("v16 grain comparison shows load-dependent walking and actual field invento
   await expect(carried).not.toContainText("播種用の穀物");
   await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText("8 / 24");
   await expect(page.getByLabel("運搬負荷")).toContainText("56%");
-  await expect(page.getByLabel("運搬負荷")).toContainText("2/時間");
+  await expect(page.getByLabel("運搬負荷")).toContainText("2.0/時間");
   await expect(fields).toContainText("物品なし");
   const record = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-bulk-transport-90.v2.json.gz")).toString());
   const first = record.events.find((e: { kind: string; actors: string[]; data: { storeId?: string } }) => e.kind === "grain_loaded" && e.actors[0] === "B1" && e.data.storeId?.startsWith("granary_field_"));
@@ -343,7 +343,7 @@ test("v17 comparison shows actual time since eating and matched personal experie
   const r = JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-experience-learning-90.v2.json.gz")).toString());
   const status = JSON.parse(r.events.filter((e: { kind: string; actors: string[]; hour: number }) => e.kind === "person_status" && e.actors[0] === "F" && e.hour === 240)[0].data.status);
   const last = r.decisions.filter((d: { actorId: string; hour: number }) => d.actorId === "F" && d.hour <= 240).at(-1);
-  await expect(page.getByRole("region", { name: "人物の身体ステータス" })).toContainText(`食事からの経過 ${status.body.mealHours}時間`);
+  await expect(page.getByRole("region", { name: "人物の身体ステータス" })).toContainText(`食事からの経過 ${status.body.mealHours.toFixed(1)}時間`);
   await expect(page.getByRole("region", { name: "経験からの見込み" })).toContainText(`対応した結果 ${last.response.subjectiveUpdate.anticipation.learning.totals.matched}件`);
   await page.setViewportSize({ width: 1280, height: 768 });
   await expect(page.getByRole("region", { name: "全員の状態", exact: true })).toHaveCount(0);
@@ -410,10 +410,15 @@ test("v17 comparison shows actual time since eating and matched personal experie
     [...canvas.getContext("2d")!.getImageData(cell.x * 32, cell.y * 32, 32, 32).data], plant.cell);
   const beforePixels = await pixels();
   const beforeMass = Number((await carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd").textContent())!.split("/")[0]);
+  const body = page.getByRole("region", { name: "人物の身体ステータス" });
+  const bodyBeforeGather = (await body.boundingBox())!;
+  await expect(body).toBeVisible();
+  expect(await body.evaluate((element) => element.nextElementSibling?.getAttribute("aria-label"))).toBe("携帯中の所持品");
   await page.getByLabel("土地経済の分").fill(String(minute));
   await expect(lot.locator("td").nth(1)).toHaveText(String(event.data.quantity));
   await expect(carried.locator("dl div").filter({ hasText: "総重量" }).locator("dd")).toHaveText(`${beforeMass + Number(event.data.quantity)} / 24`);
   await expect(page.locator(".village-person-location")).toContainText(position);
+  expect((await body.boundingBox())!.y).toBeCloseTo(bodyBeforeGather.y, 1);
   expect(await pixels()).not.toEqual(beforePixels);
   await page.screenshot({ path: "/tmp/medieval-village-gather-status.png", fullPage: true });
   await expect(page.getByRole("region", { name: "選択セルの状態", exact: true })).toContainText("再生中");
@@ -504,8 +509,8 @@ test("v20 archive replays settling and actual sleep at their recorded quarter-ho
   await expect(body.locator("dl div").filter({ hasText: /^行動/ }).locator("dd")).toHaveText("睡眠");
   const checkpoint = r.events.filter((e) => e.actors[0] === "F" && e.kind === "body_changed" && Number(e.data.atMinute) <= at).at(-1)!;
   await expect(page.locator(".village-status-context")).toContainText(`${Math.floor(at / 1440) + 1}日目 ${String(Math.floor(at % 1440 / 60)).padStart(2, "0")}:${String(at % 60).padStart(2, "0")}`);
-  await expect(body.locator("dl div").filter({ hasText: /^24hの実睡眠/ }).locator("dd")).toHaveText(`${checkpoint.data.actualSleep24}時間`);
-  await expect(body.locator("dl div").filter({ hasText: /^睡眠不足/ }).locator("dd")).toHaveText(`${checkpoint.data.sleepDeficit}時間`);
+  await expect(body.locator("dl div").filter({ hasText: /^24hの実睡眠/ }).locator("dd")).toHaveText(`${Number(checkpoint.data.actualSleep24).toFixed(1)}時間`);
+  await expect(body.locator("dl div").filter({ hasText: /^睡眠不足/ }).locator("dd")).toHaveText(`${Number(checkpoint.data.sleepDeficit).toFixed(1)}時間`);
   await expect(page.getByRole("progressbar", { name: "眠気", exact: true })).toHaveAttribute("value", String(Math.round(Number(checkpoint.data.sleepiness) * 100)));
   await expect(page.getByLabel("睡眠の予測学習")).toBeVisible();
   await page.screenshot({ path: "/tmp/medieval-village-sleep-regulation.png", fullPage: true });
@@ -534,8 +539,8 @@ test("v22 comparison shows separate nutrition, fatigue, load discomfort and plea
   await page.getByLabel("土地経済の時刻").fill(String(Math.floor(minute % 1440 / 60) + 1));
   await page.getByLabel("土地経済の分").fill(String(minute % 60));
   const actual = r.events.filter((e) => e.kind === "effort_body_changed" && e.actors[0] === "F" && Number(e.data.atMinute) <= minute).at(-1)!;
-  await expect(body.locator("dl div").filter({ hasText: /^栄養備蓄/ }).locator("dd")).toHaveText(`${Number(actual.data.reserve).toFixed(2)} / 96`);
-  await expect(body.locator("dl div").filter({ hasText: /^吸収待ち/ }).locator("dd")).toHaveText(Number(actual.data.pendingNutrition).toFixed(2));
+  await expect(body.locator("dl div").filter({ hasText: /^栄養備蓄/ }).locator("dd")).toHaveText(`${Number(actual.data.reserve).toFixed(1)} / 96.0`);
+  await expect(body.locator("dl div").filter({ hasText: /^吸収待ち/ }).locator("dd")).toHaveText(Number(actual.data.pendingNutrition).toFixed(1));
   await expect(page.getByRole("progressbar", { name: "疲労", exact: true })).toHaveAttribute("value", String(Math.round(Number(actual.data.fatigue) * 100)));
   await expect(page.getByLabel("負担と成果の見込み")).toBeVisible();
   await page.screenshot({ path: "/tmp/medieval-village-energy-effort.png", fullPage: true });
@@ -570,7 +575,7 @@ test("v23 comparison displays death at its saved minute, freezes the body and re
   await seek(minute);
   await expect(body.locator("dl div").filter({ hasText: /^生死/ }).locator("dd")).toHaveText("死亡");
   await expect(body.locator("dl div").filter({ hasText: /^行動/ }).locator("dd")).toHaveText("死亡");
-  await expect(body.locator("dl div").filter({ hasText: /^体力/ }).locator("dd")).toHaveText("0 / 26");
+  await expect(body.locator("dl div").filter({ hasText: /^体力/ }).locator("dd")).toHaveText("0.0 / 26.0");
   await expect(page.getByLabel("死亡の記録")).toContainText("死亡時の記録");
   const frozen = await body.innerText();
   await seek(minute + 1440);
@@ -592,6 +597,14 @@ test("v24 default shows personal food alternatives, absorption forecasts and rec
   await page.goto("/?village=land-economy");
   await expect(page.getByLabel("表示する記録")).toHaveValue("acquisition", { timeout: 90000 });
   await page.getByLabel("土地経済の人物").selectOption("B1");
+  const body = page.getByRole("region", { name: "人物の身体ステータス" });
+  const cards = page.getByRole("region", { name: "人物のステータス", exact: true }).locator(".village-status-stack > section");
+  await expect(cards.nth(0)).toHaveAttribute("aria-label", "人物の身体ステータス");
+  await expect(cards.nth(1)).toHaveAttribute("aria-label", "携帯中の所持品");
+  await expect(body.locator("dl div").filter({ hasText: /^吸収待ち/ }).locator("dd")).toHaveText("0.0");
+  for (const label of ["体力", "気温", "睡眠不足", "24hの実睡眠", "連続覚醒", "栄養備蓄", "吸収待ち", "累計吸収", "累計消費"]) {
+    await expect(body.locator("dl div").filter({ hasText: new RegExp(`^${label}`) }).locator("dd")).toHaveText(/^-?\d+\.\d(?:℃|時間| \/ \d+\.\d)?$/);
+  }
   const seek = async (at: number) => {
     await page.getByLabel("土地経済の日").fill(String(Math.floor(at / 1440) + 1));
     await page.getByLabel("土地経済の時刻").fill(String(Math.floor(at % 1440 / 60) + 1));
@@ -605,7 +618,6 @@ test("v24 default shows personal food alternatives, absorption forecasts and rec
   await page.screenshot({ path: "/tmp/medieval-village-food-acquisition.png", fullPage: true });
   const death = r.events.find((e) => e.kind === "person_died" && e.actors[0] === "B1")!;
   await seek(Number(death.data.atMinute));
-  const body = page.getByRole("region", { name: "人物の身体ステータス" });
   await expect(body.locator("dl div").filter({ hasText: /^生死/ }).locator("dd")).toHaveText("死亡");
   const frozen = await body.innerText(); await seek(Number(death.data.atMinute) + 1440);
   await expect(body).toHaveText(frozen, { useInnerText: true });
