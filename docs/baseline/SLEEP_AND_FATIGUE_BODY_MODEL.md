@@ -4,7 +4,7 @@
 
 本書を睡眠・疲労の数値設計の正本とし、[身体と行動選択](NEEDS_AND_ACTION_SELECTION_PLAN.md)・[本人の予測と学習](MODULAR_PREDICTION_AND_ACTION_PLAN.md)へ接続する。6時間はこのシミュレーションの初期設定。人間一般の必要睡眠時間を6時間と断定するものではない。
 
-v20以後の身体拡張は[栄養エネルギー・体力・疲労と遅延報酬](ENERGY_EFFORT_AND_DELAYED_REWARD_DESIGN.md)で設計した。食事からの供給、活動消耗と休息の回復を分ける案は未実装。本書の体力と`F = 1 - energy / maxEnergy`は現行v20の仕様であり、kcalの残量や独立した疲労状態ではない。
+v20以後の身体拡張は[栄養エネルギー・体力・疲労と遅延報酬](ENERGY_EFFORT_AND_DELAYED_REWARD_DESIGN.md)で設計し、[v22](ENERGY_EFFORT_V22_RESULT.md)で食事からの供給・活動疲労・休息の回復を分離した。本書の体力と`F = 1 - energy / maxEnergy`は比較用v20の仕様であり、kcalの残量や独立した疲労状態ではない。睡眠圧・必要睡眠・昼夜リズムはv22でも継承する。
 
 ## 1. 比較基準v19の問題
 

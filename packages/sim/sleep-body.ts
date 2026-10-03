@@ -33,14 +33,14 @@ export function circadianSleep(minute: number) {
   const smooth = (x: number) => x * x * (3 - 2 * x);
   return hour >= 23 || hour < 5 ? 1 : hour >= 22 ? smooth(hour - 22) : hour < 6 ? 1 - smooth(hour - 5) : 0;
 }
-export function sleepSignal(body: SleepBody, config: SleepConfig, energy: number, maxEnergy: number): SleepSignal {
+export function sleepSignal(body: SleepBody, config: SleepConfig, energy: number, maxEnergy: number, activityFatigue?: number): SleepSignal {
   const effective = body.history.reduce((n, i) => n + Math.max(0, i.to - Math.max(i.from, body.minute - 1440)) * i.quality / 1000, 0);
   const actual = body.history.filter((i) => i.quality > 0).reduce((n, i) => n + Math.max(0, i.to - Math.max(i.from, body.minute - 1440)), 0);
   const { limit } = normalSleepPressure(config);
   const pressure = body.pressure / scale;
   const awakeDrive = clamp((pressure - limit - 2e-6) / (1 - limit));
   const deficit = Math.max(0, config.requiredMinutes - effective), circadian = circadianSleep(body.minute);
-  const fatigue = clamp(1 - energy / maxEnergy);
+  const fatigue = activityFatigue ?? clamp(1 - energy / maxEnergy);
   const sleepiness = clamp(Math.max(awakeDrive, deficit / config.requiredMinutes) +
     .45 * circadian * clamp(pressure / limit) + .60 * clamp((fatigue - .65) / .35));
   const round = (n: number) => Math.round(n * 10000) / 10000;
@@ -65,13 +65,13 @@ export function endSleep(body: SleepBody, reason: string, kind: SleepTransition[
 }
 /** Exactly one canonical quarter hour. Caller accounts for cold and work costs separately. */
 export function advanceSleepQuarter(body: SleepBody, config: SleepConfig, energy: number, maxEnergy: number,
-  cold: number, resting = false): { energy: number; transitions: SleepTransition[] } {
+  cold: number, resting = false, activityFatigue?: number): { energy: number; transitions: SleepTransition[] } {
   const transitions: SleepTransition[] = [];
   if (body.mode !== "awake" && cold >= 12) transitions.push(endSleep(body, "cold exposure", "sleep_interrupted"));
   if (body.mode !== "awake" && body.plannedWakeMinute !== undefined && body.minute >= body.plannedWakeMinute)
     transitions.push(endSleep(body, "personal wake reservation"));
   const asleep = body.mode === "asleep", settling = body.mode === "settling";
-  const ready = settling && sleepSignal(body, config, energy, maxEnergy).sleepiness >= .55 - .20 * circadianSleep(body.minute);
+  const ready = settling && sleepSignal(body, config, energy, maxEnergy, activityFatigue).sleepiness >= .55 - .20 * circadianSleep(body.minute);
   const quality = asleep ? Math.max(500, Math.round(1000 - 500 * cold / 12)) : 0;
   const from = body.minute; body.minute += 15;
   const previous = body.history.at(-1);
@@ -90,7 +90,7 @@ export function advanceSleepQuarter(body: SleepBody, config: SleepConfig, energy
     if (settling) { body.episodeWaitMinutes += 15; body.readyMinutes = ready ? body.readyMinutes + 15 : 0; }
   }
   energy = Math.round(energy * 10000) / 10000;
-  const signal = sleepSignal(body, config, energy, maxEnergy);
+  const signal = sleepSignal(body, config, energy, maxEnergy, activityFatigue);
   if (settling && body.readyMinutes >= 15) {
     body.mode = "asleep"; body.awakeMinutes = 0;
     transitions.push({ kind: "sleep_started", minute: body.minute, reason: "sleep onset", sleepMinutes: 0,

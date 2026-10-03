@@ -8,7 +8,8 @@ export type TravelExecution = { phase: "started" | "completed" | "failed" | "red
 export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | "observation";
   occurredAt: number; receivedAt: number; causeEventIds: string[];
   experience?: import("./action-learning").ActionExecution;
-  trade?: { offeredAt: number; soldAt: number; quantity: number; revenue: number };
+  offerChange?: { id: string; valid: boolean };
+  trade?: { offerId?: string; offeredAt: number; soldAt: number; quantity: number; revenue: number };
   travel?: TravelExecution; saleRevenue?: number; action?: VillageAttempt["kind"]; actionDay?: number; success?: boolean; reason?: string;
   order?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number } };
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
@@ -19,6 +20,11 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   foodJourneys?: true;
   foodPlanning?: true;
   sleepRegulation?: true;
+  offerIntegrity?: true;
+  effortBody?: import("../sim/effort-body").ReturnEffortSensation;
+  knownLandmarks?: Record<string, { x: number; y: number }>;
+  activeProgress?: { elapsed: number; remaining: number; destinationId?: string };
+  ownGroundItems?: { id: string; kind: string; quantity: number; siteId: string; cell: { x: number; y: number } }[];
   visiblePlantWork?: { actorId: VillageId; plantId: string; quantity: number }[];
   carriedInventory?: { id: string; kind: string; quantity: number; mass: number; edible: boolean; expiresDay?: number }[];
   predictionLedger?: true;
@@ -65,7 +71,11 @@ type VillageAction =
   | { kind: "bake_bread"; lotId: string }
   | { kind: "sleep"; wakeAtMinute?: number } | { kind: "wake_up" }
   | { kind: "eat" } | { kind: "burn_wood" } | { kind: "rest" }
-  | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string }
+  | { kind: "till_plot"; plantId: string } | { kind: "sow_plot"; plantId: string; lotId?: string }
+  | { kind: "withdraw_surplus_offer"; offerId: string }
+  | { kind: "interrupt_action" }
+  | { kind: "set_down"; objectId: string; quantity: number }
+  | { kind: "take_ground"; objectId: string; quantity: number }
   | { kind: "harvest_plot"; plantId: string }
   | { kind: "forage_route"; plantId: string; quantity?: number }
   | { kind: "post_surplus_offer"; lotId: string; quantity: number; price: number }

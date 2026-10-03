@@ -7,11 +7,14 @@ import { actionObservation, effortForecast } from "./action-learning";
 import { checkFoodPlanning, foodPlanningChoice, mealShelterChoice, observeHomeFood, prepareFoodJourney, unoccupiedWildPlants, type FoodPlanningMemory } from "./food-planning";
 import { checkForagingMemory, forageDestination, rememberForaging, type ForagingMemory } from "./foraging-memory";
 
+import { checkEffortMemory, effortDecision, type EffortMemory } from "./effort-choice";
+
 export type RunningEstimate = { count: number; mean: number; m2: number };
 type Observation = { at: number; site: string; cold: number; energy: number; debt: number;
   sheltered: boolean; phase: "day" | "night"; temperature: number };
 export type Experience = { from: Observation; to: Observation; action: string; salience: number; evidenceIds: string[] };
 export type AnticipationMemory = {
+  effort?: EffortMemory;
   sleep?: SleepForecastMemory;
   learning?: import("./action-learning").ActionLearningMemory;
   foraging?: ForagingMemory;
@@ -137,6 +140,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
       delete m.trip; delete m.goal; m.failedTravel = true;
     }
   }
+  if (c.effortBody) return effortDecision(c, memory, input.actorId, input.at, input.stimuli);
   if (c.activeAction) return { attempts: [], subjectiveUpdate: memory, wait: { at: input.at + 1 } };
   const body = c.needs, home = body.home;
   const trip = travelEstimate(m, c, home.siteId, home.cell);
@@ -397,7 +401,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
     }
     if (target) return choose(c.siteId !== target.siteId ? { kind: "travel", siteId: target.siteId! } :
       target.stage === "ripe" ? { kind: "harvest_plot", plantId: target.id } : target.stage === "tilled" ?
-      { kind: "sow_plot", plantId: target.id } : { kind: "till_plot", plantId: target.id }, "work owned crop for bounded personal reserve");
+      { kind: "sow_plot", plantId: target.id, ...(c.offerIntegrity ? { lotId: c.ownFoodLots?.find((lot) => lot.product === "grain" && !lot.offered)?.id } : {}) } : { kind: "till_plot", plantId: target.id }, "work owned crop for bounded personal reserve");
     if (!c.ownFarm.plotIds.includes(c.siteId)) return choose({ kind: "travel", siteId: c.ownFarm.plotIds[0] }, "observe own crop growth");
   }
   return choose(undefined, "reserve sufficient or waiting for observed growth; no forced daily task");
@@ -405,6 +409,7 @@ export const anticipatoryNeedsVillageModel: VillageModel = { decide(input) {
 
 /** Validate saved subjective state without adding any knowledge of the world to it. */
 export function checkAnticipationMemory(memory: AnticipationMemory, at: number) {
+  if (memory.effort) checkEffortMemory(memory.effort, at);
   if (memory.sleep) checkSleepForecast(memory.sleep, at);
   if (memory.foodPlanning) checkFoodPlanning(memory.foodPlanning, at);
   if (memory.foraging) checkForagingMemory(memory.foraging, at);

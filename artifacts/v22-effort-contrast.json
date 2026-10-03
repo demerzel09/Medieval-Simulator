@@ -1,0 +1,519 @@
+{
+  "definition": "Actual saved events. Food gaps include start/end; empty-reserve hours count distinct hourly observations. Learning-off disables new effort/trade model updates only. No counterfactual is inferred from a saved run.",
+  "reports": [
+    {
+      "source": "fixtures/recordings/autonomous-village-sleep-regulation-90.v2.json.gz",
+      "rulesetId": "autonomous-village-sleep-regulation-v20",
+      "untilHour": 2160,
+      "stateHash": "4a72d32c",
+      "eventHash": "c55ad1ab",
+      "events": 114667,
+      "money": 26,
+      "sales": 83,
+      "grainSales": 27,
+      "breadSales": 56,
+      "directGrainMeals": 0,
+      "loadGoalQuantityMismatches": 0,
+      "interruptions": 0,
+      "setDowns": 0,
+      "cancelledOffers": 0,
+      "rejected": 0,
+      "failed": 0,
+      "people": {
+        "S": {
+          "meals": 87,
+          "breadMeals": 47,
+          "daysWithMeals": 77,
+          "maximumFoodGapHours": 93
+        },
+        "F": {
+          "meals": 90,
+          "breadMeals": 11,
+          "daysWithMeals": 85,
+          "maximumFoodGapHours": 72
+        },
+        "C": {
+          "meals": 85,
+          "breadMeals": 0,
+          "daysWithMeals": 78,
+          "maximumFoodGapHours": 112
+        },
+        "B1": {
+          "meals": 90,
+          "breadMeals": 10,
+          "daysWithMeals": 82,
+          "maximumFoodGapHours": 70
+        },
+        "B2": {
+          "meals": 90,
+          "breadMeals": 11,
+          "daysWithMeals": 85,
+          "maximumFoodGapHours": 72
+        }
+      }
+    },
+    {
+      "source": "fixtures/recordings/autonomous-village-offer-integrity-90.v2.json.gz",
+      "rulesetId": "autonomous-village-offer-integrity-v21",
+      "untilHour": 2160,
+      "stateHash": "e645ea45",
+      "eventHash": "7430a9a1",
+      "events": 106399,
+      "money": 26,
+      "sales": 176,
+      "grainSales": 62,
+      "breadSales": 114,
+      "directGrainMeals": 0,
+      "loadGoalQuantityMismatches": 0,
+      "interruptions": 0,
+      "setDowns": 0,
+      "cancelledOffers": 168,
+      "rejected": 0,
+      "failed": 0,
+      "people": {
+        "S": {
+          "meals": 90,
+          "breadMeals": 87,
+          "daysWithMeals": 90,
+          "maximumFoodGapHours": 25
+        },
+        "F": {
+          "meals": 90,
+          "breadMeals": 24,
+          "daysWithMeals": 90,
+          "maximumFoodGapHours": 30
+        },
+        "C": {
+          "meals": 90,
+          "breadMeals": 0,
+          "daysWithMeals": 90,
+          "maximumFoodGapHours": 29
+        },
+        "B1": {
+          "meals": 90,
+          "breadMeals": 18,
+          "daysWithMeals": 90,
+          "maximumFoodGapHours": 32
+        },
+        "B2": {
+          "meals": 90,
+          "breadMeals": 33,
+          "daysWithMeals": 90,
+          "maximumFoodGapHours": 32
+        }
+      }
+    },
+    {
+      "source": "fixtures/recordings/autonomous-village-energy-effort-90.v2.json.gz",
+      "rulesetId": "autonomous-village-energy-effort-v22",
+      "untilHour": 2160,
+      "stateHash": "bda36c39",
+      "eventHash": "d09d1515",
+      "events": 168862,
+      "money": 26,
+      "sales": 2,
+      "grainSales": 1,
+      "breadSales": 1,
+      "directGrainMeals": 0,
+      "loadGoalQuantityMismatches": 0,
+      "interruptions": 2,
+      "setDowns": 0,
+      "cancelledOffers": 3,
+      "rejected": 1,
+      "failed": 2,
+      "people": {
+        "S": {
+          "meals": 125,
+          "breadMeals": 1,
+          "daysWithMeals": 89,
+          "maximumFoodGapHours": 50,
+          "nutrition": {
+            "fatigue": 0.3812,
+            "nutritionNeed": 0,
+            "digesting": false,
+            "loadDiscomfort": 0.07524800000000001,
+            "pleasure": 0.000001,
+            "relief": 0.019,
+            "reserve": 58.599,
+            "capacity": 96,
+            "intake": 3102,
+            "absorbed": 3102,
+            "consumed": 3103.401,
+            "lost": 0,
+            "unmet": 0,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 0,
+          "learning": {
+            "matched": 671,
+            "excluded": 210,
+            "absoluteError": 5.708744407226163,
+            "meanAbsoluteError": 0.008507815808086681,
+            "models": 13
+          },
+          "trade": {
+            "successes": 1,
+            "failures": 2,
+            "censored": 0,
+            "retryAt": 83
+          }
+        },
+        "F": {
+          "meals": 8,
+          "breadMeals": 0,
+          "daysWithMeals": 5,
+          "maximumFoodGapHours": 2024,
+          "nutrition": {
+            "fatigue": 0.48,
+            "nutritionNeed": 1,
+            "digesting": false,
+            "loadDiscomfort": 0,
+            "pleasure": 0.000001,
+            "relief": 0.000001,
+            "reserve": 0,
+            "capacity": 96,
+            "intake": 228,
+            "absorbed": 228,
+            "consumed": 288,
+            "lost": 0,
+            "unmet": 2586.471,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 1972,
+          "learning": {
+            "matched": 92,
+            "excluded": 17,
+            "absoluteError": 1.171869877297239,
+            "meanAbsoluteError": 0.012737716057578684,
+            "models": 11
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 0,
+            "censored": 0,
+            "retryAt": 0
+          }
+        },
+        "C": {
+          "meals": 8,
+          "breadMeals": 0,
+          "daysWithMeals": 6,
+          "maximumFoodGapHours": 2003,
+          "nutrition": {
+            "fatigue": 0.214359,
+            "nutritionNeed": 1,
+            "digesting": false,
+            "loadDiscomfort": 0,
+            "pleasure": 0.000001,
+            "relief": 0.000001,
+            "reserve": 0,
+            "capacity": 96,
+            "intake": 192,
+            "absorbed": 192,
+            "consumed": 252,
+            "lost": 0,
+            "unmet": 2596.508,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 1982,
+          "learning": {
+            "matched": 79,
+            "excluded": 15,
+            "absoluteError": 0.8831889033132364,
+            "meanAbsoluteError": 0.011179606371053625,
+            "models": 6
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 0,
+            "censored": 0,
+            "retryAt": 0
+          }
+        },
+        "B1": {
+          "meals": 7,
+          "breadMeals": 1,
+          "daysWithMeals": 5,
+          "maximumFoodGapHours": 2028,
+          "nutrition": {
+            "fatigue": 0.275937,
+            "nutritionNeed": 1,
+            "digesting": false,
+            "loadDiscomfort": 0,
+            "pleasure": 0.000001,
+            "relief": 0.000001,
+            "reserve": 0,
+            "capacity": 96,
+            "intake": 180,
+            "absorbed": 180,
+            "consumed": 240,
+            "lost": 0,
+            "unmet": 2627.161,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 2005,
+          "learning": {
+            "matched": 81,
+            "excluded": 21,
+            "absoluteError": 1.1721911844059014,
+            "meanAbsoluteError": 0.01447149610377656,
+            "models": 7
+          },
+          "trade": {
+            "successes": 1,
+            "failures": 0,
+            "censored": 1,
+            "retryAt": 0
+          }
+        },
+        "B2": {
+          "meals": 126,
+          "breadMeals": 0,
+          "daysWithMeals": 90,
+          "maximumFoodGapHours": 29,
+          "nutrition": {
+            "fatigue": 0.365743,
+            "nutritionNeed": 0,
+            "digesting": false,
+            "loadDiscomfort": 0.14925944,
+            "pleasure": 0.000001,
+            "relief": 0.019,
+            "reserve": 53.167,
+            "capacity": 96,
+            "intake": 3156,
+            "absorbed": 3156,
+            "consumed": 3162.833,
+            "lost": 0,
+            "unmet": 0,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 0,
+          "learning": {
+            "matched": 721,
+            "excluded": 214,
+            "absoluteError": 5.931741327616489,
+            "meanAbsoluteError": 0.00822710308962065,
+            "models": 16
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 1,
+            "censored": 0,
+            "retryAt": 230
+          }
+        }
+      }
+    },
+    {
+      "source": "fixtures/recordings/autonomous-village-energy-effort-learning-off-90.v2.json.gz",
+      "rulesetId": "autonomous-village-energy-effort-v22",
+      "untilHour": 2160,
+      "stateHash": "65f99132",
+      "eventHash": "d29caa70",
+      "events": 166173,
+      "money": 26,
+      "sales": 8,
+      "grainSales": 5,
+      "breadSales": 3,
+      "directGrainMeals": 0,
+      "loadGoalQuantityMismatches": 0,
+      "interruptions": 2,
+      "setDowns": 0,
+      "cancelledOffers": 41,
+      "rejected": 1,
+      "failed": 2,
+      "people": {
+        "S": {
+          "meals": 121,
+          "breadMeals": 10,
+          "daysWithMeals": 89,
+          "maximumFoodGapHours": 50,
+          "nutrition": {
+            "fatigue": 0.204,
+            "nutritionNeed": 0,
+            "digesting": false,
+            "loadDiscomfort": 0.06816,
+            "pleasure": 0.000001,
+            "relief": 0.019,
+            "reserve": 50.431,
+            "capacity": 96,
+            "intake": 3102,
+            "absorbed": 3102,
+            "consumed": 3111.569,
+            "lost": 0,
+            "unmet": 0,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 0,
+          "learning": {
+            "matched": 664,
+            "excluded": 280,
+            "absoluteError": 12.002199999999963,
+            "meanAbsoluteError": 0.0180756024096385,
+            "models": 0
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 0,
+            "censored": 9,
+            "retryAt": 640
+          }
+        },
+        "F": {
+          "meals": 8,
+          "breadMeals": 0,
+          "daysWithMeals": 5,
+          "maximumFoodGapHours": 2024,
+          "nutrition": {
+            "fatigue": 0.48,
+            "nutritionNeed": 1,
+            "digesting": false,
+            "loadDiscomfort": 0,
+            "pleasure": 0.000001,
+            "relief": 0.000001,
+            "reserve": 0,
+            "capacity": 96,
+            "intake": 228,
+            "absorbed": 228,
+            "consumed": 288,
+            "lost": 0,
+            "unmet": 2586.471,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 1972,
+          "learning": {
+            "matched": 92,
+            "excluded": 17,
+            "absoluteError": 0.8820000000000001,
+            "meanAbsoluteError": 0.009586956521739132,
+            "models": 0
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 0,
+            "censored": 0,
+            "retryAt": 0
+          }
+        },
+        "C": {
+          "meals": 8,
+          "breadMeals": 0,
+          "daysWithMeals": 6,
+          "maximumFoodGapHours": 2003,
+          "nutrition": {
+            "fatigue": 0.214359,
+            "nutritionNeed": 1,
+            "digesting": false,
+            "loadDiscomfort": 0,
+            "pleasure": 0.000001,
+            "relief": 0.000001,
+            "reserve": 0,
+            "capacity": 96,
+            "intake": 192,
+            "absorbed": 192,
+            "consumed": 252,
+            "lost": 0,
+            "unmet": 2596.508,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 1982,
+          "learning": {
+            "matched": 79,
+            "excluded": 15,
+            "absoluteError": 0.40380000000000094,
+            "meanAbsoluteError": 0.005111392405063303,
+            "models": 0
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 0,
+            "censored": 0,
+            "retryAt": 0
+          }
+        },
+        "B1": {
+          "meals": 7,
+          "breadMeals": 1,
+          "daysWithMeals": 5,
+          "maximumFoodGapHours": 2028,
+          "nutrition": {
+            "fatigue": 0.275937,
+            "nutritionNeed": 1,
+            "digesting": false,
+            "loadDiscomfort": 0,
+            "pleasure": 0.000001,
+            "relief": 0.000001,
+            "reserve": 0,
+            "capacity": 96,
+            "intake": 180,
+            "absorbed": 180,
+            "consumed": 240,
+            "lost": 0,
+            "unmet": 2627.161,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 2005,
+          "learning": {
+            "matched": 81,
+            "excluded": 21,
+            "absoluteError": 0.8508000000000002,
+            "meanAbsoluteError": 0.010503703703703706,
+            "models": 0
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 0,
+            "censored": 1,
+            "retryAt": 0
+          }
+        },
+        "B2": {
+          "meals": 112,
+          "breadMeals": 2,
+          "daysWithMeals": 89,
+          "maximumFoodGapHours": 31,
+          "nutrition": {
+            "fatigue": 0.394942,
+            "nutritionNeed": 0,
+            "digesting": false,
+            "loadDiscomfort": 0.15159536,
+            "pleasure": 0.000001,
+            "relief": 0.019,
+            "reserve": 57.149,
+            "capacity": 96,
+            "intake": 2820,
+            "absorbed": 2820,
+            "consumed": 2822.851,
+            "lost": 0,
+            "unmet": 0,
+            "pendingNutrition": 0
+          },
+          "ledgerError": 0,
+          "hoursWithEmptyReserve": 0,
+          "learning": {
+            "matched": 420,
+            "excluded": 239,
+            "absoluteError": 7.038975000000016,
+            "meanAbsoluteError": 0.016759464285714322,
+            "models": 0
+          },
+          "trade": {
+            "successes": 0,
+            "failures": 0,
+            "censored": 1,
+            "retryAt": 500
+          }
+        }
+      }
+    }
+  ]
+}

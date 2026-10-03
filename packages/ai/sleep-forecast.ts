@@ -2,7 +2,7 @@ import type { VillageAttempt, VillageContext, VillageStimulus } from "./autonomo
 type Estimate = { count: number; bias: number; priorError: number; learnedError: number };
 type Frozen = { at: number; minute: number; pressure: number; energy: number; maxEnergy: number; cold: number;
   sheltered: boolean; history: { from: number; to: number; quality: number }[]; action: string; key: string; bias?: number;
-  actionId?: string; energyRate?: number };
+  fatigue?: number; fatigueRate?: number; actionId?: string; energyRate?: number };
 export type SleepForecastMemory = { version: 1; at: number; pressure: number; models: Record<string, Estimate>;
   pending?: Frozen; matched: number; excluded: number; retryAt: number;
   last?: { expected: number; actual: number; error: number; kind: string; at: number } };
@@ -12,23 +12,24 @@ function night(minute: number) {
   const h = ((minute % 1440) + 1440) % 1440 / 60, smooth = (x: number) => x * x * (3 - 2 * x);
   return h >= 23 || h < 5 ? 1 : h >= 22 ? smooth(h - 22) : h < 6 ? 1 - smooth(h - 5) : 0;
 }
-function values(p: number, history: Frozen["history"], minute: number, energy: number, max: number) {
+function values(p: number, history: Frozen["history"], minute: number, energy: number, max: number, fatigue?: number) {
   const effective = history.reduce((n, i) => n + Math.max(0, Math.min(minute, i.to) - Math.max(minute - 1440, i.from)) * i.quality, 0);
   const deficit = Math.max(0, 360 - effective) / 60, c = night(minute);
   return { deficit, sleepiness: clamp(Math.max(clamp((p - .665241) / (1 - .665241)), deficit / 6) +
-    .45 * c * clamp(p / .665241) + .6 * clamp((1 - energy / max - .65) / .35)) };
+    .45 * c * clamp(p / .665241) + .6 * clamp(((fatigue ?? (1 - energy / max)) - .65) / .35)) };
 }
 function freeze(c: VillageContext, m: SleepForecastMemory, action: string): Frozen {
-  const s = c.needs!.sleep!, key = `${action === "sleep" ? "sleep" : "awake"}:${c.needs!.sheltered ? "inside" : "outside"}:${night(s.minute) > .5 ? "night" : "day"}:fatigue${c.energy < c.bulkTransport!.maxEnergy * .35 ? 1 : 0}`;
+  const s = c.needs!.sleep!, key = `${action === "sleep" ? "sleep" : "awake"}:${c.needs!.sheltered ? "inside" : "outside"}:${night(s.minute) > .5 ? "night" : "day"}:fatigue${(c.effortBody ? c.effortBody.fatigue >= .65 : c.energy < c.bulkTransport!.maxEnergy * .35) ? 1 : 0}`;
   const model = m.models[key], quality = s.actualHours > 0 ? clamp(s.effectiveHours / s.actualHours, .5, 1) : 1;
   return { at: s.minute / 60, minute: s.minute, pressure: m.pressure, energy: c.energy, maxEnergy: c.bulkTransport!.maxEnergy,
+    ...(c.effortBody ? { fatigue: c.effortBody.fatigue, fatigueRate: action === "sleep" || action === "rest" ? -.07 : action === "travel" ? .04 * (1 + c.carriedMass / 8) : .04 } : {}),
     cold: c.cold, sheltered: c.needs!.sheltered, history: s.ownSleeps.map((i) => ({ ...i, quality })), action, key,
     ...(model && model.count >= 2 && model.learnedError <= model.priorError ? { bias: model.bias } : {}) };
 }
 function project(f: Frozen, hours: number, effort = 0) {
-  let p = f.pressure, energy = f.energy, minute = f.minute, history = structuredClone(f.history);
+  let p = f.pressure, energy = f.energy, fatigue = f.fatigue, minute = f.minute, history = structuredClone(f.history);
   let mode = f.action === "sleep" ? "settling" : "awake", wait = 0, actual = 0, wakeHours: number | undefined;
-  let last = values(p, history, minute, energy, f.maxEnergy), peak = clamp(last.sleepiness + (f.bias ?? 0));
+  let last = values(p, history, minute, energy, f.maxEnergy, fatigue), peak = clamp(last.sleepiness + (f.bias ?? 0));
   for (let elapsed = 0; elapsed < Math.ceil(hours * 4); elapsed++) {
     const sleeping = mode === "asleep", ready = mode === "settling" && last.sleepiness >= .55 - .2 * night(minute);
     const quality = sleeping ? clamp(1 - .5 * f.cold / 12, .5, 1) : 0;
@@ -36,8 +37,9 @@ function project(f: Frozen, hours: number, effort = 0) {
     if (mode === "settling") wait += 15;
     p = sleeping ? p * Math.exp(-quality * 15 / 180) : 1 - (1 - p) * Math.exp(-15 / 1080);
     energy = clamp(energy + (sleeping ? .5 * quality : mode === "settling" || f.action === "rest" ? .5 : (f.energyRate ?? 0) / 4 - effort / Math.max(1, hours * 4)), 0, f.maxEnergy);
+    if (fatigue !== undefined) fatigue = clamp(fatigue + (sleeping ? -.07 * quality : mode === "settling" || f.action === "rest" ? -.07 : f.fatigueRate ?? 0) / 4);
     minute += 15; history = history.filter((i) => i.to > minute - 1440);
-    last = values(p, history, minute, energy, f.maxEnergy);
+    last = values(p, history, minute, energy, f.maxEnergy, fatigue);
     if (mode === "settling" && ready) mode = "asleep";
     else if (mode === "settling" && wait >= 120) { mode = "awake"; wakeHours ??= (minute - f.minute) / 60; }
     else if (sleeping && actual >= 30 && p <= .090033 && last.deficit === 0 && last.sleepiness <= .1 + .15 * (1 - night(minute))) {

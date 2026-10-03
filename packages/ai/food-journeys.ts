@@ -48,7 +48,7 @@ export function cultivationChoice(c: VillageContext, m: AnticipationMemory, acto
   if (plan.stage === "bare") return { attempt: c.siteId === plan.siteId ? { kind: "till_plot", plantId: plan.plantId } :
     { kind: "travel", siteId: plan.siteId }, reason: "prepare selected owned crop before loading sowing grain" };
   const grain = c.ownFoodLots!.find((lot) => lot.product === "grain" && lot.quantity > 0 && !lot.offered);
-  if (grain) return { attempt: c.siteId === plan.siteId ? { kind: "sow_plot", plantId: plan.plantId } :
+  if (grain) return { attempt: c.siteId === plan.siteId ? { kind: "sow_plot", plantId: plan.plantId, ...(c.offerIntegrity ? { lotId: grain.id } : {}) } :
     { kind: "travel", siteId: plan.siteId }, reason: "carry reserved grain to selected crop, then sow" };
   const store = c.grainStores!.find((s) => s.siteId === c.siteId && s.grain > 0) ?? c.grainStores!.find((s) => s.grain > 0);
   if (!store) { delete m.cropPlan; return; }

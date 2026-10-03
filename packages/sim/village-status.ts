@@ -1,5 +1,6 @@
 import type { VillageId } from "../ai/autonomous-world";
 import type { VillageWorld } from "./autonomous-world";
+import { effortSensation } from "./effort-body";
 import { needsTemperature } from "./needs-body";
 import { sleepSignal, type SleepSignal } from "./sleep-body";
 import { capacityReport, totalMass } from "./physical";
@@ -8,9 +9,9 @@ export type InventoryItem = { id: string; kind: string; quantity: number; mass: 
   containerId: string; expiresDay?: number; offered: boolean };
 export type InventoryStatus = { cash: number; mass: number; capacity: number; items: InventoryItem[] };
 export type PersonStatus = { hour: number; carried: InventoryStatus; home: InventoryStatus; market: InventoryStatus;
-  field?: InventoryStatus;
+  field?: InventoryStatus; ground?: InventoryStatus;
   body: { energy: number; maxEnergy: number; hunger: number; cold: number; sleepDebt: number; mealHours: number;
-    temperature: number; sheltered: boolean; activity: string; sleep?: SleepSignal } };
+    temperature: number; sheltered: boolean; activity: string; sleep?: SleepSignal; effort?: ReturnType<typeof effortSensation> & { reserve: number; capacity: number; intake: number; absorbed: number; consumed: number; lost: number; unmet: number; pendingNutrition: number } } };
 
 /** A debug snapshot of actual physical objects. It does not grant an actor access to others' inventories. */
 export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatus {
@@ -27,7 +28,7 @@ export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatu
         return { id: o.id, kind: meta?.product === "bread" ? "bread" : meta?.species ?? o.typeId,
           quantity: o.quantity, mass: totalMass(w.physical, o.id), ownerId: o.ownerId!, containerId: o.parentId!,
           ...(expiresDay === undefined ? {} : { expiresDay }),
-          offered: Object.values(w.foodOffers ?? {}).some((offer) => offer.lotId === o.id && !offer.purchasedEventId) };
+          offered: Object.values(w.foodOffers ?? {}).some((offer) => offer.lotId === o.id && !offer.purchasedEventId && !offer.cancelledEventId) };
       }).sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id)),
     };
   };
@@ -39,17 +40,22 @@ export function villagePersonStatus(w: VillageWorld, id: VillageId): PersonStatu
   return { hour: w.hour, carried, home: inventory([`home_chest_${id}`, `granary_home_${id}`]),
     market: inventory([`granary_market_${id}`, ...(id === "S" ? ["stock_S"] : [])]),
     ...(w.fixture.bulkTransport ? { field: inventory(Object.values(w.physical.objects).filter((o) => o.id.startsWith("granary_field_") && o.ownerId === id).map((o) => o.id)) } : {}),
+    ...(person.effort ? { ground: inventory(Object.values(w.physical.objects).filter((o) => o.id.startsWith(`ground_${id}_`)).map((o) => o.id)) } : {}),
     body: { energy: person.energy, maxEnergy: w.fixture.body.maxEnergy, hunger: person.hunger, cold: person.cold,
       sleepDebt: person.needs?.sleepDebt ?? 0, mealHours: person.needs?.mealHours ?? 0, temperature, sheltered,
-      ...(person.sleep ? { sleep: sleepSignal(person.sleep, w.fixture.sleepRegulation!, person.energy, w.fixture.body.maxEnergy) } : {}),
+      ...(person.effort ? { effort: { ...effortSensation(person.effort, w.fixture.effortBody!, carried.mass), reserve: person.effort.reserve / 1000,
+        capacity: w.fixture.effortBody!.reserveCapacity / 1000, intake: person.effort.intake / 1000, absorbed: person.effort.absorbed / 1000,
+        consumed: person.effort.consumed / 1000, lost: person.effort.lost / 1000, unmet: person.effort.unmet / 1000,
+        pendingNutrition: person.effort.digestion.reduce((n, d) => n + d.amount, 0) / 1000 } } : {}),
+      ...(person.sleep ? { sleep: sleepSignal(person.sleep, w.fixture.sleepRegulation!, person.energy, w.fixture.body.maxEnergy, person.effort ? person.effort.fatigue / 1_000_000 : undefined) } : {}),
       activity: person.sleep?.mode === "settling" ? "settling" : person.activeProcessId ? w.processes[person.activeProcessId]?.kind ?? "wait" : "wait" } };
 }
 
 /** Display indices of physical needs, not a new emotion or a learned subjective value. */
 export function bodilyDiscomfort(body: PersonStatus["body"]) {
   const clamp = (n: number) => Math.round(Math.max(0, Math.min(1, n)) * 100);
-  const hunger = clamp(body.hunger / 3), cold = clamp(body.cold / 12);
-  const fatigue = clamp(1 - body.energy / body.maxEnergy), sleepiness = clamp(body.sleep?.sleepiness ?? body.sleepDebt / 24);
-  const discomfort = Math.max(hunger, cold, fatigue, sleepiness);
-  return { hunger, cold, fatigue, sleepiness, discomfort, comfort: 100 - discomfort };
+  const hunger = clamp(body.effort?.nutritionNeed ?? body.hunger / 3), cold = clamp(body.cold / 12);
+  const fatigue = clamp(body.effort?.fatigue ?? 1 - body.energy / body.maxEnergy), sleepiness = clamp(body.sleep?.sleepiness ?? body.sleepDebt / 24);
+  const discomfort = Math.max(hunger, cold, fatigue, sleepiness, clamp(body.effort?.loadDiscomfort ?? 0));
+  return { hunger, cold, fatigue, sleepiness, discomfort, comfort: body.effort ? clamp(body.effort.pleasure) : 100 - discomfort };
 }

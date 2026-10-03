@@ -1,0 +1,27 @@
+{
+  "source": "fixtures/recordings/autonomous-village-energy-effort-90.v2.json.gz",
+  "actorId": "F",
+  "rulesetId": "autonomous-village-energy-effort-v22",
+  "seed": 240924,
+  "untilHour": 2160,
+  "finalStateHash": "bda36c39",
+  "finalEventHash": "d09d1515",
+  "definition": "A visit runs from an actual market arrival to the next accepted travel process, in Event order. Initial residence is excluded. New offers exclude offers retained from earlier visits. This reads the saved history; it does not run hypothetical alternatives.",
+  "totals": {
+    "marketVisits": 0,
+    "grainCarryingVisits": 0,
+    "grainVisitsWithSale": 0,
+    "grainVisitsWithoutSale": 0,
+    "noSaleAndNoNewOffer": 0,
+    "noSaleWithNewOffer": 0,
+    "noSaleWithoutAnyTransaction": 0,
+    "noSaleWithGrainStillCarriedAtDeparture": 0,
+    "noSaleWithInsufficientOfferedQuantity": 0,
+    "noSaleDepartureReasons": {},
+    "grainSold": 0,
+    "grainRevenue": 0,
+    "ediblePurchases": 0
+  },
+  "firstOfferQuantityMismatches": [],
+  "visits": []
+}

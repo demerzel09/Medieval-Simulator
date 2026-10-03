@@ -1,5 +1,6 @@
 import type { VillageFixture } from "./autonomous-village";
 import { spatialLandEconomy90V1 } from "./land-economy-spatial";
+import { defaultEffortConfig } from "../packages/sim/effort-body";
 
 /** Distributed 40×24 economy; movement crosses many cells per world hour. */
 export const wideLandEconomy90V1: VillageFixture = {
@@ -102,3 +103,8 @@ export const foodPlanning90V1: VillageFixture = { ...structuredClone(foodJourney
 export const sleepRegulation90V1: VillageFixture = { ...structuredClone(foodPlanning90V1),
   sleepRegulation: { version: 1, requiredMinutes: 360, wakeTauMinutes: 1080, sleepTauMinutes: 180,
     initialPressure: 90031, initialHistory: [{ from: -1440, to: -360, quality: 0 }, { from: -360, to: 0, quality: 1000 }] } };
+
+/** v21 repairs material offers and binds the explicitly selected sowing lot. */
+export const offerIntegrity90V1: VillageFixture = { ...structuredClone(sleepRegulation90V1), offerIntegrity: true };
+/** v22 separates dietary supply, activity fatigue, present effort and delayed outcomes. */
+export const energyEffort90V1: VillageFixture = { ...structuredClone(offerIntegrity90V1), effortBody: { ...defaultEffortConfig } };

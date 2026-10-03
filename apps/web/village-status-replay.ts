@@ -12,7 +12,7 @@ export class VillageStatusReplay {
   constructor(private fixture: VillageFixture) {}
 
   private inventories(status: PersonStatus) {
-    return [status.carried, status.home, status.market, ...(status.field ? [status.field] : [])];
+    return [status.carried, status.home, status.market, ...(status.field ? [status.field] : []), ...(status.ground ? [status.ground] : [])];
   }
   private refresh(inventory: InventoryStatus) {
     inventory.items.sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id));
@@ -36,7 +36,7 @@ export class VillageStatusReplay {
     return taken;
   }
   private destination(status: PersonStatus, containerId: string) {
-    return containerId.startsWith("granary_field_") ? status.field :
+    return containerId.startsWith("ground_") ? status.ground : containerId.startsWith("granary_field_") ? status.field :
       containerId.startsWith("home_chest_") || containerId.startsWith("granary_home_") ? status.home :
       containerId.startsWith("granary_market_") || containerId === "stock_S" ? status.market : status.carried;
   }
@@ -81,13 +81,18 @@ export class VillageStatusReplay {
         actualHours: Number(data.actualSleep24), effectiveHours: Number(data.effectiveSleep24),
         mode: String(data.sleepMode), awakeHours: Number(data.awakeHours),
       });
+    } else if (event.kind === "effort_body_changed" && status.body.effort) {
+      for (const k of ["reserve", "intake", "absorbed", "consumed", "lost", "unmet", "pendingNutrition", "fatigue", "nutritionNeed", "loadDiscomfort", "pleasure", "relief"] as const)
+        if (data[k] !== undefined) status.body.effort[k] = Number(data[k]);
+      status.body.effort.digesting = Number(data.pendingNutrition) > 0;
+      status.body.energy = Number(data.energy); status.body.hunger = Number(data.hunger);
     } else if (event.kind === "process_started") status.body.activity = String(data.action);
     else if (event.kind === "sleep_attempted") { status.body.activity = "settling"; if (status.body.sleep) status.body.sleep.mode = "settling"; }
     else if (event.kind === "sleep_started") { status.body.activity = "sleep"; if (status.body.sleep) status.body.sleep.mode = "asleep"; }
     else if (["sleep_woke", "sleep_unavailable", "sleep_interrupted"].includes(event.kind) && status.body.sleep) {
       status.body.activity = "wait"; status.body.sleep.mode = "awake";
     }
-    else if (["process_completed", "process_failed", "sleep_interrupted"].includes(event.kind)) status.body.activity = "wait";
+    else if (["process_completed", "process_failed", "sleep_interrupted", "process_interrupted"].includes(event.kind)) status.body.activity = "wait";
     else if (event.kind === "rested" || event.kind === "slept") {
       status.body.energy = Number(data.energy);
       if (data.sleepDebt !== undefined) status.body.sleepDebt = Number(data.sleepDebt);
@@ -107,7 +112,7 @@ export class VillageStatusReplay {
       }
     } else if (event.kind === "plot_sown") {
       const kind = this.fixture.bulkTransport ? "grain" : "seed";
-      const seed = status.carried.items.find((item) => item.kind === kind);
+      const seed = status.carried.items.find((item) => data.grainLotId ? item.id === data.grainLotId : item.kind === kind);
       if (seed) this.take(status, seed.id, Number(data.seedQuantity));
     } else if (event.kind === "grain_loaded") {
       this.move(status, String(data.sourceId), String(data.lotId), quantity, `bag_${actor}`);
@@ -116,6 +121,9 @@ export class VillageStatusReplay {
     } else if (event.kind === "home_item_stored" || event.kind === "home_item_taken") {
       this.move(status, String(data.sourceId), String(data.objectId), quantity,
         event.kind === "home_item_stored" ? String(data.storeId) : `bag_${actor}`);
+    } else if (event.kind === "item_set_down" || event.kind === "ground_item_taken") {
+      if (status.ground) status.ground.capacity = Number(data.groundCapacity);
+      this.move(status, String(data.sourceId), String(data.objectId), quantity, event.kind === "item_set_down" ? String(data.storeId) : `bag_${actor}`);
     } else if (event.kind === "home_cash_stored" || event.kind === "home_cash_taken") {
       const amount = event.kind === "home_cash_stored" ? quantity : -quantity;
       status.carried.cash -= amount; status.home.cash += amount;
@@ -138,6 +146,9 @@ export class VillageStatusReplay {
       this.offers.set(String(data.offerId), String(data.lotId));
       const source = this.locate(status, String(data.lotId));
       if (source) source.item.offered = true;
+    } else if (event.kind === "surplus_offer_cancelled") {
+      const source = this.locate(status, String(data.lotId)); if (source) source.item.offered = false;
+      this.offers.delete(String(data.offerId));
     } else if (event.kind === "surplus_sold") {
       const buyerId = event.actors[1] as VillageId, buyer = this.statuses[buyerId];
       const sourceId = this.offers.get(String(data.offerId));

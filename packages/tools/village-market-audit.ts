@@ -20,6 +20,8 @@ const decisions = recording.decisions.filter((decision) => decision.actorId === 
 const decisionById = new Map(decisions.map((decision) => [decision.eventId, decision]));
 const salesAt = new Map(events.filter((event) => event.kind === "surplus_sold")
   .map((event) => [String(event.data.offerId), eventById.get(event.id)!.index]));
+const cancelledAt = new Map(events.filter((event) => event.kind === "surplus_offer_cancelled")
+  .map((event) => [String(event.data.offerId), eventById.get(event.id)!.index]));
 const grainOffers = events.filter((event) => event.kind === "surplus_offered" &&
   event.actors[0] === actorId && event.data.product === "grain");
 const snapshot = (c: VillageContext, index: number) => ({
@@ -31,7 +33,7 @@ const snapshot = (c: VillageContext, index: number) => ({
     .map(({ id, quantity, offered }) => ({ id, quantity, offered })),
   ownGrainOfferQuantities: grainOffers.flatMap((event) => {
     const lot = c.ownFoodLots?.find((lot) => lot.id === event.data.lotId);
-    if (!lot || eventById.get(event.id)!.index >= index || (salesAt.get(String(event.data.offerId)) ?? Infinity) < index) return [];
+    if (!lot || eventById.get(event.id)!.index >= index || (salesAt.get(String(event.data.offerId)) ?? Infinity) < index || (cancelledAt.get(String(event.data.offerId)) ?? Infinity) < index) return [];
     return [{ offerId: String(event.data.offerId), postedEventId: event.id, postedHour: event.hour,
       lotId: lot.id, offeredQuantity: Number(event.data.quantity), carriedQuantity: lot.quantity,
       quantitySufficient: lot.quantity >= Number(event.data.quantity) }];

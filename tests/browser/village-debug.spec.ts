@@ -480,14 +480,14 @@ test("inspector panes resize together with the map and the independent legend pu
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(800);
 });
 
-test("v20 default replays settling and actual sleep at their recorded quarter-hour times", async ({ page }) => {
+test("v20 archive replays settling and actual sleep at their recorded quarter-hour times", async ({ page }) => {
   test.setTimeout(180000);
   const { decodeVillageDocument } = await import("../../packages/sim/shared-village-json");
   const r = decodeVillageDocument<import("../../packages/sim/village-recording").VillageRecording>(
     JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-sleep-regulation-90.v2.json.gz")).toString()), true);
   const attempt = r.events.find((e) => e.kind === "sleep_attempted" && e.actors[0] === "F")!;
   const onset = r.events.find((e) => e.kind === "sleep_started" && e.actors[0] === "F")!;
-  await page.goto("/?village=land-economy");
+  await page.goto("/?village=land-economy&wood=sleep");
   await expect(page.getByLabel("表示する記録")).toHaveValue("sleep", { timeout: 60000 });
   const body = page.getByRole("region", { name: "人物の身体ステータス" });
   await expect(body).toContainText("24hの実睡眠");
@@ -514,4 +514,36 @@ test("v20 default replays settling and actual sleep at their recorded quarter-ho
   await page.getByLabel("表示する記録").selectOption("plan");
   await expect(page.getByLabel("表示する記録")).toHaveValue("plan", { timeout: 60000 });
   await expect(body).not.toContainText("24hの実睡眠");
+});
+
+test("v22 default shows separate nutrition, fatigue, load discomfort and pleasure from saved events", async ({ page }) => {
+  test.setTimeout(180000);
+  const { decodeVillageDocument } = await import("../../packages/sim/shared-village-json");
+  const r = decodeVillageDocument<import("../../packages/sim/village-recording").VillageRecording>(
+    JSON.parse(gunzipSync(readFileSync("fixtures/recordings/autonomous-village-energy-effort-90.v2.json.gz")).toString()), true);
+  await page.goto("/?village=land-economy");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("energy", { timeout: 90000 });
+  const body = page.getByRole("region", { name: "人物の身体ステータス" });
+  await expect(body).toContainText("栄養備蓄"); await expect(body).toContainText("吸収待ち");
+  await expect(page.getByRole("progressbar", { name: "荷重の不快", exact: true })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "身体の快", exact: true })).toBeVisible();
+  await expect(body).not.toContainText("100−不快");
+  const meal = r.events.find((e) => e.kind === "ate" && e.actors[0] === "F")!;
+  const minute = meal.hour * 60 + 15;
+  await page.getByLabel("土地経済の日").fill(String(Math.floor(minute / 1440) + 1));
+  await page.getByLabel("土地経済の時刻").fill(String(Math.floor(minute % 1440 / 60) + 1));
+  await page.getByLabel("土地経済の分").fill(String(minute % 60));
+  const actual = r.events.filter((e) => e.kind === "effort_body_changed" && e.actors[0] === "F" && Number(e.data.atMinute) <= minute).at(-1)!;
+  await expect(body.locator("dl div").filter({ hasText: /^栄養備蓄/ }).locator("dd")).toHaveText(`${Number(actual.data.reserve).toFixed(2)} / 96`);
+  await expect(body.locator("dl div").filter({ hasText: /^吸収待ち/ }).locator("dd")).toHaveText(Number(actual.data.pendingNutrition).toFixed(2));
+  await expect(page.getByRole("progressbar", { name: "疲労", exact: true })).toHaveAttribute("value", String(Math.round(Number(actual.data.fatigue) * 100)));
+  await expect(page.getByLabel("負担と成果の見込み")).toBeVisible();
+  await page.screenshot({ path: "/tmp/medieval-village-energy-effort.png", fullPage: true });
+  await page.getByLabel("表示する記録").selectOption("integrity");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("integrity", { timeout: 60000 });
+  await expect(body).not.toContainText("栄養備蓄");
+  await expect(page.getByRole("note")).toContainText("販売提示の整合修正");
+  await page.getByLabel("表示する記録").selectOption("sleep");
+  await expect(page.getByLabel("表示する記録")).toHaveValue("sleep", { timeout: 60000 });
+  await expect(body).not.toContainText("栄養備蓄");
 });

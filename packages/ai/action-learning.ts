@@ -1,11 +1,12 @@
 import type { VillageAttempt, VillageContext, VillageStimulus } from "./autonomous-world";
 
 /** Self-observation only. Neither observations nor model keys contain hidden world state. */
-export type ActionObservation = { sleepiness?: number; sleepDeficit?: number; site: string; energy: number; maxEnergy: number; cold: number;
+export type ActionObservation = { fatigue?: number; nutritionNeed?: number; sleepiness?: number; sleepDeficit?: number; site: string; energy: number; maxEnergy: number; cold: number;
   debt: number; hunger: number; mass: number; cash: number; meals: number; raw: number; sheltered: boolean };
 export function actionObservation(c: VillageContext): ActionObservation {
   return { site: c.siteId, energy: c.energy, maxEnergy: c.bulkTransport?.maxEnergy ?? c.energy,
     ...(c.needs?.sleep ? { sleepiness: c.needs.sleep.sleepiness, sleepDeficit: c.needs.sleep.deficitHours } : {}),
+    ...(c.effortBody ? { fatigue: c.effortBody.fatigue, nutritionNeed: c.effortBody.nutritionNeed } : {}),
     cold: c.cold, debt: c.needs?.sleepDebt ?? 0, hunger: c.hunger, mass: c.carriedMass,
     cash: c.ownCash, meals: c.edibleMeals ?? 0, raw: (c.grainCarried ?? 0) + (c.grainStores ?? []).reduce((n, s) => n + s.grain, 0),
     sheltered: c.needs?.sheltered ?? false };
@@ -33,7 +34,7 @@ const mean = (m: Mean | undefined, value: number): Mean => ({ count: (m?.count ?
   mean: (m?.mean ?? 0) + (value - (m?.mean ?? 0)) / ((m?.count ?? 0) + 1) });
 export function actionCondition(action: VillageAttempt["kind"], o: ActionObservation) {
   // A load of grain and the same load of another item share one effort model.
-  return o.sleepiness !== undefined ? `${action}:v20:load${Math.floor(o.mass / 4)}:${o.sheltered ? "inside" : "outside"}:cold${o.cold >= 8 ? 1 : 0}:sleepy${o.sleepiness >= .65 ? 1 : 0}` :
+  return o.fatigue !== undefined ? `${action}:v22:load${Math.floor(o.mass / 4)}:${o.sheltered ? "inside" : "outside"}:supply${o.nutritionNeed! > .75 ? 0 : 1}` : o.sleepiness !== undefined ? `${action}:v20:load${Math.floor(o.mass / 4)}:${o.sheltered ? "inside" : "outside"}:cold${o.cold >= 8 ? 1 : 0}:sleepy${o.sleepiness >= .65 ? 1 : 0}` :
     `${action}:load${Math.floor(o.mass / 4)}:${o.sheltered ? "inside" : "outside"}:cold${o.cold >= 8 ? 1 : 0}:debt${o.debt >= 24 ? 1 : 0}`;
 }
 function priorRate(action: VillageAttempt["kind"], o: ActionObservation): number {
