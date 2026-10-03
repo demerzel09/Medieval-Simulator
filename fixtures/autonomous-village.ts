@@ -8,6 +8,7 @@ export type VillageFixture = FeasibilityFixture & { informationDelayHours: numbe
   offerIntegrity?: true;
   effortBody?: import("../packages/sim/effort-body").EffortConfig;
   deathOnZeroEnergy?: true;
+  foodAcquisition?: true;
   effortLearning?: false;
   bulkTransport?: import("../packages/sim/load-movement").LoadTransport;
   homeStorage?: { capacity: number };

@@ -242,6 +242,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     if (!fixture.sleepRegulation || !fixture.offerIntegrity) throw Error("effort requires sleep and material integrity");
     checkEffortConfig(fixture.effortBody);
   }
+  if (fixture.foodAcquisition && !fixture.deathOnZeroEnergy) throw Error("food acquisition requires mortality rules");
   if (fixture.needs && (!fixture.breadEconomy || Object.values(fixture.needs).some((n) => !Number.isSafeInteger(n)) ||
     fixture.needs.dayTemperature < fixture.needs.nightTemperature || fixture.needs.homeInsulation < 0 ||
     fixture.needs.initialSleepDebt < 0 || fixture.needs.initialSleepDebt > 48 || fixture.needs.initialMealHours < 0 ||
@@ -1331,6 +1332,7 @@ function localView(w: VillageWorld, id: VillageId): VillageContext {
   const carriedSellerFood = id === "C" ? ownObjects(w, bag("C"), "food", "S")
     .reduce((n, o) => n + o.quantity, 0) : 0;
   return { day, hourOfDay: hourOfDay(w.hour), role: person.role, siteId,
+    ...(w.fixture.foodAcquisition ? { foodAcquisition: true as const } : {}),
     ...(w.fixture.foodJourneys ? { foodJourneys: true as const } : {}),
     ...(w.fixture.foodPlanning ? { foodPlanning: true as const,
       visiblePlantWork: Object.values(w.processes).filter((p) => p.kind === "gather_plant" &&

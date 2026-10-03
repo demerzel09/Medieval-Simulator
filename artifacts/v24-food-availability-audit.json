@@ -1,0 +1,4180 @@
+{
+  "source": "fixtures/recordings/autonomous-village-food-acquisition-90.v2.json.gz",
+  "recordingStateHash": "c98d56bb",
+  "recordingEventHash": "a9762281",
+  "rulesetId": "autonomous-village-food-acquisition-v24",
+  "seed": 240924,
+  "untilHour": 240,
+  "eventPrefixMatched": true,
+  "definition": "Availability snapshots, not proof of sufficient sustained supply or successful acquisition. Raw grain, regrowth and other owners' unoffered food are not immediately edible by this person. Hourly supply is sampled before the first person's decision; counts are per saved decision. Low reserve is below the configured supply threshold, depletion is exactly zero; pending absorption is separate. Own-food, absorption and world-availability counts can overlap. Initial-capacity coverage compares shortest-path travel plus the smallest legal meal's work budget without rest or absorption; it does not predict completion or rule out a journey with recovery.",
+  "noReadyFoodHours": 15,
+  "emptyIntervals": [
+    {
+      "from": 95,
+      "to": 109
+    }
+  ],
+  "people": {
+    "B1": {
+      "depletedDecisions": 0,
+      "noReadyFood": 0,
+      "readyFoodExists": 0,
+      "ownEdibleNow": 0,
+      "absorbing": 0,
+      "lowReserve": {
+        "decisions": 11,
+        "noReadyFood": 0,
+        "readyFoodExists": 11,
+        "ownEdibleNow": 0,
+        "absorbing": 0,
+        "actionsWithOwnFood": {}
+      }
+    },
+    "B2": {
+      "depletedDecisions": 0,
+      "noReadyFood": 0,
+      "readyFoodExists": 0,
+      "ownEdibleNow": 0,
+      "absorbing": 0,
+      "lowReserve": {
+        "decisions": 7,
+        "noReadyFood": 0,
+        "readyFoodExists": 7,
+        "ownEdibleNow": 3,
+        "absorbing": 2,
+        "actionsWithOwnFood": {
+          "eat": 3
+        }
+      }
+    },
+    "C": {
+      "depletedDecisions": 0,
+      "noReadyFood": 0,
+      "readyFoodExists": 0,
+      "ownEdibleNow": 0,
+      "absorbing": 0,
+      "lowReserve": {
+        "decisions": 11,
+        "noReadyFood": 0,
+        "readyFoodExists": 11,
+        "ownEdibleNow": 0,
+        "absorbing": 0,
+        "actionsWithOwnFood": {}
+      }
+    },
+    "F": {
+      "depletedDecisions": 0,
+      "noReadyFood": 0,
+      "readyFoodExists": 0,
+      "ownEdibleNow": 0,
+      "absorbing": 0,
+      "lowReserve": {
+        "decisions": 12,
+        "noReadyFood": 0,
+        "readyFoodExists": 12,
+        "ownEdibleNow": 4,
+        "absorbing": 2,
+        "actionsWithOwnFood": {
+          "eat": 4
+        }
+      }
+    },
+    "S": {
+      "depletedDecisions": 0,
+      "noReadyFood": 0,
+      "readyFoodExists": 0,
+      "ownEdibleNow": 0,
+      "absorbing": 0,
+      "lowReserve": {
+        "decisions": 0,
+        "noReadyFood": 0,
+        "readyFoodExists": 0,
+        "ownEdibleNow": 0,
+        "absorbing": 0,
+        "actionsWithOwnFood": {}
+      }
+    }
+  },
+  "hours": [
+    {
+      "hour": 1,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 2,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 3,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 4,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 5,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 6,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 7,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 8,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 9,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 10,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 11,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 12,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 13,
+      "readyNutrition": 912,
+      "ripeNutrition": 912,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 14,
+      "readyNutrition": 882,
+      "ripeNutrition": 792,
+      "storedEdibleNutrition": 90,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 15,
+      "readyNutrition": 804,
+      "ripeNutrition": 672,
+      "storedEdibleNutrition": 132,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 16,
+      "readyNutrition": 684,
+      "ripeNutrition": 432,
+      "storedEdibleNutrition": 252,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 17,
+      "readyNutrition": 588,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 276,
+      "rawGrain": {
+        "storedQuantity": 12,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 4
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 18,
+      "readyNutrition": 564,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 252,
+      "rawGrain": {
+        "storedQuantity": 32,
+        "byOwner": {
+          "S": 0,
+          "F": 4,
+          "C": 0,
+          "B1": 4,
+          "B2": 24
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 19,
+      "readyNutrition": 564,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 252,
+      "rawGrain": {
+        "storedQuantity": 52,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 4,
+          "B2": 24
+        },
+        "ripeCropQuantity": 20
+      }
+    },
+    {
+      "hour": 20,
+      "readyNutrition": 564,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 252,
+      "rawGrain": {
+        "storedQuantity": 52,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 4,
+          "B2": 24
+        },
+        "ripeCropQuantity": 20
+      }
+    },
+    {
+      "hour": 21,
+      "readyNutrition": 564,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 252,
+      "rawGrain": {
+        "storedQuantity": 52,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 4,
+          "B2": 24
+        },
+        "ripeCropQuantity": 20
+      }
+    },
+    {
+      "hour": 22,
+      "readyNutrition": 564,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 252,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 0
+      }
+    },
+    {
+      "hour": 23,
+      "readyNutrition": 564,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 252,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 0
+      }
+    },
+    {
+      "hour": 24,
+      "readyNutrition": 516,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 204,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 25,
+      "readyNutrition": 516,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 204,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 26,
+      "readyNutrition": 516,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 204,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 27,
+      "readyNutrition": 516,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 204,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 28,
+      "readyNutrition": 516,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 204,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 29,
+      "readyNutrition": 516,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 204,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 30,
+      "readyNutrition": 468,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 31,
+      "readyNutrition": 438,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 32,
+      "readyNutrition": 438,
+      "ripeNutrition": 312,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 33,
+      "readyNutrition": 438,
+      "ripeNutrition": 288,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 34,
+      "readyNutrition": 438,
+      "ripeNutrition": 288,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 35,
+      "readyNutrition": 438,
+      "ripeNutrition": 264,
+      "storedEdibleNutrition": 174,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 36,
+      "readyNutrition": 438,
+      "ripeNutrition": 240,
+      "storedEdibleNutrition": 198,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 37,
+      "readyNutrition": 438,
+      "ripeNutrition": 240,
+      "storedEdibleNutrition": 198,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 38,
+      "readyNutrition": 378,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 282,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 39,
+      "readyNutrition": 354,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 258,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 40,
+      "readyNutrition": 306,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 210,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 41,
+      "readyNutrition": 306,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 210,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 42,
+      "readyNutrition": 306,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 210,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 43,
+      "readyNutrition": 306,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 210,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 44,
+      "readyNutrition": 306,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 210,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 45,
+      "readyNutrition": 282,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 186,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 46,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 47,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 48,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 49,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 50,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 51,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 52,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 53,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 54,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 55,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 56,
+      "readyNutrition": 252,
+      "ripeNutrition": 96,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 57,
+      "readyNutrition": 252,
+      "ripeNutrition": 72,
+      "storedEdibleNutrition": 180,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 58,
+      "readyNutrition": 198,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 174,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 59,
+      "readyNutrition": 174,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 60,
+      "readyNutrition": 174,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 61,
+      "readyNutrition": 174,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 174,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 62,
+      "readyNutrition": 174,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 174,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 63,
+      "readyNutrition": 174,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 174,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 64,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 65,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 66,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 67,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 68,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 69,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 70,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 71,
+      "readyNutrition": 150,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 150,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 72,
+      "readyNutrition": 126,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 73,
+      "readyNutrition": 126,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 74,
+      "readyNutrition": 126,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 75,
+      "readyNutrition": 126,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 76,
+      "readyNutrition": 126,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 77,
+      "readyNutrition": 126,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 78,
+      "readyNutrition": 126,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 126,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 79,
+      "readyNutrition": 102,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 80,
+      "readyNutrition": 78,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 78,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 81,
+      "readyNutrition": 48,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 82,
+      "readyNutrition": 48,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 83,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 84,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 85,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 86,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 87,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 88,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 89,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 90,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 91,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 92,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 93,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 94,
+      "readyNutrition": 24,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 95,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 96,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 97,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 98,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 99,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 100,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 101,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 102,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 103,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 104,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 105,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 106,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 107,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 108,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 109,
+      "readyNutrition": 0,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 110,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 111,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 112,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 113,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 114,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 115,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 116,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 117,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 118,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 119,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 120,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 121,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 122,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 123,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 124,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 125,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 126,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 127,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 128,
+      "readyNutrition": 120,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 129,
+      "readyNutrition": 144,
+      "ripeNutrition": 144,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 130,
+      "readyNutrition": 114,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 90,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 131,
+      "readyNutrition": 108,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 60,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 132,
+      "readyNutrition": 102,
+      "ripeNutrition": 72,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 133,
+      "readyNutrition": 102,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 134,
+      "readyNutrition": 222,
+      "ripeNutrition": 192,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 135,
+      "readyNutrition": 222,
+      "ripeNutrition": 168,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 136,
+      "readyNutrition": 198,
+      "ripeNutrition": 168,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 137,
+      "readyNutrition": 198,
+      "ripeNutrition": 168,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 138,
+      "readyNutrition": 198,
+      "ripeNutrition": 168,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 139,
+      "readyNutrition": 198,
+      "ripeNutrition": 144,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 140,
+      "readyNutrition": 174,
+      "ripeNutrition": 144,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 141,
+      "readyNutrition": 174,
+      "ripeNutrition": 144,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 142,
+      "readyNutrition": 174,
+      "ripeNutrition": 144,
+      "storedEdibleNutrition": 30,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 143,
+      "readyNutrition": 174,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 144,
+      "readyNutrition": 174,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 145,
+      "readyNutrition": 174,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 146,
+      "readyNutrition": 144,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 147,
+      "readyNutrition": 144,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 148,
+      "readyNutrition": 144,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 149,
+      "readyNutrition": 144,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 150,
+      "readyNutrition": 144,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 151,
+      "readyNutrition": 144,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 152,
+      "readyNutrition": 144,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 153,
+      "readyNutrition": 144,
+      "ripeNutrition": 144,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 154,
+      "readyNutrition": 192,
+      "ripeNutrition": 192,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 155,
+      "readyNutrition": 162,
+      "ripeNutrition": 72,
+      "storedEdibleNutrition": 90,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 156,
+      "readyNutrition": 132,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 84,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 157,
+      "readyNutrition": 126,
+      "ripeNutrition": 72,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 158,
+      "readyNutrition": 126,
+      "ripeNutrition": 72,
+      "storedEdibleNutrition": 54,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 159,
+      "readyNutrition": 126,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 78,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 160,
+      "readyNutrition": 126,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 78,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 161,
+      "readyNutrition": 126,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 162,
+      "readyNutrition": 126,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 163,
+      "readyNutrition": 126,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 164,
+      "readyNutrition": 126,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 165,
+      "readyNutrition": 126,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 166,
+      "readyNutrition": 126,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 167,
+      "readyNutrition": 126,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 102,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 168,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 169,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 170,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 171,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 172,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 173,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 174,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 175,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 176,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 177,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 178,
+      "readyNutrition": 72,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 179,
+      "readyNutrition": 72,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 72,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 180,
+      "readyNutrition": 72,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 72,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 181,
+      "readyNutrition": 72,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 72,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 182,
+      "readyNutrition": 72,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 72,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 183,
+      "readyNutrition": 168,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 184,
+      "readyNutrition": 408,
+      "ripeNutrition": 360,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 185,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 186,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 187,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 188,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 189,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 190,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 191,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 192,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 193,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 194,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 195,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 196,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 197,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 198,
+      "readyNutrition": 528,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 199,
+      "readyNutrition": 504,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 200,
+      "readyNutrition": 504,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 201,
+      "readyNutrition": 504,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 24,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 202,
+      "readyNutrition": 480,
+      "ripeNutrition": 480,
+      "storedEdibleNutrition": 0,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 203,
+      "readyNutrition": 432,
+      "ripeNutrition": 360,
+      "storedEdibleNutrition": 72,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 204,
+      "readyNutrition": 408,
+      "ripeNutrition": 360,
+      "storedEdibleNutrition": 48,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 205,
+      "readyNutrition": 336,
+      "ripeNutrition": 240,
+      "storedEdibleNutrition": 96,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 206,
+      "readyNutrition": 288,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 72,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 24
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 207,
+      "readyNutrition": 288,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 71,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 23
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 208,
+      "readyNutrition": 216,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 216,
+      "rawGrain": {
+        "storedQuantity": 71,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 23
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 209,
+      "readyNutrition": 168,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 71,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 23
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 210,
+      "readyNutrition": 168,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 71,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 23
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 211,
+      "readyNutrition": 168,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 71,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 23
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 212,
+      "readyNutrition": 168,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 71,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 23
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 213,
+      "readyNutrition": 168,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 71,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 23
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 214,
+      "readyNutrition": 168,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 168,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 215,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 216,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 217,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 218,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 219,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 220,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 221,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 222,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 223,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 70,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 22
+        },
+        "ripeCropQuantity": 60
+      }
+    },
+    {
+      "hour": 224,
+      "readyNutrition": 144,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 144,
+      "rawGrain": {
+        "storedQuantity": 90,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 225,
+      "readyNutrition": 96,
+      "ripeNutrition": 0,
+      "storedEdibleNutrition": 96,
+      "rawGrain": {
+        "storedQuantity": 90,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 226,
+      "readyNutrition": 216,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 96,
+      "rawGrain": {
+        "storedQuantity": 90,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 227,
+      "readyNutrition": 216,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 96,
+      "rawGrain": {
+        "storedQuantity": 90,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 228,
+      "readyNutrition": 216,
+      "ripeNutrition": 120,
+      "storedEdibleNutrition": 96,
+      "rawGrain": {
+        "storedQuantity": 90,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 229,
+      "readyNutrition": 180,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 90,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 230,
+      "readyNutrition": 180,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 90,
+        "byOwner": {
+          "S": 0,
+          "F": 24,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 231,
+      "readyNutrition": 204,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 89,
+        "byOwner": {
+          "S": 0,
+          "F": 23,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 232,
+      "readyNutrition": 204,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 180,
+      "rawGrain": {
+        "storedQuantity": 89,
+        "byOwner": {
+          "S": 0,
+          "F": 23,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 233,
+      "readyNutrition": 204,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 180,
+      "rawGrain": {
+        "storedQuantity": 89,
+        "byOwner": {
+          "S": 0,
+          "F": 23,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 234,
+      "readyNutrition": 204,
+      "ripeNutrition": 24,
+      "storedEdibleNutrition": 180,
+      "rawGrain": {
+        "storedQuantity": 89,
+        "byOwner": {
+          "S": 0,
+          "F": 23,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 235,
+      "readyNutrition": 228,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 180,
+      "rawGrain": {
+        "storedQuantity": 89,
+        "byOwner": {
+          "S": 0,
+          "F": 23,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 236,
+      "readyNutrition": 204,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 89,
+        "byOwner": {
+          "S": 0,
+          "F": 23,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 237,
+      "readyNutrition": 204,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 88,
+        "byOwner": {
+          "S": 0,
+          "F": 22,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 238,
+      "readyNutrition": 204,
+      "ripeNutrition": 48,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 88,
+        "byOwner": {
+          "S": 0,
+          "F": 22,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 239,
+      "readyNutrition": 228,
+      "ripeNutrition": 72,
+      "storedEdibleNutrition": 156,
+      "rawGrain": {
+        "storedQuantity": 88,
+        "byOwner": {
+          "S": 0,
+          "F": 22,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    },
+    {
+      "hour": 240,
+      "readyNutrition": 204,
+      "ripeNutrition": 72,
+      "storedEdibleNutrition": 132,
+      "rawGrain": {
+        "storedQuantity": 88,
+        "byOwner": {
+          "S": 0,
+          "F": 22,
+          "C": 0,
+          "B1": 24,
+          "B2": 42
+        },
+        "ripeCropQuantity": 40
+      }
+    }
+  ]
+}

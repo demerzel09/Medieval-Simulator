@@ -1,86 +1,56 @@
-# 次のチャット：採集と穀物売却→パン購入の判断を改善する
+# 次の作業：v24の市場行程と探索を小さな対照で調べる
 
-更新: 2026-10-03。ユーザーはこの課題を新しいチャットで進め、コンテキストを一新したい。今回は引き継ぎ整理だけを行い、判断の改修にはまだ着手していない。
+更新: 2026-10-03。採集・穀物売却後の食品取得・現金購入の共同比較をv24として実装し、90日を記録した。通常条件のB1の生活改善は未達であり、実装済みの共同比較を最初から作り直さない。
 
 ## 再開時の入口
 
-- 作業ディレクトリ：`/home/demerzel/workspace/Medieval-Simulator`。実装の基点はmainの `ed56a57`（死亡v23、origin/mainへ反映済み）。引き継ぎ整理のcommitがこの後に加わる。まず `git status -sb`、`git log -3 --oneline`、適用される `AGENTS.md` を確認する。
-- Nodeが見つからない場合：`export PATH="$HOME/.local/node/bin:$PATH"`。
-- 最初にこの文書と[STATUS](STATUS.md)で現在と次の作業を確認し、短く整理した[DESIGN](DESIGN.md)・[DECISIONS](DECISIONS.md)で原則・維持条件を読む。今回の分析には[B1と死亡v23](baseline/MORTALITY_V23_RESULT.md)と[供給・取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)を使う。追加の設計・研究・旧版は[文書案内](README.md)から必要なときにだけ参照する。
-- 以前の長い引き継ぎは[履歴](archive/NEXT_SESSION_HISTORY_2026-10-03.md)へ保存した。通常の再開では読み込まなくてよい。旧版の「最新」「次の作業」は現行指示ではない。
+- 作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。`git status -sb`、`git log -3 --oneline`、適用される `AGENTS.md` を確認する。Nodeが見つからない場合は `export PATH="$HOME/.local/node/bin:$PATH"`。
+- この文書と[STATUS](STATUS.md)で現在を確認し、[DESIGN](DESIGN.md)・[DECISIONS](DECISIONS.md)で境界と維持条件を読む。
+- 今回の根拠は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)と[実測JSON](../artifacts/v24-food-acquisition-result.json)。前版には[v23のB1分析](baseline/MORTALITY_V23_RESULT.md)、供給と取得の区別には[監査の原則](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)を使う。身体の変更・検証には[v22の実装](baseline/ENERGY_EFFORT_V22_RESULT.md)を追加する。全文書をまとめて読み込まない。
 
-## 次の目的と確認済みの原因
+## 実装済みと現在の問題
 
-**本人が知る採集、穀物売却後のパン取得、既存現金での食品購入を同じ候補群で検討し、食料が少ないことだけで売却・購入の候補が消える判断を改善する。** 現在の不快、取得・摂食・吸収までの時間、労働負担、成立見込み、未成立時の代替を扱う。
+v24では本人が観察／記憶した採集、自分の保管食品、遠方の自己穀物庫からの取得→運搬→売却→食品購入、現金購入、未確認の探索を共同比較する。食品0〜1食でも売却候補を生成し、旧版の先行returnを改めた。有限の目的を保存し、到着後の現物・提示・競合と身体を再確認する。対応する本人の結果から活動疲労・販売・購入の見込みを更新する。採集先の枯渇で市場の再試行を止めない。
 
-現在の `effortDecision` は上から条件を調べ、最初に選べた行動を返す。**可食の手持ち2食未満の採集・探索が、穀物売却の新規検討より先に返る。** 食料が減ると、余剰穀物と資金不足があっても売却を検討しにくい。積載量1〜5単位の売却行程比較はあるが、採集との共同比較はない。売却開始には食品持参などの条件があり、別地点の所有畑へ取りに行く条件は食品2食以上・8〜13時・疲労0.35未満などでさらに狭い。
+しかし通常条件の90日では穀物・パン売買が各0件。B1は5食、6日目23:15死亡で、旧v23の7食・7日目11:30から改善しない。Cも早く死亡する。Fは24食・25日目11:30まで延び、S・B2は生存する。全員の生活継続・持続経済は未達である。
 
-市場で買うには購入可能な有効な提示を現地で観察する必要がある。事前の行程評価では購入時間を仮定し、パン取得の成立を十分予測していない。市場を食品探索の行先にもしていない。詳細な優先順・条件は上記のv23文書に保存済み。
+B1はhour16／23／38にベリー、58／78に野草を食べ、以後65.25時間食品を摂れず死亡する。穀物は畑20・自宅4、現金0。hour32の穀物3単位行程は身体条件で除外されず、吸収まで14時間・成立見込み0.25・便益5.14／負担10.26で評価−5.13。覚えた野草地点の確認は8時間・評価1.44で選ばれた。候補消失の問題と、時間・成立見込み・価値や実際の供給不足を区別する。
 
-| B1の時点 | 実際の行動 |
-|---|---|
-| hour35 | 穀物3単位を価格2でSへ売却 |
-| hour40 | パン1単位を価格1で購入 |
-| hour43〜44 | 疲労回復を優先し、次の販売提示を撤回して市場の自分の庫へ保管 |
-| hour48以後 | 現金1、未加工穀物21を残し、食品が減ると採集・探索を優先 |
-| 7日目11:30 | v23では栄養・体力が0となり死亡 |
+[v24の供給監査](../artifacts/v24-food-availability-audit.json)の240時間では可食供給ゼロが15回（hour95〜109）。B1の低備蓄11判断には世界の食品が存在するが、現地の自己食品と吸収待ちは0。食品の存在を取得可能性へ読み替えない。v23の死亡規則により備蓄0の判断は保存されないので、枯渇を身体・死亡Eventで追う。
 
-穀物21は携帯中ではなく畑14・自宅4・市場3。売却には保管品の取得・運搬と買い手の成立が必要。取引機能自体が未実装という問題ではない。[実測と判断抜粋](../artifacts/v23-mortality-result.json)を基準にする。
+## 次の作業順序
 
-## 維持する設計と実装範囲
+1. B1の判断と実際の供給・提示・他の本人の行動を照合する。未観察の世界状態は監査だけに使い、人格の正解へ渡さない。食品が存在するだけで取得可能だったとしない。
+2. 市場行程を小さな成立・不成立対照で測る。穀物庫への往路、指定ロットの積載、荷重付きの運搬、提示、実際の買い手、加工と食品提示、購入・食事・吸収、売れない場合の保管・帰路を段階別に確認する。本人が知り得る見込みと実結果を対応させる。
+3. 採集と探索を対照に残す。近場の採集が十分／既訪問先が枯渇／再生待ち／競合／市場の提示が実在／買い手不在／可食供給ゼロを区別する。未確認の探索が常に勝つ、あるいは全て負の評価で待機する場合を測る。単に売却優先へ逆転しない。
+4. 時間・確率の見込み、初期方策の価値、身体の世界法則を分けて変更する。未達を身体消耗の低減、供給の増加、穀物の直接食事、現金からの栄養生成で隠さない。
+5. 判断規則を変える場合は別fixture／ruleset／記録（次版は仮にv25）を作る。v24・v23・v22の同梱記録を保持する。最初の10日、全判断再計算・保存再開・Event投影を確認してから90日比較とリプレイを行う。食事間隔と最後の食事から死亡までの空白を別に報告する。
+6. 対象テスト・必要なブラウザ・型検査を含むビルド、コンテンツ・文書リンク・差分を確認し、実行した範囲だけを文書へ記す。mainへのcommit/pushの既存許可は継承する。
 
-1. 判断には観察・到達した刺激・本人の記憶と感覚を使う。他人の在庫、未観察の提示、未来の供給、栄養備蓄の実量を正解として渡さない。過去の市場情報や探索先は記憶／未確認の見込みとして扱う。
-2. 穀物は直接食べられず腐敗しない。パンは加工が必要で製造から3日で腐敗する。野草・ベリーは直接食べられる。代金を直接栄養へ変換しない。農夫は自分の畑だけを作業する。
-3. 栄養の吸収には2時間必要。生活・活動・荷重支持で消費し、休息は栄養を生成しない。栄養と活動疲労は別状態で、体力は派生する活動余力。身体は15分、作業・移動の判断と中断は1時間の区切り。係数変更を判断改善と混ぜない。
-4. 現在の不快、目的に伴う有限の我慢、対応する経験からの見込み更新を維持する。このrule人格の候補比較を改善し、他の人格実装まで同じ採点式に固定しない。ランダムな行動選択で問題を隠さない。
-5. **内部の体力0で死亡するv23の指定を維持する。** 画面の丸めた0で判定しない。疲労による0も対象。死亡時刻・原因Event・身体・位置を保存し、作業・睡眠・販売を止める。死者の身体と判断は固定し、所有物を保持する。生存者・生態・食品腐敗は進む。相続・遺品取得・死体劣化は未実装。
-6. 供給不足、加工・取引の停滞、本人の取得・摂食の見逃しを区別する。因果と帳簿が整合する不足・死亡は有効な結果。全員の90日生存を保証する供給増加や消耗低減を入れない。持続生活の未達は別に報告する。
-7. 判断規則を変える場合は別fixture／ruleset／記録（次版は仮にv24）を作り、v23と旧v22の圧縮記録を上書きしない。まず小さな食品経済の整合を確立し、その後に技能獲得・需要に応じた職の切替を進める。今回、技能・転職・薪・雇用は追加しない。
+## 維持する条件
 
-## 次の作業順序と検証
+本人の刺激・記憶・感覚、現物・所有・貨幣・容量、農夫は自分の畑だけ、穀物は非可食で腐敗なし、パンは2時間加工と3日の期限、栄養は2時間後に吸収、栄養と活動疲労の分離、身体15分／行動の再検討1時間を維持する。内部の体力0で死亡し、身体・位置・判断を固定して所有物を残す。技能・転職・薪・雇用・相続は食品経済の整合の後である。
 
-1. B1の記録とコードを照合し、候補が消える分岐、既存の予測・経験更新を確認する。売買・死亡の既存実装を最初から作り直さない。
-2. 採集／保管穀物の取得→運搬→売却→食品取得／現金購入の候補生成と比較を設計する。取得・摂食・吸収までの時刻、負担、期限、競合、提示と買い手の成立見込み、未成立時の代替と帰路を明示する。「食品2食必須」を外すだけで成功としない。単に売却優先へ逆転して採集を封じない。
-3. 有限の目的を維持しつつ、実行中も実際の食品・提示・身体を再確認する。売却成功、購入、時間切れ、疲労／避難による撤回を区別し、対応した本人の経験で見込みを更新する。
-4. 意味のある対照を作る：採集先は枯渇しているが市場の食品行程が成立する場合、既存現金で直接買える場合、採集が小さい負担で足りる場合、パン提示／買い手がいない場合、可食供給自体がゼロの場合。候補の除外理由、選択・取得・摂食、所有と貨幣の保存、死亡後の停止を確認する。
-5. 候補・選択理由・見込み・実結果を記録し、既存の行動ログで追跡できるようにする。まず最初の10日と保存再開・判断再計算を確認し、その後90日の新旧比較・リプレイへ進む。B1の食事時刻と間隔、栄養推移、売買・未成立理由、死亡を報告する。食品の存在だけで本人が取得できたと判断しない。
-6. 対象テスト、必要なブラウザ確認、型検査を含むビルドと文書を更新する。全体テスト・90日・ブラウザを実行したか明記し、確認した範囲だけを報告する。mainへのcommit/pushの既存許可は継承する。
+## コードと再現
 
-## 主なコードと検証の出発点
+候補と有限の目的は[food-acquisition](../packages/ai/food-acquisition.ts)、接続は[effort-choice](../packages/ai/effort-choice.ts)と[learning-needs](../packages/ai/learning-needs.ts)。観察と現物取引は[世界](../packages/sim/autonomous-world.ts)、版は[fixture](../fixtures/land-economy-wide.ts)と[記録](../packages/sim/village-recording.ts)。[対照テスト](../tests/food-acquisition-v24.test.ts)、[行程監査CLI](../packages/tools/village-acquisition-audit.ts)、[供給監査CLI](../packages/tools/village-food-audit.ts)、[画面](../apps/web/village-debug.tsx)が検証の出発点。
 
-| ファイル | 用途 |
-|---|---|
-| [effort-choice](../packages/ai/effort-choice.ts) | 現行の優先順、積載量比較、疲労・取引の本人の記憶 |
-| [learning-needs](../packages/ai/learning-needs.ts)、[food-planning](../packages/ai/food-planning.ts)、[food-journeys](../packages/ai/food-journeys.ts) | 判断の接続、食品行程・期限・競合と目的。旧版へ単純に戻さない |
-| [世界](../packages/sim/autonomous-world.ts)、[身体](../packages/sim/effort-body.ts) | 現地観察、現物取引、身体・死亡・保存則 |
-| [fixture](../fixtures/land-economy-wide.ts)、[記録](../packages/sim/village-recording.ts)、[CLI](../packages/tools/autonomous-village.ts) | 版と記録生成・再実行 |
-| [画面](../apps/web/village-debug.tsx)、[Event投影](../apps/web/village-status-replay.ts) | 判断候補・履歴、死亡と身体・在庫の表示 |
-| [死亡テスト](../tests/mortality-v23.test.ts)、[v22テスト](../tests/energy-effort-v22.test.ts)、[食料監査テスト](../tests/village-food-audit.test.ts) | 回帰・対照の出発点 |
+F5の先頭「自律: デバッグ画面（最新 v24）」／`/?village=land-economy&wood=acquisition`が現行。v23は `&wood=mortality`、v22は `&wood=energy`。seed `240924`、90日は2160時間。
 
-v23で確認済み：死亡6/6、既存v22 8/8、対象ブラウザ2/2、新旧90日記録の再実行、240時間の判断再計算・保存再開・身体と在庫のEvent投影、本番ビルド・コンテンツ・文書リンク・起動設定・差分。全体の `npm test` は未実行。今回の引き継ぎ整理ではシミュレーションを再計測しない。
-
-## 起動と再現
-
-F5の先頭「自律: デバッグ画面（最新 v23）」／`/?village=land-economy&wood=mortality` が現行。旧v22は `&wood=energy`。seed `240924`、90日は2160時間。
-
-| 規則 | 同梱90日記録 | 状態hash / Event hash |
+| 規則 | 同梱記録 | 状態hash / Event hash |
 |---|---|---|
-| v23 | [死亡あり](../fixtures/recordings/autonomous-village-mortality-90.v2.json.gz) | `1a773125` / `80241c8f` |
+| v24 | [共同比較](../fixtures/recordings/autonomous-village-food-acquisition-90.v2.json.gz) | `c98d56bb` / `a9762281` |
+| v23 | [死亡追加](../fixtures/recordings/autonomous-village-mortality-90.v2.json.gz) | `1a773125` / `80241c8f` |
 | v22 | [死亡追加前](../fixtures/recordings/autonomous-village-energy-effort-90.v2.json.gz) | `bda36c39` / `d09d1515` |
 
-v23は91443 Event。B1は7日目11:30、Cは8日目10:30、Fは8日目20:45に栄養0で死亡し、S・B2は90日終了時に生存。全員の食事継続・経済持続は未達。v22の最初の240時間では可食供給ゼロが42回、hour145には未加工穀物107が残る。[供給監査JSON](../artifacts/v22-food-availability-audit.json)も比較の基準。
-
 ```bash
-# 現行の再計測／保存（同梱記録を上書きしない）
-npm run autonomy:village -- 90 --scenario land-mortality --record /tmp/v23-check.json.gz
-# 保存済みの全判断入力・全Event・状態の再実行照合
-npm run autonomy:village -- replay fixtures/recordings/autonomous-village-mortality-90.v2.json.gz
-# B1の全履歴
-npm run autonomy:village -- history fixtures/recordings/autonomous-village-mortality-90.v2.json.gz B1 /tmp/b1-history.json
-# 旧v22の供給と取得を区別する接頭部分の監査
-npx tsx packages/tools/village-food-audit.ts fixtures/recordings/autonomous-village-energy-effort-90.v2.json.gz --until-hour 240 --output /tmp/v22-food-audit.json
-# 変更時の対象回帰。新しい判断の対照テストは別途追加する
-npx vitest run tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
+# 再計測は同梱記録を上書きしない
+npm run autonomy:village -- 90 --scenario land-food-acquisition --record /tmp/v24-check.json.gz
+npm run autonomy:village -- replay fixtures/recordings/autonomous-village-food-acquisition-90.v2.json.gz
+npm run autonomy:village -- history fixtures/recordings/autonomous-village-food-acquisition-90.v2.json.gz B1 /tmp/b1-v24.json
+npx tsx packages/tools/village-acquisition-audit.ts fixtures/recordings/autonomous-village-food-acquisition-90.v2.json.gz --output /tmp/v24-acquisition.json
+npx tsx packages/tools/village-food-audit.ts fixtures/recordings/autonomous-village-food-acquisition-90.v2.json.gz --until-hour 240 --output /tmp/v24-supply.json
+npx vitest run tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
 ```
 
-記録はgzip＋共有JSON形式。直接使う場合は `decodeVillageDocument(..., true)` で不変の読取として復元する。CLIの `replay` は保存判断を使うため、新人格の判断自体の検証には、保存入力から本人の応答を再計算する確認も必要。
+gzip＋共有JSONは `decodeVillageDocument(..., true)` で不変の読取として復元する。replayは保存判断による世界の検証なので、本人の判断は保存入力からの再計算でも確認する。確認済みの範囲と全体テストの結果は[STATUS](STATUS.md)へ集約する。

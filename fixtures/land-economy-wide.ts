@@ -110,3 +110,5 @@ export const offerIntegrity90V1: VillageFixture = { ...structuredClone(sleepRegu
 export const energyEffort90V1: VillageFixture = { ...structuredClone(offerIntegrity90V1), effortBody: { ...defaultEffortConfig } };
 /** v23 keeps v22 choices and adds terminal death at zero activity capacity. */
 export const mortality90V1: VillageFixture = { ...structuredClone(energyEffort90V1), deathOnZeroEnergy: true };
+/** v24 compares personal food acquisition routes without changing supply or physiology. */
+export const foodAcquisition90V1: VillageFixture = { ...structuredClone(mortality90V1), foodAcquisition: true };

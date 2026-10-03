@@ -22,6 +22,7 @@ export type VillageContext = { day: number; hourOfDay: number; role: VillageRole
   sleepRegulation?: true;
   offerIntegrity?: true;
   effortBody?: import("../sim/effort-body").ReturnEffortSensation;
+  foodAcquisition?: true;
   knownLandmarks?: Record<string, { x: number; y: number }>;
   activeProgress?: { elapsed: number; remaining: number; destinationId?: string };
   ownGroundItems?: { id: string; kind: string; quantity: number; siteId: string; cell: { x: number; y: number } }[];

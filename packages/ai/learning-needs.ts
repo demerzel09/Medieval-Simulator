@@ -1,4 +1,5 @@
 import { beginEffortPrediction } from "./effort-choice";
+import { bindAcquisitionAttempt } from "./food-acquisition";
 import { beginActionPrediction, checkActionLearning, newActionLearning, receiveActionOutcomes } from "./action-learning";
 import type { VillageModel } from "./autonomous-world";
 import { trackedNeedsVillageModel } from "./tracked-needs";
@@ -24,6 +25,7 @@ export const learningNeedsVillageModel: VillageModel = { decide(input) {
       action.kind === "sow_plot" ? 1 : 0;
     const p = beginActionPrediction(learning, input.actorId, input.at, input.knownContext, action, hours);
     if (input.knownContext.effortBody) beginEffortPrediction(m.effort!, input.knownContext, action, p.id, input.at);
+    if (input.knownContext.foodAcquisition) bindAcquisitionAttempt(m, action, p.id, input.at);
     if (input.knownContext.sleepRegulation) predictSleepAction(input.knownContext, m.sleep!, action, p.id, p.selected === "experience" ? p.learnedRate : p.priorRate);
   }
   else if (input.knownContext.sleepRegulation) predictSleepAction(input.knownContext, m.sleep!, undefined);

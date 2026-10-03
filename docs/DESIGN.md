@@ -27,6 +27,6 @@
 
 ## 実装の範囲を判断する資料
 
-現行の標準は死亡処理を含む5人の自律生活v23。具体的な身体・食品・所有・死亡条件は[DECISIONS](DECISIONS.md)、測定値と未達は[STATUS](STATUS.md)。本編M0〜M3、E1／A1〜A3、旧個人市場などは別系列の回帰資料で、その完走・利益を現行の持続経済の証拠にしない。
+現行の標準は食品取得の共同比較と死亡処理を含む5人の自律生活v24。具体的な身体・食品・所有・死亡条件は[DECISIONS](DECISIONS.md)、測定値と未達は[STATUS](STATUS.md)。本編M0〜M3、E1／A1〜A3、旧個人市場などは別系列の回帰資料で、その完走・利益を現行の持続経済の証拠にしない。
 
 人格の外側の契約は[自律行動契約](foundations/AUTONOMY_INTERFACE_CONTRACT.md)と[人格設計](foundations/AGENT_INTERFACES_v2.md)、所在・容量・所有は[物体モデル](foundations/PHYSICAL_OBJECT_MODEL.md)を必要時に参照する。初版企画や長期設計は[foundationsの案内](foundations/README.md)から読む。将来機能の記述を実装済みと判断しない。

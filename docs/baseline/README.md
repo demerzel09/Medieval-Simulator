@@ -6,18 +6,19 @@
 
 | 文書 | 区分 | 参照する内容 |
 |---|---|---|
-| [MORTALITY_V23_RESULT](MORTALITY_V23_RESULT.md) | 現行v23の実装・実測 | 死亡とB1の判断。今回の改修の出発点 |
+| [FOOD_ACQUISITION_V24_RESULT](FOOD_ACQUISITION_V24_RESULT.md) | 現行v24の実装・実測 | 共同比較、本人の成立見込み、生活改善の未達 |
+| [MORTALITY_V23_RESULT](MORTALITY_V23_RESULT.md) | 前版v23の実装・比較基準 | 死亡とB1の判断。今回の改修の出発点 |
 | [FOOD_SHORTAGE_AND_ACCESS_AUDIT](FOOD_SHORTAGE_AND_ACCESS_AUDIT.md) | 評価原則と前版v22の監査 | 供給不足／取得・摂食の問題を分ける。数値はv22の測定 |
-| [ENERGY_EFFORT_V22_RESULT](ENERGY_EFFORT_V22_RESULT.md) | 前版v22の実装・比較基準 | 栄養・活動疲労はv23へ継承。行動と90日の数値はv22 |
+| [ENERGY_EFFORT_V22_RESULT](ENERGY_EFFORT_V22_RESULT.md) | 前版v22の実装・比較基準 | 栄養・活動疲労はv23/v24へ継承。行動と90日の数値はv22 |
 | [ENERGY_EFFORT_AND_DELAYED_REWARD_DESIGN](ENERGY_EFFORT_AND_DELAYED_REWARD_DESIGN.md) | 研究と設計、一部実装済み | v20当時の説明とv22以降の設計を区別。実装済みはSTATUS |
 | [MODULAR_PREDICTION_AND_ACTION_PLAN](MODULAR_PREDICTION_AND_ACTION_PLAN.md) | 継続する設計、一部実装済み | 状況別小モデルと予測・結果の対応。全面的なモデル競合・行動評価は未完了 |
 | [FOOD_ECONOMY_SKILLS_PLAN](FOOD_ECONOMY_SKILLS_PLAN.md) | 将来の実装順序 | 食品経済の整合を先に確立し、その後に技能獲得・職選択 |
 | [SLEEP_AND_FATIGUE_BODY_MODEL](SLEEP_AND_FATIGUE_BODY_MODEL.md) | 睡眠の設計を継承、旧身体の説明を含む | 睡眠履歴・圧・昼夜は継承。体力から疲労を作る記述は旧v20 |
 | [NEEDS_AND_ACTION_SELECTION_PLAN](NEEDS_AND_ACTION_SELECTION_PLAN.md) | 初版の設計と継承する原則 | v12以降に実装が進んだ。現在の係数・未達・次の作業はSTATUSとNEXT_SESSION |
 | [AVERSION_AND_EFFORT_ACTION_DESIGN](AVERSION_AND_EFFORT_ACTION_DESIGN.md) | 前版v20の監査・研究・設計 | Fの未売却往復の分析。提示整合と身体の後続実装はv21/v22 |
-| [PLAYTEST](PLAYTEST.md) | 別系列：本編M3の未実施の人間試遊 | 自律生活v23の判断改善とは別の受入 |
+| [PLAYTEST](PLAYTEST.md) | 別系列：本編M3の未実施の人間試遊 | 自律生活v24の判断検討とは別の受入 |
 
-今回のB1の改修は、まずMORTALITY_V23_RESULTとFOOD_SHORTAGE_AND_ACCESS_AUDITから読む。身体の詳細や研究を検討するときに他の資料を追加する。前版の記録と現在へ継承した法則を区別し、設計書の未実装項目はSTATUSで照合する。
+今回の市場行程と探索の検討は、まずFOOD_ACQUISITION_V24_RESULTを読み、MORTALITY_V23_RESULTとFOOD_SHORTAGE_AND_ACCESS_AUDITで前版と評価原則を照合する。身体の詳細や研究を検討するときに他の資料を追加する。前版の記録と現在へ継承した法則を区別し、設計書の未実装項目はSTATUSで照合する。
 
 ## 旧版・旧段階
 
