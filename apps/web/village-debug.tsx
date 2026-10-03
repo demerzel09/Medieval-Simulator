@@ -683,25 +683,6 @@ export default function VillageDebug() {
             `${plantNames[p.species]} ${stageNames[p.stage] ?? p.stage} ${p.available}${p.ownerId ? ` · 所有者 ${p.ownerId} · ${p.farmId}` : ""}`).join(" / ") || "植物なし"} · {localAnimals.map((a) => a.id).join(" / ") || "動物なし"}</p>
           {localStocks.map((stock) => <p key={stock.ownerId}>穀物庫 {stock.ownerId}: {stock.quantity}単位 · 所有者 {stock.ownerId}</p>)}
         </section>
-        <section className="village-overview" aria-label="全員の状態">
-          <h2>全員の状態 <small>表示時点・人物をクリックで追跡</small></h2>
-          <div className="village-overview-scroll"><table className="village-overview-table">
-            <thead><tr><th>人物</th><th>セル</th><th>行動</th><th>所持金</th><th>重量</th><th>体力</th><th>空腹</th><th>寒さ</th><th>睡眠不足</th></tr></thead>
-            <tbody>{people.map((id) => {
-              const status = snapshot.statuses[id];
-              return <tr key={id} className={selected === id ? "is-selected" : ""}>
-                <th scope="row"><button type="button" aria-label={`${id} の詳細を表示`} aria-pressed={selected === id}
-                  onClick={() => { setSelected(id); setFocusCell(snapshot.positions[id]); }}>{id}</button></th>
-                <td>{pointKey(snapshot.positions[id])}</td><td>{activityLabels[snapshot.activeActions[id] ?? ""] ?? "待機"}</td>
-                <td>{status?.carried.cash ?? "—"}</td><td>{status ? `${status.carried.mass}/${status.carried.capacity}` : "—"}</td>
-                <td className={status && status.body.energy < status.body.maxEnergy * .3 ? "village-value-alert" : ""}>{status ? `${status.body.energy}/${status.body.maxEnergy}` : "—"}</td>
-                <td className={status && status.body.hunger > 0 ? "village-value-alert" : ""}>{status?.body.hunger ?? "—"}</td>
-                <td>{status?.body.cold ?? snapshot.bodies[id]?.cold ?? "—"}</td>
-                <td>{status?.body.sleepDebt ?? snapshot.bodies[id]?.sleepDebt ?? "—"}</td>
-              </tr>;
-            })}</tbody>
-          </table></div>
-        </section>
       </section>
       <div role="separator" aria-label="地図と人物パネルの幅" aria-orientation="vertical"
         aria-valuemin={560} aria-valuemax={Math.max(560, Math.floor(layoutWidth - 332))}

@@ -702,22 +702,9 @@ footer {
 .village-inventory-table summary > small { display: inline; margin-left: 3px; font-size: 10px; white-space: nowrap; }
 .village-offer-tag { color: #edc57e; font-size: 10px; white-space: nowrap; }
 .village-debug .e1-legend { margin: 4px 0; font-size: 10px; }
-.village-overview { margin-top: 6px; border-top: 1px solid #425d47; }
 .village-cell-inspector { flex: 0 0 auto; padding: 4px 0; border-top: 1px solid #425d47; }
 .village-cell-inspector h3 { margin: 0 0 2px; font-size: 12px; }
 .village-debug .village-cell-inspector p { margin: 0; font-size: 11px; }
-.village-overview { flex: 0 0 auto; }
-.village-overview h2 { margin: 4px 0; font-family: inherit; font-size: 12px; }
-.village-overview h2 small { margin-left: 6px; font-weight: normal; font-size: 10px; }
-.village-overview-scroll { max-width: 100%; overflow: auto; }
-.village-overview-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.village-overview-table th, .village-overview-table td { padding: 3px 5px; border-bottom: 1px solid #344b3b; text-align: right; }
-.village-overview-table th:first-child, .village-overview-table td:nth-child(3) { text-align: left; }
-.village-overview-table thead th { color: #aebfaa; font-weight: normal; }
-.village-overview-table button { padding: 1px 5px; min-width: 30px; font-size: 11px; }
-.village-overview-table .is-selected { background: #344b36; }
-.village-overview-table .is-selected button { border-color: #e8ca8d; color: #fff0c5; }
-.village-value-alert { color: #f1b986; font-weight: bold; }
 .village-event-details { color: #a7b0a2; font-size: 10px; }
 .village-event-details summary { cursor: pointer; overflow-wrap: anywhere; }
 .village-event-details code { display: block; overflow-wrap: anywhere; margin: 3px 0; color: #c4d0bf; font-size: 11px; }
