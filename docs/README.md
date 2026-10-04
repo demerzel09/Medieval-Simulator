@@ -13,6 +13,8 @@
 
 今回の課題は、現行ruleを基本要素の予測・制御と上位の戦略へ分け、共用・上下のフィードバックを持つ構成が成立するかを検討することである。[HMOSAICを参考にした分割案](foundations/HMOSAIC_MODULE_DESIGN.md)にコードの対応、入出力、移行案、未決をまとめた。未採用の設計案であり、本体の改修や実装済みの階層学習を意味しない。
 
+未経験の行程を既知の子から評価し、実利得と予測の差を各層へ戻す方法は、[利得予測と経験更新の補足](foundations/HMOSAIC_VALUE_AND_FEEDBACK_DESIGN.md)にまとめた。親の目的による評価、部分適用、誤差と学習の割当てを今回の設計の中心として読む。
+
 比較基準を調べる場合は、[共同比較v24](baseline/FOOD_ACQUISITION_V24_RESULT.md)、[B1の分析と死亡v23](baseline/MORTALITY_V23_RESULT.md)、[供給と取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)を追加で読む。栄養・活動疲労のコードを変更・検証するときは[v22の実装](baseline/ENERGY_EFFORT_V22_RESULT.md)も参照する。
 
 ユーザーの最新の指定を優先する。設計文書は採用する境界・条件、STATUSは確認した事実、NEXT_SESSIONは直近の作業を記す。食い違いがあれば現行コードと記録を照合して文書を更新する。古い記録の数値・「次の作業」を現在へ読み替えない。
