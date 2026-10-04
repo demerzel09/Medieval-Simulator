@@ -1,6 +1,12 @@
 # 現在の実装と未達
 
-更新: 2026-10-03。現行は5人自律生活v24。採集・穀物売却後の食品取得・現金購入を共同比較する。次は[NEXT_SESSION](NEXT_SESSION.md)、条件は[DECISIONS](DECISIONS.md)、実測は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)。
+更新: 2026-10-04。現行は5人自律生活v24。採集・穀物売却後の食品取得・現金購入を共同比較する。次は[NEXT_SESSION](NEXT_SESSION.md)、条件は[DECISIONS](DECISIONS.md)、実測は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)。
+
+## 階層モデルの設計検討
+
+2026-10-04に[HMOSAICを参考にした分割案](foundations/HMOSAIC_MODULE_DESIGN.md)を文書化した。現行コードを基本要素の予測・制御、上位戦略、利得・選択、経験更新へ対応づけ、共用と接続の契約、再設計・新設の範囲を整理した。未採用の案で、本体・fixture・身体法則・同梱記録は変更していない。型の例や接続上の成立見込みを、実装・階層学習・生活改善の実証とは扱わない。
+
+文書変更の確認: 変更7文書の内部リンク153件、コードフェンス、型例のstrict型検査、差分検査が成立。新構成の実行器と学習は未実装のため、その実走や生活改善の検証は行っていない。
 
 ## 実装されていること
 

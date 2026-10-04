@@ -2,6 +2,8 @@
 
 > 資料区分：継続する設計、一部実装済み。状況別小モデルと予測・結果の対応。全面的なモデル競合・行動評価は未完了。現在の実装は [STATUS](../STATUS.md)、今回の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
 
+2026-10-04の設計検討は[HMOSAICを参考にした階層モデルへの分割案](../foundations/HMOSAIC_MODULE_DESIGN.md)を参照する。予測と制御を独立したモデルにし、基本要素の共用、上位の構成と下位のフィードバックを検討する。本書の係数・容量・A〜Dの順序を、その新構成の確定仕様へ読み替えない。予測と実結果の対応づけは継承する材料である。
+
 更新: 2026-10-03。ユーザー合意に基づく設計。段階Aを[v13](PREDICTION_LEDGER_V13_RESULT.md)で実装した。[v17](EXPERIENCE_LEARNING_V17_RESULT.md)でBの体力モデルとCの短い採集目的を初実装した。[v18](FOOD_JOURNEYS_V18_RESULT.md)で農作業と市場の目的を保持し、[v19](FOOD_PLANNING_V19_RESULT.md)で食品の期限・需要・睡眠・帰路から限定した行程を比較する。B/Cの全行動への統合とDは未完了。[身体・環境の設計](NEEDS_AND_ACTION_SELECTION_PLAN.md)を具体化する。[v12の実測](ANTICIPATORY_NEEDS_V12_RESULT.md)は旧実装の比較基準とし、本書の方式が90日成立した証拠にはしない。
 
 ## 目的と境界
