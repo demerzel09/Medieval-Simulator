@@ -8,6 +8,7 @@
 | 現行ruleの階層モデルへの分割と共用を検討する | [HMOSAIC_MODULE_DESIGN](HMOSAIC_MODULE_DESIGN.md)。2026-10-04のコード調査と未採用の設計案。予測と制御の独立、基本要素の共用、入出力、利得・学習の不足 |
 | 未経験の行程を既知の子から評価し、各層へ誤差を戻す | [HMOSAIC_VALUE_AND_FEEDBACK_DESIGN](HMOSAIC_VALUE_AND_FEEDBACK_DESIGN.md)。2026-10-04の未採用の補足案。部分適用、利得予測と実結果の差、親子の学習接続、BPとの関係、更新則の候補 |
 | 設計案を実装する前の不足と計算上の問題を確認する | [HMOSAIC_IMPLEMENTATION_READINESS_REVIEW](HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)。2026-10-04のレビュー。12項目の不足、制御更新の反例、観測・死亡・保存との接続、必要な契約と実装順序 |
+| 登録・行程・委譲・観測・保存・予算の運用契約を実装前に定める | [HMOSAIC_RUNTIME_CONTRACT](HMOSAIC_RUNTIME_CONTRACT.md)。2026-10-06の採用案と未決。R04・R05・R06・R10・R11の接続仕様、型例、接続試作で確認する対照。計算法（生存比較・適合度・更新式）は未決のまま |
 | 物の所在・所有・包含・容量 | [PHYSICAL_OBJECT_MODEL](PHYSICAL_OBJECT_MODEL.md) |
 | 動機・行動の理論を調べる | [RESEARCH_MOTIVATION_ACTION](RESEARCH_MOTIVATION_ACTION.md) |
 | 将来の作用・実行・能力・動力・物流 | [ACTION_PROCESS_DESIGN](ACTION_PROCESS_DESIGN.md)、[ACTOR_EXECUTION_DESIGN](ACTOR_EXECUTION_DESIGN.md)、[CAPABILITY_AGENTS_DESIGN](CAPABILITY_AGENTS_DESIGN.md)、[WORK_ENERGY_DESIGN](WORK_ENERGY_DESIGN.md)、[COMMON_LOGISTICS_DESIGN](COMMON_LOGISTICS_DESIGN.md) |

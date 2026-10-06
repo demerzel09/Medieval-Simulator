@@ -1,22 +1,22 @@
-# 次の作業は階層モデル設計の実装契約の具体化
+# 次の作業は運用契約に沿った接続試作
 
-更新: 2026-10-04。最新のユーザー指定は、実装する前提で設計案の未検討部分を点検すること。[実装前レビュー](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)を作成し、12項目の不足と必要な契約を整理した。本体はv24のままで、階層モデル、統一した生存評価、上位の戦略学習は未実装。今回の対応案も未採用である。
+更新: 2026-10-06。最新のユーザー指定は、[実装前レビュー](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)の実装順序に沿って、まずR04・R05・R06・R10・R11の実装契約を設計・文書化すること。[運用契約](foundations/HMOSAIC_RUNTIME_CONTRACT.md)を作成し、登録簿、入出力の型、行程グラフと将来状態の合成、目的・行程・委譲・意図の状態機械、観測の対応と追跡台帳、死亡の扱い、保存JSONと乱数、計算予算と失敗時の応答について、採用する仕様と未決事項を明示した。本体はv24のままで、階層モデル、統一した生存評価、上位の戦略学習は未実装。契約の型例はstrict型検査で整合を確認したが、新構成の実行・学習・生活改善は行っていない。
 
 ## 再開時の入口
 
-- 作業ディレクトリは `/home/demerzel/workspace/Medieval-Simulator`。`git status -sb`、`git log -3 --oneline`、適用される `AGENTS.md` を確認する。Nodeが見つからない場合は `export PATH="$HOME/.local/node/bin:$PATH"`。
+- 作業ディレクトリはリポジトリのroot。`git status -sb`、`git log -3 --oneline`、適用される `AGENTS.md` を確認する。Nodeが見つからない場合は `$HOME/.local/node/bin` かnvmのPATHを通し、`node_modules` が無ければ `npm ci` を実行する。
 - この文書と[STATUS](STATUS.md)で現在を確認し、[DESIGN](DESIGN.md)・[DECISIONS](DECISIONS.md)で境界と維持条件を読む。
-- 今回は[実装前レビュー](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)、[分割案](foundations/HMOSAIC_MODULE_DESIGN.md)、[利得・経験更新案](foundations/HMOSAIC_VALUE_AND_FEEDBACK_DESIGN.md)、[人格の外側の契約](foundations/AUTONOMY_INTERFACE_CONTRACT.md)を読む。現行結果の根拠は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)と[実測JSON](../artifacts/v24-food-acquisition-result.json)。前版には[v23のB1分析](baseline/MORTALITY_V23_RESULT.md)、供給と取得の区別には[監査の原則](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)を使う。身体の変更・検証には[v22の実装](baseline/ENERGY_EFFORT_V22_RESULT.md)を追加する。全文書をまとめて読み込まない。
+- 今回は[運用契約](foundations/HMOSAIC_RUNTIME_CONTRACT.md)を正とし、[実装前レビュー](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)で不足の判定と完了条件、[分割案](foundations/HMOSAIC_MODULE_DESIGN.md)と[利得・経験更新案](foundations/HMOSAIC_VALUE_AND_FEEDBACK_DESIGN.md)で方針、[人格の外側の契約](foundations/AUTONOMY_INTERFACE_CONTRACT.md)で境界を読む。現行結果の根拠は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)と[実測JSON](../artifacts/v24-food-acquisition-result.json)。前版には[v23のB1分析](baseline/MORTALITY_V23_RESULT.md)、供給と取得の区別には[監査の原則](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)を使う。身体の変更・検証には[v22の実装](baseline/ENERGY_EFFORT_V22_RESULT.md)を追加する。全文書をまとめて読み込まない。
 
 ## 今回の設計検討と次の課題
 
-設計の中心は、基本要素を引数で共用し、順モデル・逆モデル・評価・分析・学習を分離すること。適用できる子から未経験の行程を予測し、本人の目的による利得を比較する。順モデルの局所残差、親の接続・価値の誤差、逆モデルの目標未達と制御の変更、上下の事前・事後重みを別の信号として扱う。`FeedbackAnalyzer` は役割と観測から残差・波及・推定影響を分析する案であり、観測不足を確定した原因割合へ変換しない。交渉の対案・対話過程はv24にない。
+運用契約で採用したのは次の点である。登録簿はコードの定義・構成表で、版を不変にし、読込時に単位・観測予測・投影・循環を検査する。身体の感覚量を出す出力ポートは合成からだけ結線でき、時間経過は合成だけが進める。推定は点・範囲・分岐・未知の四形で、未知を0や失敗へ変換しない。行程は委譲・試行・観察の三種のノードと条件辺・有限ループで表し、資源の重複消費・現金の負・身体占有の衝突を違反コードで返す。目的・行程版・委譲・意図を分け、中断・数量変更・親の切替・外部指示でどの実結果をどこへ返すかを表で定めた。追跡台帳は実行状態が閉じた後も吸収などの遅延結果を待ち、終了理由を六つに分け、期限後の結果は `late` として学習しない。死亡は本人が観測できない終端として、死亡前の信号から学ぶ方式を採用した。新状態は `memory.hierarchy` に置き、新ruleset（仮にv25）のfixtureフラグで旧記録と分ける。乱数は人物ごとに持ち、選択だけが消費する。予算は壁時計を使わない個数で、結果対応→計画→選択→応答の四段階のうち結果対応を確定単位にし、以後の失敗は予備の制御で応答する。
 
-今回の点検では、これらの責務の記述と実装できる計算契約の間に不足があると判定した。制御更新に適合度を任意に乗算すると、共有softmaxで実利得の高い案を減らす反例がある。利得補足は単一の最終方策に限定した対応案へ修正し、階層の寄与・選択分布からの導出は未決とした。現行の食品ledgerは取得で終了し、死亡後は本人の判断・配送が止まるため、吸収までの追跡と終端学習の方式も必要になる。
+未決として残したのは、生存比較（R01）、適合度と事前・事後重み（R02）、最終選択の分布と更新式（R03）、分析器の確率出力・非線形な影響（R07）、更新則・忘却・探索（R08）、構成定義の学習による変更手順（R09）、検証計画の合否（R12）。加えて、食事・購入の結果刺激にロットIDが無いため吸収の同一性を所持差分で推定する点（世界側の配送項目の追加が候補）、予算の仮の値、終端の学習専用処理である。
 
-次は[レビューの順序](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md#実装へ移る順序と残る判断)で、まずR04・R05・R06・R10・R11の登録、行程・委譲状態、観測対応、保存JSON、計算予算を具体化する。その後、移動・時間・身体感覚を二つの親から共用する接続試作で局所更新・分析・保存再開を確認する。仮の目標評価を生存比較の実装と扱わない。
+次は[レビューの順序](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md#実装へ移る順序と残る判断)の2として、運用契約に沿った接続試作を作る。`travel-forward@1`・`body-forward@1`・`travel-control@1`・`compose@1` を登録し、回復と食品確保の二つの仮の親から共用する。確認する対照は[運用契約の試作対照](foundations/HMOSAIC_RUNTIME_CONTRACT.md#接続試作で確認する対照)の7項目で、結線検査、行程の違反検出、一度だけの合成と学習、状態機械の配送先、追跡と終了理由、保存再開・判断再計算・旧記録の再生、予算の打切りと予備の経路を別のテストで確認する。別人格・別ruleset・別fixtureで作り、v24・v23・v22の記録と本体の判断経路は変更しない。仮の目標評価を生存比較の実装と扱わない。
 
-生活の選択へ進む前にR01・R02・R03の主観状態、生存比較、適合度・不確かさ、最終選択と制御学習・探索を確定する。続いてR08・R09の更新則とモデル内の構成変更を具体化し、R12の学習固定との対照・未経験の組合せ・複数条件の実走を測る。責務の型例を採用済みAPIとして移植したり、少数の条件別テストだけで適応を認定したりしない。
+試作の後、R01・R02・R03の主観状態、生存比較、適合度・不確かさ、最終選択と制御学習・探索を確定してから生活の選択へ進む。続いてR08・R09の更新則とモデル内の構成変更を具体化し、R12の学習固定との対照・未経験の組合せ・複数条件の実走を測る。責務の型例を採用済みAPIとして移植したり、少数の条件別テストだけで適応を認定したりしない。
 
 ## 実装済みと現在の問題
 
