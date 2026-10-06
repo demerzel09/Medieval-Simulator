@@ -11,7 +11,7 @@
 | 3 | [DESIGN](DESIGN.md) | 自律・世界・時計・制度の境界と開発の目的 |
 | 4 | [DECISIONS](DECISIONS.md) | 食品・身体・死亡・所有・経験更新など、維持する具体的条件 |
 
-今回の課題は、HMOSAIC的な階層設計を実装する前提で、運用に必要な契約を確定し、接続試作へ進むことである。[実装前レビュー](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)に12項目の不足、制御更新式の反例、必要な契約と実装順序をまとめ、その順序1に当たる[運用契約](foundations/HMOSAIC_RUNTIME_CONTRACT.md)でR04・R05・R06・R10・R11の登録、入出力、行程・委譲・中断、観測とフィードバック、保存、計算予算の採用案と未決を定めた。本体はv24のままで、階層学習の実装は行っていない。
+今回の課題は、HMOSAIC的な階層設計を実装する前提で、運用に必要な契約を確定し、接続試作へ進むことである。[実装前レビュー](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)に12項目の不足、制御更新式の反例、必要な契約と実装順序をまとめ、その順序1に当たる[運用契約](foundations/HMOSAIC_RUNTIME_CONTRACT.md)でR04・R05・R06・R10・R11の登録、入出力、行程・委譲・中断、観測とフィードバック、保存、計算予算の採用案と未決を定めた。続く[形式仕様](foundations/HMOSAIC_FORMAL_SPEC.md)で、予測・適合度・評価・行動決定をR01・R02・R03の主案として数式で定義し、式にすると残る問題を列挙した。本体はv24のままで、階層学習の実装は行っていない。
 
 [HMOSAICを参考にした分割案](foundations/HMOSAIC_MODULE_DESIGN.md)にコードの対応、入出力、移行案をまとめた。共用・上下のフィードバックの責務を示す案であり、必要な契約が全て確定した実装仕様ではない。
 
