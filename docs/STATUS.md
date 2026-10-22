@@ -1,6 +1,23 @@
 # 現在の実装と未達
 
-更新: 2026-10-06。現行は5人自律生活v24。採集・穀物売却後の食品取得・現金購入を共同比較する。次は[NEXT_SESSION](NEXT_SESSION.md)、条件は[DECISIONS](DECISIONS.md)、実測は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)。
+更新: 2026-10-23。現行は5人自律生活v24。採集・穀物売却後の食品取得・現金購入を共同比較する。次は[NEXT_SESSION](NEXT_SESSION.md)、条件は[DECISIONS](DECISIONS.md)、実測は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)。
+
+## 接続試作前のオブジェクト設計の整理
+
+2026-10-23、追加指定に従って目的・思想・抽象化を再検討し、[オブジェクト設計](foundations/HMOSAIC_OBJECT_DESIGN.md)を作成した。調査基準はcommit `de87bdd`。現行コードで、`effortDecision`の複数責務、食品候補生成と予測・評価の混在、食品行程の進行と選択の混在、`effort-choice`と`food-acquisition`の相互import、広い記憶への直接変更を確認した。既存の外側の人格契約と、予測・制御を分ける方向は維持した。
+
+次の接続試作には、役割別の契約、登録定義／人物の学習／呼出しの状態の分離、状態所有者が検証する更新、型付き登録とJSON境界のcodec、共通の行程実行、A〜Dの確定点を採用する。親を追加しても基本モデルと実行器を変更せず、予測／制御を独立に差し替えられることを7対照へ追加した。経験による構成変更の方針は維持し、登録定義・モデル内の学習・行程の再計画を区別した。R09の更新則、形式仕様の計算法の採用は未決。
+
+DESIGN・DECISIONS・NEXT_SESSIONと関連案内を更新した。分割案の試作の親を「回復と食品確保」へそろえ、運用契約の身体順モデル→合成器の接続方向を明確にした。**今回は文書の変更のみで、新しい人格・実行器・fixture・テストは未実装。** 構造上の指摘をB1の死亡原因の実証や学習改善の結果とは扱わない。
+
+今回実行した検証（Node v22.16.0、既存の`node_modules`を使用）:
+
+- `npm run typecheck`成功。
+- `npx vitest run tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts`成功。4ファイル・29/29（v24 10、v23 6、v22 8、供給監査5）。既存テスト内の判断再計算・保存再開を含む。
+- `npm run autonomy:village -- replay`で同梱の`autonomous-village-food-acquisition-90.v2.json.gz`、`autonomous-village-mortality-90.v2.json.gz`、`autonomous-village-energy-effort-90.v2.json.gz`をそれぞれ再生し、全て`verified: true`。状態hashは順に`c98d56bb`／`1a773125`／`bda36c39`。再生処理内のEvent hash照合も成立。
+- 変更9文書のローカルリンク179件・見出し参照12件・コードフェンスの対応と差分を検査し、問題なし。
+
+未実行: 新構成の7対照と抽象化の追加対照、新構成の判断再計算・保存再開・実走（いずれも未実装）、全体テスト、本番ビルド、コンテンツ検査、ブラウザテスト、Mermaidの表示確認。既存版の回帰成功を、新構成の成立証拠にはしない。
 
 ## 階層モデルの設計検討
 
