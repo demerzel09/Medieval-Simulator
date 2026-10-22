@@ -20,6 +20,7 @@
     "autonomy:work": "tsx packages/tools/individual-work.ts",
     "autonomy:feasibility": "tsx packages/tools/autonomous-feasibility.ts",
     "autonomy:land-feasibility": "tsx packages/tools/land-economy-feasibility.ts",
+    "autonomy:hierarchy": "tsx packages/tools/hierarchy-prototype.ts",
     "autonomy:village": "tsx packages/tools/autonomous-village.ts",
     "autonomy:market": "tsx packages/tools/individual-market.ts",
     "autonomy:living": "tsx packages/tools/living-market.ts",

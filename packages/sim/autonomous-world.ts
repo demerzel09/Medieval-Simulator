@@ -1,3 +1,4 @@
+import { newVillageHierarchy, checkVillageHierarchy } from "../ai/hierarchy/village-adapter";
 import { decodeVillageDocument, encodeVillageDocument, hashVillageDocument } from "./shared-village-json";
 import { actionObservation, checkActionLearning, type ActionExecution, type ActionObservation } from "../ai/action-learning";
 import { loadMovement } from "./load-movement";
@@ -242,6 +243,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
     if (!fixture.sleepRegulation || !fixture.offerIntegrity) throw Error("effort requires sleep and material integrity");
     checkEffortConfig(fixture.effortBody);
   }
+  if (fixture.hierarchyModel && (!fixture.effortBody || !fixture.deathOnZeroEnergy || fixture.foodAcquisition)) throw Error("invalid hierarchy fixture");
   if (fixture.foodAcquisition && !fixture.deathOnZeroEnergy) throw Error("food acquisition requires mortality rules");
   if (fixture.needs && (!fixture.breadEconomy || Object.values(fixture.needs).some((n) => !Number.isSafeInteger(n)) ||
     fixture.needs.dayTemperature < fixture.needs.nightTemperature || fixture.needs.homeInsulation < 0 ||
@@ -404,6 +406,7 @@ export function newVillageWorld(seed = 240924, fixture: VillageFixture = autonom
       memory: { day: 0, done: [], beliefs: { foodBid: f.prices.foodBid, foodRetail: f.prices.foodRetail,
         carrierFee: f.prices.carrierFee, woodPrice: f.prices.wood } }, receivedOrderIds: [],
       seenBidIds: [], seenQuoteIds: [], receivedStimulusIds: [], inbox: [], meals: 0, fuelUsed: 0 };
+    if (f.hierarchyModel) people[id].memory.hierarchy = newVillageHierarchy(id, seed, f.hierarchyModel.compositionVersion);
     if (f.effortBody) people[id].effort = newEffortBody(f.effortBody, f.body.initialEnergy, f.body.maxEnergy);
   }
   const w: VillageWorld = { schemaVersion: 2, mode: "autonomous_village", seed, hour: 0, nextId: 1,
@@ -1812,6 +1815,8 @@ export function checkVillageWorld(w: VillageWorld) {
     const homeChest = w.physical.objects[`home_chest_${id}`];
     if (w.fixture.homeStorage && (!homeChest || homeChest.typeId !== "home_chest" ||
       homeChest.ownerId !== id || homeChest.parentId !== `home_${id}`)) throw Error("invalid home chest");
+    if (!!w.fixture.hierarchyModel !== !!p.memory.hierarchy || p.memory.hierarchy && (p.memory.anticipation || p.memory.hierarchy.actor !== id)) throw Error("hierarchy feature mismatch");
+    if (p.memory.hierarchy) checkVillageHierarchy(p.memory.hierarchy, w.fixture.hierarchyModel!.compositionVersion);
     if (p.memory.anticipation?.learning) checkActionLearning(p.memory.anticipation.learning, w.hour);
     if (p.execution && (!w.fixture.experienceLearning || !eventIds.has(p.execution.attemptEventId) ||
       p.execution.startedAt > w.hour || !p.activeProcessId || p.execution.processId !== p.activeProcessId ||

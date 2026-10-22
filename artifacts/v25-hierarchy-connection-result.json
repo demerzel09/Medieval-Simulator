@@ -1,0 +1,1196 @@
+{
+  "scope": "connection-prototype; temporary-goal-v1; not survival comparison",
+  "hours": 24,
+  "seed": 240924,
+  "decisions": 109,
+  "stateHash": "0559b3e5",
+  "eventHash": "a237bca5",
+  "verified": {
+    "decisionRecomputation": true,
+    "saveResume": true,
+    "recordingReplay": true
+  },
+  "actors": {
+    "S": {
+      "updates": {
+        "travel-forward@1": 1,
+        "body-forward@1": 1
+      },
+      "choices": 24,
+      "retainedChoices": 24,
+      "openTracking": 0,
+      "retainedFailures": [
+        {
+          "minute": 1020,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1080,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1140,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1200,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1260,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1320,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1380,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1440,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        }
+      ],
+      "feedback": [
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000107",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000107",
+          "payload": {
+            "fatigue01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "energy": {
+              "total": -0.03999999999999915,
+              "local": -0.03999999999999915,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "sleepiness01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "cold": {
+              "reason": "missing-observation-or-prediction"
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000107",
+          "payload": {
+            "goal": "S:goal:1",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "recovery-parent@1",
+          "eventId": "e_000107",
+          "payload": {
+            "goal": "S:goal:1",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "recovery-parent@1",
+          "eventId": "e_000107",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        }
+      ],
+      "rngDraws": 0
+    },
+    "F": {
+      "updates": {
+        "travel-forward@1": 11,
+        "body-forward@1": 11
+      },
+      "choices": 13,
+      "retainedChoices": 13,
+      "openTracking": 1,
+      "retainedFailures": [],
+      "feedback": [
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000196",
+          "payload": {
+            "goal": "F:goal:7",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "recovery-parent@1",
+          "eventId": "e_000196",
+          "payload": {
+            "goal": "F:goal:7",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "recovery-parent@1",
+          "eventId": "e_000196",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000376",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000376",
+          "payload": {
+            "fatigue01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "energy": {
+              "total": -0.08000000000000185,
+              "local": -0.08000000000000185,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "sleepiness01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "cold": {
+              "reason": "missing-observation-or-prediction"
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000376",
+          "payload": {
+            "goal": "F:goal:14",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "food-parent@1",
+          "eventId": "e_000376",
+          "payload": {
+            "goal": "F:goal:14",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "food-parent@1",
+          "eventId": "e_000376",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000460",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000460",
+          "payload": {
+            "fatigue01": {
+              "total": -5.551115123125783e-17,
+              "local": -5.551115123125783e-17,
+              "upstream": 0
+            },
+            "energy": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "sleepiness01": {
+              "total": -0.2404,
+              "local": -0.2404,
+              "upstream": 0
+            },
+            "cold": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000460",
+          "payload": {
+            "goal": "F:goal:20",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "recovery-parent@1",
+          "eventId": "e_000460",
+          "payload": {
+            "goal": "F:goal:20",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "recovery-parent@1",
+          "eventId": "e_000460",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000551",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000551",
+          "payload": {
+            "fatigue01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "energy": {
+              "total": 1.7763568394002505e-15,
+              "local": 1.7763568394002505e-15,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "sleepiness01": {
+              "total": -0.026599999999999988,
+              "local": -0.026599999999999988,
+              "upstream": 0
+            },
+            "cold": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000551",
+          "payload": {
+            "goal": "F:goal:26",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "food-parent@1",
+          "eventId": "e_000551",
+          "payload": {
+            "goal": "F:goal:26",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "food-parent@1",
+          "eventId": "e_000551",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000636",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000636",
+          "payload": {
+            "fatigue01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "energy": {
+              "total": -1.7763568394002505e-15,
+              "local": -1.7763568394002505e-15,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "total": 0.00416666666666668,
+              "local": 0.00416666666666668,
+              "upstream": 0
+            },
+            "sleepiness01": {
+              "total": -0.030199999999999998,
+              "local": -0.030199999999999998,
+              "upstream": 0
+            },
+            "cold": {
+              "total": -1,
+              "local": -1,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000636",
+          "payload": {
+            "goal": "F:goal:32",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "recovery-parent@1",
+          "eventId": "e_000636",
+          "payload": {
+            "goal": "F:goal:32",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "recovery-parent@1",
+          "eventId": "e_000636",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000720",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000720",
+          "payload": {
+            "fatigue01": {
+              "total": -1.1102230246251565e-16,
+              "local": -1.1102230246251565e-16,
+              "upstream": 0
+            },
+            "energy": {
+              "total": 1.7763568394002505e-15,
+              "local": 1.7763568394002505e-15,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "total": -2.7755575615628914e-17,
+              "local": -2.7755575615628914e-17,
+              "upstream": 0
+            },
+            "sleepiness01": {
+              "total": 0.00010000000000001327,
+              "local": 0.00010000000000001327,
+              "upstream": 0
+            },
+            "cold": {
+              "total": -1,
+              "local": -1,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000720",
+          "payload": {
+            "goal": "F:goal:38",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "food-parent@1",
+          "eventId": "e_000720",
+          "payload": {
+            "goal": "F:goal:38",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "food-parent@1",
+          "eventId": "e_000720",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000804",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000804",
+          "payload": {
+            "fatigue01": {
+              "total": 1.1102230246251565e-16,
+              "local": 1.1102230246251565e-16,
+              "upstream": 0
+            },
+            "energy": {
+              "total": -8.881784197001252e-16,
+              "local": -8.881784197001252e-16,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "total": 0.002083333333333326,
+              "local": 0.002083333333333326,
+              "upstream": 0
+            },
+            "sleepiness01": {
+              "total": 0.10699999999999998,
+              "local": 0.10699999999999998,
+              "upstream": 0
+            },
+            "cold": {
+              "total": -0.75,
+              "local": -0.75,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000804",
+          "payload": {
+            "goal": "F:goal:44",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "recovery-parent@1",
+          "eventId": "e_000804",
+          "payload": {
+            "goal": "F:goal:44",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "recovery-parent@1",
+          "eventId": "e_000804",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000888",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000888",
+          "payload": {
+            "fatigue01": {
+              "total": -1.1102230246251565e-16,
+              "local": -1.1102230246251565e-16,
+              "upstream": 0
+            },
+            "energy": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "sleepiness01": {
+              "total": 0.11044999999999999,
+              "local": 0.11044999999999999,
+              "upstream": 0
+            },
+            "cold": {
+              "total": -3.666666666666668,
+              "local": -3.666666666666668,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000888",
+          "payload": {
+            "goal": "F:goal:50",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "food-parent@1",
+          "eventId": "e_000888",
+          "payload": {
+            "goal": "F:goal:50",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "food-parent@1",
+          "eventId": "e_000888",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000972",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000972",
+          "payload": {
+            "fatigue01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "energy": {
+              "total": -4.440892098500626e-16,
+              "local": -4.440892098500626e-16,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "total": 0.001388888888888884,
+              "local": 0.001388888888888884,
+              "upstream": 0
+            },
+            "sleepiness01": {
+              "total": 0.0713333333333333,
+              "local": 0.0713333333333333,
+              "upstream": 0
+            },
+            "cold": {
+              "total": -3.6000000000000014,
+              "local": -3.6000000000000014,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000972",
+          "payload": {
+            "goal": "F:goal:56",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "recovery-parent@1",
+          "eventId": "e_000972",
+          "payload": {
+            "goal": "F:goal:56",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "recovery-parent@1",
+          "eventId": "e_000972",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        },
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_001056",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_001056",
+          "payload": {
+            "fatigue01": {
+              "total": 1.1102230246251565e-16,
+              "local": 1.1102230246251565e-16,
+              "upstream": 0
+            },
+            "energy": {
+              "total": 3.885780586188048e-16,
+              "local": 3.885780586188048e-16,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "sleepiness01": {
+              "total": 0.07363333333333344,
+              "local": 0.07363333333333344,
+              "upstream": 0
+            },
+            "cold": {
+              "total": -2.75,
+              "local": -2.75,
+              "upstream": 0
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_001056",
+          "payload": {
+            "goal": "F:goal:62",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "food-parent@1",
+          "eventId": "e_001056",
+          "payload": {
+            "goal": "F:goal:62",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "food-parent@1",
+          "eventId": "e_001056",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        }
+      ],
+      "rngDraws": 0
+    },
+    "C": {
+      "updates": {
+        "travel-forward@1": 1,
+        "body-forward@1": 1
+      },
+      "choices": 24,
+      "retainedChoices": 24,
+      "openTracking": 0,
+      "retainedFailures": [
+        {
+          "minute": 1020,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1080,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1140,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1200,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1260,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1320,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1380,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1440,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        }
+      ],
+      "feedback": [
+        {
+          "kind": "prediction",
+          "model": "travel-forward@1",
+          "eventId": "e_000078",
+          "payload": {
+            "total": 0,
+            "local": 0,
+            "upstream": 0
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "prediction",
+          "model": "body-forward@1",
+          "eventId": "e_000078",
+          "payload": {
+            "fatigue01": {
+              "total": 0,
+              "local": 0,
+              "upstream": 0
+            },
+            "energy": {
+              "total": -0.03999999999999915,
+              "local": -0.03999999999999915,
+              "upstream": 0
+            },
+            "nutritionNeed01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "sleepiness01": {
+              "reason": "missing-observation-or-prediction"
+            },
+            "cold": {
+              "reason": "missing-observation-or-prediction"
+            }
+          },
+          "applied": true,
+          "reason": "local-update"
+        },
+        {
+          "kind": "control",
+          "model": "travel-control@1",
+          "eventId": "e_000078",
+          "payload": {
+            "goal": "C:goal:1",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "control",
+          "model": "recovery-parent@1",
+          "eventId": "e_000078",
+          "payload": {
+            "goal": "C:goal:1",
+            "revision": 1,
+            "achieved": true,
+            "phase": "completed"
+          },
+          "applied": false,
+          "reason": "completed"
+        },
+        {
+          "kind": "responsibility",
+          "model": "recovery-parent@1",
+          "eventId": "e_000078",
+          "payload": {
+            "kind": "unknown",
+            "reason": "R02-not-adopted"
+          },
+          "applied": false,
+          "reason": "unestimated"
+        }
+      ],
+      "rngDraws": 0
+    },
+    "B1": {
+      "updates": {},
+      "choices": 24,
+      "retainedChoices": 24,
+      "openTracking": 0,
+      "retainedFailures": [
+        {
+          "minute": 1020,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1080,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1140,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1200,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1260,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1320,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1380,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1440,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        }
+      ],
+      "feedback": [],
+      "rngDraws": 0
+    },
+    "B2": {
+      "updates": {},
+      "choices": 24,
+      "retainedChoices": 24,
+      "openTracking": 0,
+      "retainedFailures": [
+        {
+          "minute": 1020,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1080,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1140,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1200,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1260,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1320,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1380,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        },
+        {
+          "minute": 1440,
+          "phase": "plan",
+          "code": "insufficient-observation",
+          "detail": "no evaluated candidate"
+        }
+      ],
+      "feedback": [],
+      "rngDraws": 0
+    }
+  }
+}

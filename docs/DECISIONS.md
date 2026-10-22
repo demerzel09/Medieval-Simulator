@@ -27,4 +27,6 @@
 
 15. **新構成は役割別の契約と状態の所有で拡張する。** [オブジェクト設計](foundations/HMOSAIC_OBJECT_DESIGN.md)に従い、予測・制御・合成・評価・選択・分析・学習の振る舞いを分ける。登録定義は不変、学習状態は人物×モデル、委譲・意図は呼出しごととする。親は行程案を返し、共通実行器は具体的な親・職業・モデルIDで分岐しない。学習器は自分の次状態を返し、状態の所有者が版・経験・重複を検査して確定する。構成の学習は許された子と接続操作の範囲で扱い、更新則の採用は別途行う。新たな親の追加と予測／制御の独立した差し替えを試作で検証し、クラス化だけを達成としない。v24・v23・v22へこの構造変更を遡及適用しない。
 
+16. **v25は接続試作として隔離する。** `hierarchyModel`付きの別fixture、`autonomous-village-hierarchy-v25` ruleset、`memory.hierarchy`を用いる。二つの親から移動／身体モデルを共用し、仮評価・最大値選択・経験平均を明示して保存する。到着の完了と親の数値的な利得を分け、未計測の利得・寄与から制御を学習しない。形式仕様の採用と構成学習は後続の判断とする。[試作結果](baseline/HMOSAIC_CONNECTION_V25_RESULT.md)の7対照・24時間の再現を生活改善と読み替えず、世界法則と旧3版を保つ。
+
 数値・コード・実測は[v24](baseline/FOOD_ACQUISITION_V24_RESULT.md)、死亡の基準は[v23](baseline/MORTALITY_V23_RESULT.md)、継承した身体は[v22](baseline/ENERGY_EFFORT_V22_RESULT.md)、不足の評価は[供給と取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)で確認する。研究や長期設計は[資料案内](baseline/README.md)から必要な範囲だけ参照する。

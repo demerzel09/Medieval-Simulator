@@ -6,7 +6,7 @@
 |---|---|
 | 人格の外側の境界・認識・行動の契約 | [AUTONOMY_INTERFACE_CONTRACT](AUTONOMY_INTERFACE_CONTRACT.md)、[AGENT_INTERFACES_v2](AGENT_INTERFACES_v2.md) |
 | 現行ruleの階層モデルへの分割と共用を検討する | [HMOSAIC_MODULE_DESIGN](HMOSAIC_MODULE_DESIGN.md)。2026-10-04のコード調査に基づく分割案。予測と制御の独立、基本要素の共用、入出力、利得・学習の不足。2026-10-23に実装上の責務を下記オブジェクト設計へ接続 |
-| 接続試作の目的・責務・状態所有・差し替えを整理する | [HMOSAIC_OBJECT_DESIGN](HMOSAIC_OBJECT_DESIGN.md)。2026-10-23の現行コードレビューと採用する実装構造。役割別の多態性、合成、登録定義／個人の学習／呼出しの分離、構成変更の版、7対照へ追加する抽象化の検証。本体未実装 |
+| 接続試作の目的・責務・状態所有・差し替えを整理する | [HMOSAIC_OBJECT_DESIGN](HMOSAIC_OBJECT_DESIGN.md)。2026-10-23の現行コードレビューと採用する実装構造。役割別の多態性、合成、登録定義／個人の学習／呼出しの分離、構成変更の版、7対照へ追加する抽象化の検証。別人格v25の接続試作に実装。計測と未決は[試作結果](../baseline/HMOSAIC_CONNECTION_V25_RESULT.md) |
 | 未経験の行程を既知の子から評価し、各層へ誤差を戻す | [HMOSAIC_VALUE_AND_FEEDBACK_DESIGN](HMOSAIC_VALUE_AND_FEEDBACK_DESIGN.md)。2026-10-04の未採用の補足案。部分適用、利得予測と実結果の差、親子の学習接続、BPとの関係、更新則の候補 |
 | 設計案を実装する前の不足と計算上の問題を確認する | [HMOSAIC_IMPLEMENTATION_READINESS_REVIEW](HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)。2026-10-04のレビュー。12項目の不足、制御更新の反例、観測・死亡・保存との接続、必要な契約と実装順序 |
 | 登録・行程・委譲・観測・保存・予算の運用契約を実装前に定める | [HMOSAIC_RUNTIME_CONTRACT](HMOSAIC_RUNTIME_CONTRACT.md)。2026-10-06の採用案と未決。R04・R05・R06・R10・R11の接続仕様、型例、接続試作で確認する対照 |

@@ -7,6 +7,7 @@
 | 文書 | 区分 | 参照する内容 |
 |---|---|---|
 | [HMOSAICを参考にした分割案](../foundations/HMOSAIC_MODULE_DESIGN.md) | 現行コードの調査と未採用の設計案 | 今回の設計検討。基本要素の共用、予測と制御の独立、現行ifの対応と再設計の範囲 |
+| [HMOSAIC_CONNECTION_V25_RESULT](HMOSAIC_CONNECTION_V25_RESULT.md) | 別人格v25の接続試作・24時間の実測 | 役割別モデルの共用と差し替え、7対照、仮評価と未決。生活比較ではない |
 | [FOOD_ACQUISITION_V24_RESULT](FOOD_ACQUISITION_V24_RESULT.md) | 現行v24の実装・実測 | 共同比較、本人の成立見込み、生活改善の未達 |
 | [MORTALITY_V23_RESULT](MORTALITY_V23_RESULT.md) | 前版v23の実装・比較基準 | 死亡とB1の判断。今回の改修の出発点 |
 | [FOOD_SHORTAGE_AND_ACCESS_AUDIT](FOOD_SHORTAGE_AND_ACCESS_AUDIT.md) | 評価原則と前版v22の監査 | 供給不足／取得・摂食の問題を分ける。数値はv22の測定 |

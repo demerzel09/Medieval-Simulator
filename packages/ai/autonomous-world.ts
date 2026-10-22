@@ -13,6 +13,7 @@ export type VillageStimulus = { id: string; kind: "result" | "order" | "body" | 
   travel?: TravelExecution; saleRevenue?: number; action?: VillageAttempt["kind"]; actionDay?: number; success?: boolean; reason?: string;
   order?: { id: string; day: number; quantity: number; bid: number; carrierFee: number; salePrice: number } };
 export type VillageMemory = { day: number; done: string[]; knownOrder?: VillageStimulus["order"];
+  hierarchy?: import("./hierarchy/state").HierarchyState;
   anticipation?: import("./anticipatory-needs").AnticipationMemory;
   beliefs: { foodBid: number; foodRetail: number; carrierFee: number; woodPrice: number } };
 export type VillageContext = { day: number; hourOfDay: number; role: VillageRole; siteId: string;
