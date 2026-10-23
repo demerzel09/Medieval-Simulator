@@ -12,6 +12,7 @@ import {
   type Offer,
   type Plan,
   type Ref,
+  type Step,
 } from "./contracts";
 import type { ModelRegistry } from "./registry";
 
@@ -499,9 +500,16 @@ export class ModelStateStore {
           )?.value ?? null),
     );
   }
-  apply(id: string, event: string, next: Json) {
+  apply(id: string, event: string, expectedRevision: number, next: Json) {
     const current = this.state.models[id];
+    if (!current) throw Error("model-mismatch: update target");
+    // A repeated delivery is a no-op even when its original revision is old.
     if (current.applied.includes(event)) return false;
+    if (
+      !Number.isSafeInteger(expectedRevision) ||
+      current.revision !== expectedRevision
+    )
+      throw Error("contract-violation: stale model revision");
     if (!this.registry.get(id).definition.learner)
       throw Error("contract-violation: fixed model update");
     this.registry.get(id).check(next);
@@ -532,6 +540,10 @@ export class ModelStateStore {
     this.trim();
     return true;
   }
+  retainApplied(limit: number) {
+    for (const model of Object.values(this.state.models))
+      model.applied = model.applied.slice(-limit);
+  }
   trim() {
     const open = this.state.tracking
       .flatMap((t) => t.items)
@@ -553,11 +565,151 @@ export class ModelStateStore {
 }
 /** Owns transitions, not world processes or learning parameters. */
 export class ExecutionState {
-  constructor(readonly state: HierarchyState) {}
+  constructor(private readonly state: HierarchyState) {}
+  readGoal(id: string): Readonly<Goal> {
+    const goal = this.state.goals.find((g) => g.id === id);
+    if (!goal) throw Error("contract-violation: unknown goal");
+    return frozen(goal);
+  }
+  readIntent(id: string): Readonly<Intent> {
+    const intent = this.state.intents.find((i) => i.id === id);
+    if (!intent) throw Error("contract-violation: unknown intent");
+    return frozen(intent);
+  }
+  private ownedGoal(ref: Readonly<Goal>): Goal {
+    const goal = this.state.goals.find((g) => g.id === ref.id);
+    if (
+      !goal ||
+      goal.revision !== ref.revision ||
+      goal.planRevision !== ref.planRevision
+    )
+      throw Error("contract-violation: stale goal revision");
+    return goal;
+  }
+  private requireOpen(goal: Goal) {
+    if (goal.status !== "executing" && goal.status !== "suspended")
+      throw Error("contract-violation: terminal goal");
+  }
+  current(minute: number): Readonly<Goal> | undefined {
+    const goal = this.state.goals.find((g) => g.status === "executing");
+    if (goal && minute >= goal.deadline) {
+      goal.status = "expired";
+      return undefined;
+    }
+    return goal ? frozen(goal) : undefined;
+  }
+  select(offer: Offer, minute: number): Readonly<Goal> {
+    const suspended = this.state.goals.find(
+      (g) =>
+        g.status === "suspended" &&
+        g.parent === offer.parent &&
+        g.target === offer.target,
+    );
+    if (suspended) return this.revise(suspended, offer.plan, minute, "resume");
+    const other = this.state.goals.find((g) => g.status === "suspended");
+    return other
+      ? this.switchParent(other, offer, minute)
+      : this.adopt(offer, minute);
+  }
+  hasActiveIntent(ref: Readonly<Goal>, step: string): boolean {
+    const goal = this.ownedGoal(ref);
+    return this.state.intents.some(
+      (i) =>
+        i.goal === goal.id &&
+        i.revision === goal.planRevision &&
+        i.step === step &&
+        ["submitted", "started"].includes(i.status),
+    );
+  }
+  nextStep(ref: Readonly<Goal>): Readonly<Step> | null {
+    const goal = this.ownedGoal(ref);
+    const plan = this.state.plans.find(
+      (p) => p.id === goal.plan && p.revision === goal.planRevision,
+    );
+    if (!plan) throw Error("contract-violation: missing plan");
+    let id = plan.entry,
+      offset = 0;
+    const intents = this.state.intents.filter(
+      (i) => i.goal === goal.id && i.revision === goal.planRevision,
+    );
+    for (let guard = 0; guard <= intents.length; guard++) {
+      const node = plan.nodes.find((n) => n.id === id);
+      if (!node) return null;
+      const index = intents.findIndex(
+        (i, n) =>
+          n >= offset &&
+          i.step === id &&
+          ["completed", "failed", "rejected", "interrupted"].includes(i.status),
+      );
+      if (index < 0) return frozen(node);
+      const edge = plan.edges.find(
+        (e) => e.from === id && e.on === intents[index].status,
+      );
+      if (!edge) return null;
+      offset = index + 1;
+      id = edge.to;
+    }
+    throw Error("contract-violation: execution loop");
+  }
+  // Legacy plan completion only. This is not a measured food/recovery outcome.
+  finishPlan(
+    ref: Readonly<Goal>,
+    absorptionEstimated: boolean,
+  ): { status: "waiting" | "completed" | "abandoned"; reason: string } {
+    const goal = this.ownedGoal(ref);
+    if (goal.status !== "executing")
+      throw Error("contract-violation: inactive goal");
+    const step = this.nextStep(goal);
+    if (step && step.kind !== "observe")
+      throw Error("contract-violation: unfinished plan");
+    if (goal.completion === "absorption" && !absorptionEstimated)
+      return { status: "waiting", reason: "await-observation" };
+    const last = this.state.intents
+      .filter((i) => i.goal === goal.id && i.revision === goal.planRevision)
+      .at(-1);
+    goal.status =
+      last && last.status !== "completed" ? "abandoned" : "completed";
+    return {
+      status: goal.status,
+      reason: last?.status ?? "missing-observation",
+    };
+  }
+  retain(tracking: readonly Tracking[]) {
+    const referenced = new Set(
+      tracking.flatMap((t) => t.items.map((i) => i.intent)),
+    );
+    this.state.intents = this.state.intents.filter(
+      (i) =>
+        referenced.has(i.id) || ["started", "submitted"].includes(i.status),
+    );
+    this.state.delegations = this.state.delegations.filter((d) =>
+      this.state.intents.some((i) => i.delegation === d.id),
+    );
+    const goals = new Set([
+      ...tracking.map((t) => t.goal),
+      ...this.state.intents.map((i) => i.goal),
+    ]);
+    this.state.goals = this.state.goals.filter(
+      (g) =>
+        goals.has(g.id) || g.status === "executing" || g.status === "suspended",
+    );
+    this.state.plans = this.state.plans.filter(
+      (p) =>
+        this.state.goals.some(
+          (g) => g.id === p.goalId && g.planRevision === p.revision,
+        ) ||
+        tracking.some(
+          (t) => t.goal === p.goalId && t.revision === p.revision,
+        ) ||
+        this.state.intents.some(
+          (i) => i.plan === p.id && i.revision === p.revision,
+        ),
+    );
+  }
   id(kind: string) {
     return `${this.state.actor}:${kind}:${this.state.nextId++}`;
   }
-  adopt(offer: Offer, minute: number): Goal {
+  adopt(offer: Offer, minute: number): Readonly<Goal> {
     const goal: Goal = {
       id: this.id("goal"),
       revision: 1,
@@ -578,9 +730,9 @@ export class ExecutionState {
       revision: 1,
     });
     this.track(goal, minute);
-    return goal;
+    return frozen(goal);
   }
-  track(goal: Goal, minute: number) {
+  private track(goal: Goal, minute: number) {
     const t: Tracking = {
       id: this.id("tracking"),
       goal: goal.id,
@@ -597,12 +749,14 @@ export class ExecutionState {
     return t;
   }
   revise(
-    goal: Goal,
+    ref: Readonly<Goal>,
     plan: Plan,
     minute: number,
     reason: "interruption" | "quantity-change" | "resume",
     evidence: string[] = [],
-  ) {
+  ): Readonly<Goal> {
+    const goal = this.ownedGoal(ref);
+    this.requireOpen(goal);
     for (const t of this.state.tracking.filter(
       (t) => t.goal === goal.id && t.revision === goal.planRevision,
     )) {
@@ -631,20 +785,24 @@ export class ExecutionState {
       revisionCause: { kind: reason, minute, evidence: [...evidence] },
     });
     this.track(goal, minute);
+    return frozen(goal);
   }
-  suspend(goal: Goal, reason = "parent-switch") {
+  suspend(ref: Readonly<Goal>, reason = "parent-switch") {
+    const goal = this.ownedGoal(ref);
+    this.requireOpen(goal);
     goal.status = "suspended";
     this.state.tracking
       .filter((t) => t.goal === goal.id && !t.close)
       .forEach((t) => (t.gain = { status: "unresolved", reason }));
   }
-  switchParent(goal: Goal, offer: Offer, minute: number) {
+  switchParent(ref: Readonly<Goal>, offer: Offer, minute: number) {
+    const goal = this.ownedGoal(ref);
     this.suspend(goal);
     goal.status = "abandoned";
     return this.adopt(offer, minute);
   }
   submit(
-    goal: Goal,
+    ref: Readonly<Goal>,
     step: string,
     child: string,
     attempt: { kind: string; args: { [key: string]: Json } },
@@ -652,6 +810,9 @@ export class ExecutionState {
     refs: Ref[],
     minute: number,
   ) {
+    const goal = this.ownedGoal(ref);
+    if (goal.status !== "executing")
+      throw Error("contract-violation: inactive goal");
     const intent: Intent = {
       id: this.id("intent"),
       goal: goal.id,
@@ -692,13 +853,19 @@ export class ExecutionState {
         observed: null,
         diagnostic: null,
       });
-    return intent;
+    return frozen(intent);
   }
-  delegation(intent: Intent, status: "completed" | "failed" | "withdrawn") {
+  private delegation(
+    intent: Intent,
+    status: "completed" | "failed" | "withdrawn",
+  ) {
     const d = this.state.delegations.find((d) => d.id === intent.delegation);
     if (d) d.status = status;
   }
-  receive(intent: Intent, e: Evidence) {
+  receive(ref: Readonly<Intent>, e: Evidence) {
+    const intent = this.state.intents.find((i) => i.id === ref.id);
+    if (!intent || intent.revision !== ref.revision || intent.goal !== ref.goal)
+      throw Error("contract-violation: unknown intent revision");
     if (e.phase === "started") {
       if (intent.status === "submitted") {
         intent.status = "started";

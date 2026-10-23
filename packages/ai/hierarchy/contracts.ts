@@ -124,7 +124,7 @@ export type Composition = {
 export type Codec<T> = { parse(value: unknown): T };
 export type Calls = {
   invoke<I, O>(id: string, input: I): O;
-  refs: Ref[];
+  readonly refs: readonly Ref[];
   take(kind: Work, amount?: number): void;
   limit(kind: Work): number;
   peak(kind: Work, value: number): void;

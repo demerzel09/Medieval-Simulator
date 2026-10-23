@@ -19,9 +19,9 @@ import {
   checkHierarchyState,
   ExecutionState,
   type Choice,
-  type Goal,
   type HierarchyState,
 } from "./state";
+import { DecisionHistory } from "./history";
 import { TrackingLedger } from "./tracking";
 
 export type RuntimeInput = {
@@ -91,22 +91,18 @@ export class HierarchyRuntime {
     const candidates: Choice["candidates"] = [];
     try {
       session.take("iterations");
-      let goal = working.goals.find((g) => g.status === "executing");
-      if (goal && input.minute >= goal.deadline) {
-        goal.status = "expired";
-        goal = undefined;
-      }
-      let step: Step | null = null;
+      let goal = execution.current(input.minute);
+      let step: Readonly<Step> | null = null;
       if (goal) {
-        step = this.nextStep(working, goal);
+        step = execution.nextStep(goal);
         if (!step || step.kind === "observe") {
-          const track = working.tracking.find(
-            (t) => t.goal === goal!.id && t.revision === goal!.planRevision,
-          );
-          if (
-            goal.completion === "absorption" &&
-            track?.absorption?.status !== "estimated"
-          )
+          const outcome = new TrackingLedger(
+            working,
+            this.registry,
+            budget,
+            this.composition.analyzer,
+          ).settlePlan(goal, input.minute);
+          if (outcome.status === "waiting")
             return this.finish(
               input,
               working,
@@ -116,30 +112,6 @@ export class HierarchyRuntime {
               null,
               "await-observation",
             );
-          const last = working.intents
-            .filter(
-              (i) => i.goal === goal!.id && i.revision === goal!.planRevision,
-            )
-            .at(-1);
-          goal.status =
-            last && last.status !== "completed" ? "abandoned" : "completed";
-          if (
-            track &&
-            goal.status === "completed" &&
-            !track.absorption &&
-            !track.items.some((i) => i.status === "open")
-          )
-            new TrackingLedger(
-              working,
-              this.registry,
-              budget,
-              this.composition.analyzer,
-            ).close(track, "observed-complete", input.minute);
-          if (track && goal.status === "abandoned")
-            track.gain = {
-              status: "unresolved",
-              reason: last?.status ?? "missing-observation",
-            };
           goal = undefined;
         }
       }
@@ -220,27 +192,8 @@ export class HierarchyRuntime {
           throw Error(
             "contract-violation: selection outside evaluated candidates",
           );
-        const suspended = working.goals.find(
-          (g) =>
-            g.status === "suspended" &&
-            g.parent === selected.offer.parent &&
-            g.target === selected.offer.target,
-        );
-        if (suspended) {
-          execution.revise(
-            suspended,
-            selected.offer.plan,
-            input.minute,
-            "resume",
-          );
-          goal = suspended;
-        } else {
-          const other = working.goals.find((g) => g.status === "suspended");
-          goal = other
-            ? execution.switchParent(other, selected.offer, input.minute)
-            : execution.adopt(selected.offer, input.minute);
-        }
-        step = this.nextStep(working, goal);
+        goal = execution.select(selected.offer, input.minute);
+        step = execution.nextStep(goal);
       }
       phase = "respond";
       if (!step || step.kind === "observe")
@@ -253,13 +206,7 @@ export class HierarchyRuntime {
           "insufficient-observation",
           "observation boundary",
         );
-      const active = working.intents.find(
-        (i) =>
-          i.goal === goal!.id &&
-          i.revision === goal!.planRevision &&
-          i.step === step!.id &&
-          ["submitted", "started"].includes(i.status),
-      );
+      const active = execution.hasActiveIntent(goal!, step.id);
       const proposal: StepProposal =
         step.kind === "delegate"
           ? session.invoke(step.model!, {
@@ -346,34 +293,6 @@ export class HierarchyRuntime {
       );
     }
   }
-  private nextStep(state: HierarchyState, goal: Goal): Step | null {
-    const plan = state.plans.find(
-      (p) => p.id === goal.plan && p.revision === goal.planRevision,
-    )!;
-    let id = plan.entry,
-      offset = 0;
-    const intents = state.intents.filter(
-      (i) => i.goal === goal.id && i.revision === goal.planRevision,
-    );
-    for (let guard = 0; guard <= intents.length; guard++) {
-      const node = plan.nodes.find((n) => n.id === id);
-      if (!node) return null;
-      const index = intents.findIndex(
-        (i, n) =>
-          n >= offset &&
-          i.step === id &&
-          ["completed", "failed", "rejected", "interrupted"].includes(i.status),
-      );
-      if (index < 0) return node;
-      const edge = plan.edges.find(
-        (e) => e.from === id && e.on === intents[index].status,
-      );
-      if (!edge) return null;
-      offset = index + 1;
-      id = edge.to;
-    }
-    throw Error("contract-violation: execution loop");
-  }
   private finish(
     input: RuntimeInput,
     state: HierarchyState,
@@ -382,23 +301,19 @@ export class HierarchyRuntime {
     candidates: Choice["candidates"],
     attempt: RuntimeResult["attempt"],
     chosen: string,
+    fallbackCode?: string,
   ): RuntimeResult {
     if (attempt) this.validateAttempt(attempt);
-    const e = new ExecutionState(state);
-    state.choices.push({
-      id: e.id("choice"),
+    new DecisionHistory(state).record({
       minute: input.minute,
-      source: "policy",
+      source: fallbackCode === undefined ? "policy" : "fallback",
       chosen,
       candidates,
       basis: this.composition.evaluationBasis ?? "temporary-goal-v1",
-      policyRevision: state.policyRevision,
-      modelRevisions: Object.fromEntries(
-        Object.entries(state.models).map(([id, m]) => [id, m.revision]),
-      ),
-      rngDraws: 0,
       usage: session.usage(),
-      exhausted: candidates.some((c) => c.unevaluated.includes("budget")),
+      exhausted:
+        fallbackCode === "budget-exhausted" ||
+        candidates.some((c) => c.unevaluated.includes("budget")),
     });
     new TrackingLedger(
       state,
@@ -418,7 +333,7 @@ export class HierarchyRuntime {
     code: string,
     detail: string,
   ): RuntimeResult {
-    state.failures.push({
+    new DecisionHistory(state).fail({
       minute: input.minute,
       phase: detail.includes(":") ? detail.split(":")[0] : "plan",
       code,
@@ -450,11 +365,8 @@ export class HierarchyRuntime {
       candidates,
       attempt ? { ...attempt, intentId: "" } : null,
       "fallback",
+      code,
     );
-    state.choices[state.choices.length - 1].source = "fallback";
-    state.choices[state.choices.length - 1].exhausted =
-      code === "budget-exhausted" ||
-      candidates.some((c) => c.unevaluated.includes("budget"));
     return result;
   }
 }

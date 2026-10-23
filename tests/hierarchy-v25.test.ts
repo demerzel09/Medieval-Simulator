@@ -534,14 +534,14 @@ it("4 state machine: interrupts and resumes without misrouting, closes an old ch
   ).toBe("interrupt_action");
   const event = evidence(f.intent, "interrupted");
   f.ledger.receive([event], 240, f.session());
-  expect(f.goal.status).toBe("suspended");
+  expect(f.ex.readGoal(f.goal.id).status).toBe("suspended");
   expect(f.state.models["travel-forward@1"].revision).toBe(0);
   expect(f.state.models["body-forward@1"].revision).toBe(1);
-  f.ex.revise(f.goal, plan(), 300, "resume");
+  f.goal = f.ex.revise(f.goal, plan(), 300, "resume");
   expect(f.goal.planRevision).toBe(2);
   expect(f.goal.revision).toBe(1);
   const shelter = { ...plan(), id: "shelter" };
-  f.ex.revise(f.goal, shelter, 360, "interruption");
+  f.goal = f.ex.revise(f.goal, shelter, 360, "interruption");
   const shelterIntent = f.ex.submit(
     f.goal,
     "move",
@@ -559,7 +559,7 @@ it("4 state machine: interrupts and resumes without misrouting, closes an old ch
     480,
     f.session(),
   );
-  f.ex.revise(f.goal, plan(), 540, "resume");
+  f.goal = f.ex.revise(f.goal, plan(), 540, "resume");
   expect(f.goal.planRevision).toBe(4);
   expect(f.goal.revision).toBe(1);
   expect(f.state.tracking[0].gain.reason).toBe("superseded-by-revision");
@@ -613,7 +613,10 @@ it("4 state machine: interrupts and resumes without misrouting, closes an old ch
     defaultBudget,
     prototypeComposition.analyzer,
   ).receive([external], 120, replaced.session());
-  expect(i.status).toBe("superseded");
+  // A closed intent with no forecast references is pruned; inspect its retained tracking below.
+  expect(replaced.state.intents.some((intent) => intent.id === i.id)).toBe(
+    false,
+  );
   expect(
     replaced.state.feedback
       .filter((f) => f.kind === "control")
@@ -680,7 +683,10 @@ it("5 observation tracking: preserves missing meals, delayed absorption, ambiguo
   waiting.ledger.digestion(false, 240);
   expect(waiting.state.tracking[0].absorption?.status).toBe("ambiguous");
   const acquired = pending();
-  acquired.goal.completion = "absorption";
+  // Synthetic absorption scenario: mutate the fixture JSON, not the read-only view.
+  acquired.state.goals.find((g) => g.id === acquired.goal.id)!.completion =
+    "absorption";
+  acquired.goal = acquired.ex.readGoal(acquired.goal.id);
   const acquisition = acquired.ex.submit(
     acquired.goal,
     "take",
@@ -736,7 +742,7 @@ it("5 observation tracking: preserves missing meals, delayed absorption, ambiguo
 it("6 persistence: resumes open predictions and snapshots, recomputes all world decisions, replays new rules and isolates actors", () => {
   const f = pending();
   const store = new ModelStateStore(f.state, f.registry, defaultBudget);
-  store.apply("body-forward@1", "other-observation", { samples: {} });
+  store.apply("body-forward@1", "other-observation", 0, { samples: {} });
   expect(f.state.snapshots).toHaveLength(1);
   const saved = JSON.parse(JSON.stringify(f.state));
   checkHierarchyState(saved, f.registry, prototypeComposition.version);

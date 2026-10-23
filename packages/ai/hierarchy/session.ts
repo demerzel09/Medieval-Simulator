@@ -16,6 +16,8 @@ export class DecisionSession implements Calls {
   readonly meter: Meter;
   private cache = new Map<string, { output: unknown; refs: Ref[] }>();
   private depth = 0;
+  readonly calls: Calls;
+
   constructor(
     readonly registry: ModelRegistry,
     private readonly state: HierarchyState,
@@ -23,6 +25,17 @@ export class DecisionSession implements Calls {
     private composition?: Composition,
   ) {
     this.meter = new Meter(budget);
+    const session = this;
+    this.calls = Object.freeze({
+      get refs() {
+        return frozen(session.refs);
+      },
+      peak: (work: Work, value: number) => session.peak(work, value),
+      limit: (work: Work) => session.limit(work),
+      take: (work: Work, amount = 1) => session.take(work, amount),
+      invoke: <I, O>(id: string, input: I): O =>
+        session.invoke<I, O>(id, input),
+    });
   }
   peak(work: Work, value: number) {
     this.meter.peak(work, value);
@@ -56,7 +69,7 @@ export class DecisionSession implements Calls {
     const start = this.refs.length;
     try {
       this.meter.depth(this.depth);
-      const output = entry.invoke(input, saved.value, this);
+      const output = entry.invoke(input, saved.value, this.calls);
       if (entry.definition.role === "forward")
         this.refs.push({
           model: id,

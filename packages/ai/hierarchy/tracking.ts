@@ -7,12 +7,14 @@ import {
   type Ref,
 } from "./contracts";
 import type { Diagnosis, ModelRegistry } from "./registry";
+import { DecisionHistory } from "./history";
 import { DecisionSession } from "./session";
 import {
   ExecutionState,
   ModelStateStore,
   type HierarchyState,
   type Intent,
+  type Goal,
   type Tracking,
 } from "./state";
 
@@ -50,6 +52,25 @@ export class TrackingLedger {
             : reason,
       };
   }
+  settlePlan(goal: Readonly<Goal>, minute: number) {
+    const track = this.state.tracking.find(
+      (t) => t.goal === goal.id && t.revision === goal.planRevision,
+    );
+    const outcome = this.execution.finishPlan(
+      goal,
+      track?.absorption?.status === "estimated",
+    );
+    if (
+      track &&
+      outcome.status === "completed" &&
+      !track.absorption &&
+      !track.items.some((i) => i.status === "open")
+    )
+      this.close(track, "observed-complete", minute);
+    if (track && outcome.status === "abandoned")
+      track.gain = { status: "unresolved", reason: outcome.reason };
+    return outcome;
+  }
   private matches(intent: Intent, e: Evidence, minute: number) {
     if (
       e.occurred > minute ||
@@ -86,7 +107,7 @@ export class TrackingLedger {
       if (this.state.received.includes(e.id)) continue;
       const intent = this.state.intents.find((i) => i.id === e.intentId);
       if (!intent || !this.matches(intent, e, minute)) {
-        this.state.failures.push({
+        new DecisionHistory(this.state).fail({
           minute,
           phase: "feedback",
           code: "insufficient-observation",
@@ -254,10 +275,11 @@ export class TrackingLedger {
       if (!learner) continue;
       try {
         session.take("learningUpdates");
+        const base = this.store.read(item.model);
         const next = this.registry
           .get(learner)
-          .invoke(item.input, this.state.models[item.model].value, session); // learner owns only target state
-        this.store.apply(item.model, item.event, next as Json);
+          .invoke(item.input, base.value, session.calls); // learner owns only target state
+        this.store.apply(item.model, item.event, base.revision, next as Json);
         this.state.feedback
           .filter(
             (f) =>
@@ -312,43 +334,12 @@ export class TrackingLedger {
     this.state.feedback = this.state.feedback.slice(
       -this.budget.retainedChoices,
     );
-    this.state.choices = this.state.choices.slice(-this.budget.retainedChoices);
-    this.state.failures = this.state.failures.slice(
-      -this.budget.retainedFailures,
+    new DecisionHistory(this.state).retain(
+      this.budget.retainedChoices,
+      this.budget.retainedFailures,
     );
-    // Closed intent identities remain to reject duplicates; no unbounded execution history.
-    const referenced = new Set(
-      this.state.tracking.flatMap((t) => t.items.map((i) => i.intent)),
-    );
-    this.state.intents = this.state.intents.filter(
-      (i) =>
-        referenced.has(i.id) || ["started", "submitted"].includes(i.status),
-    );
-    this.state.delegations = this.state.delegations.filter((d) =>
-      this.state.intents.some((i) => i.delegation === d.id),
-    );
-    const goals = new Set([
-      ...this.state.tracking.map((t) => t.goal),
-      ...this.state.intents.map((i) => i.goal),
-    ]);
-    this.state.goals = this.state.goals.filter(
-      (g) =>
-        goals.has(g.id) || g.status === "executing" || g.status === "suspended",
-    );
-    this.state.plans = this.state.plans.filter(
-      (p) =>
-        this.state.goals.some(
-          (g) => g.id === p.goalId && g.planRevision === p.revision,
-        ) ||
-        this.state.tracking.some(
-          (t) => t.goal === p.goalId && t.revision === p.revision,
-        ) ||
-        this.state.intents.some(
-          (i) => i.plan === p.id && i.revision === p.revision,
-        ),
-    );
+    this.execution.retain(this.state.tracking);
     this.state.received = this.state.received.slice(-256);
-    for (const m of Object.values(this.state.models))
-      m.applied = m.applied.slice(-256);
+    this.store.retainApplied(256);
   }
 }
