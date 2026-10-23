@@ -40,6 +40,17 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:village -- replay fixtures/recordings/autonomous-village-food-acquisition-90.v2.json.gz"
     },
     {
+      "name": "試作: 24時間計測（v25・階層モデル）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "01 自律生活（現在）",
+        "order": 4
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:hierarchy -- 24"
+    },
+    {
       "name": "比較: デバッグ画面（v19・食料行程）",
       "type": "node-terminal",
       "request": "launch",

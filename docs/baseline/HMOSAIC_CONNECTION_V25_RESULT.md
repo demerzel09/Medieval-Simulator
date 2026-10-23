@@ -42,6 +42,8 @@
 
 ## 7対照と実測
 
+VS Codeからは[launch.json](../../.vscode/launch.json)の **試作: 24時間計測（v25・階層モデル）** を選んでF5で起動する。`npm run autonomy:hierarchy -- 24`をターミナルで実行する設定で、ブラウザ表示は含まない。
+
 [対象テスト](../../tests/hierarchy-v25.test.ts)の独立した7件で確認した。
 
 | 対照 | 確認した内容 |
