@@ -1,4 +1,4 @@
-# 次の作業は呼出し許可・モデル別入力と成果判定の生活への接続
+# 次の作業は追跡・診断の境界と成果判定の生活への接続
 
 更新: 2026-10-24。v25初版でFが1日目13:45に疲労死する問題を、回復行程の欠落として修正した。最新は`travel-body-recovery@2`の別fixture／rulesetで、画面とCLIをv24と同じ90日へ延長した。[修正と実測](baseline/HMOSAIC_RECOVERY_V25_RESULT.md)を先に確認する。24時間は5人とも生存したが、食品取得・食事は未接続のため28〜49.75時間で全員が栄養死する。**90日生存は未達**。旧v25の24時間記録と旧v24/v23/v22は保持している。
 
@@ -26,14 +26,14 @@ VS Codeの「実行とデバッグ」で **試作: ブラウザ画面（v25・�
 
 今回実装したのは状態所有の改善。`ExecutionState`へ進行・期限・行程終了・採用／再開を集約し、読取は凍結した複写にした。目的／行程の改訂を照合し、`ModelStateStore.apply`は更新元改訂を必須とする。`DecisionHistory`へ判断・失敗記録を分離し、モデルへはsession本体を渡さず凍結した`Calls`窓口を渡す。[実装図](foundations/HMOSAIC_OBJECT_DESIGN.md#現在の抽象化と実装図)も更新した。
 
-所有者間の追跡変更、`Calls.invoke`の呼出し許可、モデル別入力投影、分析器の登録簿参照は残る。次はこれらの境界を詰め、成果判定と食品・睡眠の証拠を別版へ接続する。今回の改修は正常な判断・保存状態を変えない内部再構成で、生活改善ではない。再検証の事実はSTATUSを参照する。
+後続で`Definition.calls`の許可宣言、呼出し元を固定した窓口、モデル別の入力投影を実装した。許可はキャッシュ参照前に検査し、キャッシュキーには投影後入力を使う。入力codecは`input-projections.ts`へ分離した。追加6対照と既存記録の応答一致で検査する。所有者間の追跡変更と分析器の登録簿参照は残る。次はこの境界を詰め、成果判定と食品・睡眠の証拠を別版へ接続する。今回の改修は正常な判断・保存状態を変えない内部再構成で、生活改善ではない。再検証の事実はSTATUSを参照する。
 
 ## 次に行うこと
 
 実装上の最優先の未達は**食品取得→食事→吸収の接続と、睡眠・回復を含む行程**。現在は食事0回で、90日表示はできても生活は持続しない。休息による疲労低下だけを適応成功としない。世界の栄養消耗や食品量を変えて帳尻を合わせない。
 
 1. [成果判定の契約](foundations/HMOSAIC_GOAL_OUTCOME_CONTRACT.md)の観測条件を出発点に、必要量・判定器の登録・保存形を具体化する。実測JSONの局所予測・残差・未評価・予備応答を調べ、形式仕様を主案に、状態推定・依存の宣言・評価期間・未知・生存比較・最終選択の採用範囲と校正条件を具体化する。レビュー順序3の生活選択契約への準備であり、24時間の再現一致だけで計算法を採用しない。
-2. 抽象化の不足を詰める。今回集約した実行状態操作・改訂照合を保ち、所有者間の追跡変更を依頼・通知へ分ける。宣言された呼出し先の制限、モデル別入力投影、登録と役割別実装の分離を具体化する。新たな親をruntimeの条件分岐で処理しない。
+2. 抽象化の不足を詰める。今回集約した実行状態操作・改訂照合を保ち、所有者間の追跡変更を依頼・通知へ分ける。実装した呼出し先の制限とモデル別入力投影を保ち、診断の登録簿参照と登録・役割別実装の分離を具体化する。新たな親をruntimeの条件分岐で処理しない。
 3. 採用範囲を定めて、小さな食品取得→食事→吸収と回復・睡眠の行程を接続する。既存世界の語彙・法則を使い、成立する条件と枯渇・競合・遅延・高疲労で成立しない条件を実結果で確認する。二つの親から基本モデルを共用し、中断・避難・再開も本人の観測でつなぐ。
 4. 接続7対照・再現性と、生活の実結果を別に判定する。対象テスト、10日間の全判断再計算・保存再開・Event投影から始め、必要な90日・複数条件へ進む。食事・吸収・疲労・欠食時間・死亡を報告し、既知の死亡を再現するテストの成功を生活成立としない。新仕様は構成／ruleset／記録の版で区別する。
 5. R07の非線形・飽和・欠測を含む分析、R08の更新則・忘却・探索、R09のモデル内の子・引数・順序の変更を段階的に具体化する。未計測の親利得から教師を作らず、許可操作・再検査・版・旧状態保持と学習固定比較を定める。行程の再計画、開発者による構成変更、新たな条件別ifを適応成功としない。mainへのcommit/pushの既存許可は継承する。
@@ -41,7 +41,7 @@ VS Codeの「実行とデバッグ」で **試作: ブラウザ画面（v25・�
 未実行: R12の適応・一般化、学習固定との複数条件比較、全体テスト、コンテンツ検査、ブラウザテスト全体。今回の設計書のMermaid表示確認はSTATUSを参照。改訂版の10日・90日実走と対象検査はSTATUSに記録する。
 
 ```bash
-npx vitest run tests/hierarchy-ownership-v25.test.ts tests/hierarchy-recovery-v25.test.ts tests/hierarchy-v25.test.ts tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
+npx vitest run tests/hierarchy-boundaries-v25.test.ts tests/hierarchy-ownership-v25.test.ts tests/hierarchy-recovery-v25.test.ts tests/hierarchy-v25.test.ts tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
 npm run typecheck
 npm run autonomy:hierarchy -- 2160 --output /tmp/v25-connection.json --record /tmp/v25-connection.json.gz
 npm run autonomy:hierarchy -- 24 --legacy

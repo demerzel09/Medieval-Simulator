@@ -25,8 +25,12 @@ export class DecisionSession implements Calls {
     private composition?: Composition,
   ) {
     this.meter = new Meter(budget);
+    this.calls = this.callsFor();
+  }
+  /** The trusted orchestrator has no caller; model facades bind their definition. */
+  callsFor(caller?: string): Calls {
     const session = this;
-    this.calls = Object.freeze({
+    return Object.freeze({
       get refs() {
         return frozen(session.refs);
       },
@@ -34,7 +38,7 @@ export class DecisionSession implements Calls {
       limit: (work: Work) => session.limit(work),
       take: (work: Work, amount = 1) => session.take(work, amount),
       invoke: <I, O>(id: string, input: I): O =>
-        session.invoke<I, O>(id, input),
+        session.invokeFrom<I, O>(caller, id, input),
     });
   }
   peak(work: Work, value: number) {
@@ -47,11 +51,33 @@ export class DecisionSession implements Calls {
     this.meter.take(work, amount);
   }
   invoke<I, O>(id: string, input: I): O {
-    id = this.composition?.aliases[id]?.model ?? id;
+    return this.invokeFrom<I, O>(undefined, id, input);
+  }
+  private invokeFrom<I, O>(
+    caller: string | undefined,
+    id: string,
+    input: I,
+  ): O {
+    const resolved = this.composition?.aliases[id]?.model ?? id;
+    // Authorization precedes cache lookup, provenance and budget changes.
+    if (caller !== undefined) {
+      const permission = this.registry
+        .get(caller)
+        .definition.calls?.find((permission) => permission.target === id);
+      if (!permission) throw Error("contract-violation: undeclared model call");
+      const target = this.registry.get(resolved).definition;
+      if (
+        target.role !== permission.role ||
+        target.contract !== permission.contract
+      )
+        throw Error("model-mismatch: call contract");
+    }
+    id = resolved;
     const entry = this.registry.get(id),
       saved = this.state.models[id];
     if (!saved) throw Error("model-mismatch: state");
-    const cacheKey = key([id, saved.revision, input]);
+    const projected = entry.project(input);
+    const cacheKey = key([id, saved.revision, projected]);
     const cached = this.cache.get(cacheKey);
     if (cached) {
       this.refs.push(...structuredClone(cached.refs));
@@ -69,7 +95,7 @@ export class DecisionSession implements Calls {
     const start = this.refs.length;
     try {
       this.meter.depth(this.depth);
-      const output = entry.invoke(input, saved.value, this.calls);
+      const output = entry.invoke(input, saved.value, this.callsFor(id));
       if (entry.definition.role === "forward")
         this.refs.push({
           model: id,

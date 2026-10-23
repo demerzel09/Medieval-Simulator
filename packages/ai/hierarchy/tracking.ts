@@ -278,7 +278,7 @@ export class TrackingLedger {
         const base = this.store.read(item.model);
         const next = this.registry
           .get(learner)
-          .invoke(item.input, base.value, session.calls); // learner owns only target state
+          .invoke(item.input, base.value, session.callsFor(learner)); // learner owns only target state
         this.store.apply(item.model, item.event, base.revision, next as Json);
         this.state.feedback
           .filter(

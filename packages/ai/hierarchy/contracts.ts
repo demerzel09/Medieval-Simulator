@@ -93,6 +93,8 @@ export type Definition = {
   id: string;
   role: Role;
   projection: string;
+  /** Nested invocation capabilities; omitted means no model calls. */
+  calls?: { target: string; role: Role; contract: string }[];
   inputs: Port[];
   outputs: Port[];
   initial: Json;

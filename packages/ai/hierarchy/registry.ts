@@ -27,6 +27,7 @@ type Entry = {
     state: unknown,
   ) => Diagnosis;
   definition: Definition;
+  project(input: unknown): unknown;
   invoke(input: unknown, state: unknown, calls: Calls): unknown;
   check(state: unknown): void;
 };
@@ -56,16 +57,16 @@ export class ModelRegistry {
       throw Error("contract-violation: model cost");
     json(definition.initial);
     state.parse(definition.initial);
+    const project = (value: unknown) => frozen(input.parse(value));
     this.entries.set(definition.id, {
+      project,
       definition: frozen(definition) as Definition,
       check: (v) => {
         json(v);
         state.parse(v);
       },
       invoke: (i, s, c) => {
-        const value = output.parse(
-          run(frozen(input.parse(i)), frozen(state.parse(s)), c),
-        );
+        const value = output.parse(run(project(i), frozen(state.parse(s)), c));
         json(value);
         return value;
       },
@@ -133,6 +134,20 @@ export class ModelRegistry {
     for (const d of this.definitions())
       if (d.learner && this.get(d.learner).definition.role !== "learner")
         throw Error("model-mismatch: learner");
+    for (const definition of this.definitions()) {
+      for (const permission of definition.calls ?? []) {
+        const target = this.get(
+          composition.aliases[permission.target]?.model ?? permission.target,
+        ).definition;
+        if (
+          target.role !== permission.role ||
+          target.contract !== permission.contract
+        )
+          throw Error("model-mismatch: call contract");
+        if (definition.role === "fallback")
+          throw Error("contract-violation: fallback dependencies");
+      }
+    }
     const graph = new Map<string, string[]>();
     for (const edge of composition.edges) {
       const from = this.get(edge.from).definition,

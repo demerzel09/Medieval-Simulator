@@ -1,3 +1,12 @@
+import {
+  travelContext,
+  parentContext,
+  recoveryContext,
+  fallbackContext,
+  compositionContext,
+  type PrototypeContext,
+} from "./input-projections";
+export { contextCodec, type PrototypeContext } from "./input-projections";
 import { z } from "zod";
 import {
   codec,
@@ -48,36 +57,6 @@ const empty = z.object({}).strict();
 const numericEstimate = codec(numericEstimateSchema);
 const bodyCodec = bodySchema;
 const cell = z.object({ x: number, y: number }).strict();
-export const contextCodec = z
-  .object({
-    site: z.string(),
-    cell,
-    home: z.object({ id: z.string(), cell }).strict(),
-    sheltered: z.boolean(),
-    body: z
-      .object({
-        fatigue01: number,
-        energy: number,
-        nutritionNeed01: number,
-        sleepiness01: number,
-        cold: number,
-        digesting: z.boolean(),
-      })
-      .strict(),
-    mass: number,
-    maxEnergy: number,
-    hunger: number,
-    meals: number,
-    cash: number,
-    active: z.string().nullable(),
-    destinations: z.array(
-      z
-        .object({ id: z.string(), cell, kind: z.enum(["recovery", "food"]) })
-        .strict(),
-    ),
-  })
-  .strict();
-export type PrototypeContext = z.infer<typeof contextCodec>;
 const travelInput = z
   .object({
     from: z.string(),
@@ -109,14 +88,11 @@ const bodyInput = z
   })
   .strict();
 const request = z.object({ to: z.string(), cell, deadline: number }).strict();
-const controlInput = z
-  .object({
-    context: contextCodec
-      .pick({ site: true, cell: true, mass: true, active: true, body: true })
-      .strip(),
-    request,
-  })
-  .strict();
+const controlInput = z.object({ context: travelContext, request }).strict();
+const compositionCalls: NonNullable<Definition["calls"]> = [
+  { target: "$travel", role: "control", contract: "travel-control-v1" },
+  { target: "$body", role: "forward", contract: "body-v1" },
+];
 
 const travelKey = (i: z.infer<typeof travelInput>) =>
   `${i.from}>${i.to}:mass${Math.floor(i.mass / 4)}`;
@@ -373,7 +349,7 @@ export function registerParent(
 ) {
   return registry.control(
     def(id, "control"),
-    z.object({ context: contextCodec, minute: number }).strict(),
+    z.object({ context: parentContext, minute: number }).strict(),
     codec(z.array(offerSchema)),
     empty,
     {
@@ -498,6 +474,13 @@ export function createPrototypeRegistry(
     {
       ...def("travel-control@1", "control", {}, null, [durationPort], []),
       contract: "travel-control-v1",
+      calls: [
+        {
+          target: "$travel-prediction",
+          role: "forward",
+          contract: "duration-v1",
+        },
+      ],
     },
     controlInput,
     codec(proposalSchema),
@@ -535,13 +518,23 @@ export function createPrototypeRegistry(
     },
   );
   registry.add(
-    def("compose@1", "composer", {}, null, [durationPort, ...bodyPorts], []),
+    {
+      ...def(
+        "compose@1",
+        "composer",
+        {},
+        null,
+        [durationPort, ...bodyPorts],
+        [],
+      ),
+      calls: compositionCalls,
+    },
     codec(
       z
         .object({
           plan: planSchema,
           start: projectedSchema,
-          context: contextCodec,
+          context: compositionContext,
         })
         .strict(),
     ),
@@ -625,7 +618,7 @@ export function createPrototypeRegistry(
   );
   registry.control(
     def("fallback-local@1", "fallback"),
-    z.object({ context: contextCodec }).strict(),
+    z.object({ context: fallbackContext }).strict(),
     codec(attemptSchema.nullable()),
     empty,
     {
@@ -708,7 +701,7 @@ function registerRecoveryRevision(registry: ModelRegistry) {
   );
   registry.control(
     def("recovery-parent@2", "control"),
-    z.object({ context: contextCodec, minute: number }).strict(),
+    z.object({ context: recoveryContext, minute: number }).strict(),
     codec(z.array(offerSchema)),
     empty,
     {
@@ -753,13 +746,23 @@ function registerRecoveryRevision(registry: ModelRegistry) {
     },
   );
   registry.add(
-    def("compose@2", "composer", {}, null, [durationPort, ...bodyPorts], []),
+    {
+      ...def(
+        "compose@2",
+        "composer",
+        {},
+        null,
+        [durationPort, ...bodyPorts],
+        [],
+      ),
+      calls: compositionCalls,
+    },
     codec(
       z
         .object({
           plan: planSchema,
           start: projectedSchema,
-          context: contextCodec,
+          context: compositionContext,
         })
         .strict(),
     ),
