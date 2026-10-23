@@ -3,6 +3,34 @@ import { gunzipSync } from "node:zlib";
 import { expect, test, type Locator } from "@playwright/test";
 import type { VillageEvent } from "../../packages/sim/autonomous-world";
 
+test("v25 browser launch opens its 24 hour recording and stops at the recorded end", async ({ page }) => {
+  const launch = JSON.parse(readFileSync(".vscode/launch.json", "utf8"));
+  const config = launch.configurations.find((c: { name: string }) => c.name === "試作: ブラウザ画面（v25・階層モデル）");
+  expect(config.serverReadyAction.action).toBe("debugWithChrome");
+  const url = new URL(config.serverReadyAction.uriFormat.replace("%s", "5174"));
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto(url.pathname + url.search);
+  await expect(page.getByRole("heading", { name: "v25 · 階層モデルの24時間試作" })).toBeVisible();
+  await expect(page.getByLabel("表示する記録")).toHaveValue("hierarchy");
+  await expect(page.getByRole("img", { name: "土地経済の1280×768ピクセル地図" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "F のステータス" })).toBeVisible();
+  await expect(page.getByLabel("土地経済の日")).toHaveAttribute("max", "1");
+  await page.getByRole("button", { name: "＋1刻み" }).click();
+  await expect(page.locator("strong[aria-live='polite']")).toHaveText("1日目 01:05");
+  await expect(page.getByRole("region", { name: "階層モデルの記録" })).toContainText("仮の目的評価");
+  await page.getByLabel("土地経済の人物").selectOption("B1");
+  await expect(page.getByRole("heading", { name: "B1 のステータス" })).toBeVisible();
+  await page.getByRole("button", { name: "＋1日" }).click();
+  await expect(page.locator("strong[aria-live='polite']")).toHaveText("1日目 24:00");
+  await expect(page.getByRole("button", { name: "再生", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "＋1刻み" })).toBeDisabled();
+  await page.getByLabel("土地経済の人物").selectOption("F");
+  await expect(page.getByRole("region", { name: "階層モデルの記録" })).toContainText("移動 11回 · 身体 11回");
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: "/tmp/medieval-village-hierarchy.png", fullPage: true });
+});
+
 async function clickCell(map: Locator, x: number, y: number) {
   const box = (await map.boundingBox())!;
   await map.click({ position: { x: (x + .5) / 40 * box.width, y: (y + .5) / 24 * box.height } });
