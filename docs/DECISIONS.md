@@ -31,4 +31,6 @@
 
 17. **v25の回復修正を別の版として比較する。** 初版の接続対照を保持し、`hierarchyRecoveryV25`、`hierarchy-registry@2`、`travel-body-recovery@2`、`autonomous-village-hierarchy-recovery-v25`を追加した。その場／帰宅後の休息を実行案に含め、仮の疲労変化評価と区間ごとの予測枯渇検査で比較する。基準は`temporary-recovery-v2`、係数は仮。本人の実結果による予測更新と、開発者が行程を追加した修正を混同しない。[90日試行](baseline/HMOSAIC_RECOVERY_V25_RESULT.md)では初日疲労死を解消したが、食事0回で全員が栄養死し、生活成立は未達。世界の係数・食品・死亡条件を変えて生存を保証しない。
 
+18. **抽象化の実装範囲と生活の合否を分ける。** [現行実装の3図とレビュー](foundations/HMOSAIC_OBJECT_DESIGN.md#現在の抽象化と実装図)で確認した共用・差し替えの土台を維持する。状態所有と依存制限は部分実装で、従来の責務図を達成証拠にしない。生活の拡張前に、食品確保・回復の観測可能な完了条件、状態所有者の操作、許可された呼出し、モデル別入力を具体化する。接続7対照・再現性、生活の実結果、学習固定との比較を別々に判定する。既知の死亡を検査するテストの成功は生活成立ではない。具体的な更新APIと形式仕様の採用は未決。
+
 数値・コード・実測は[v24](baseline/FOOD_ACQUISITION_V24_RESULT.md)、死亡の基準は[v23](baseline/MORTALITY_V23_RESULT.md)、継承した身体は[v22](baseline/ENERGY_EFFORT_V22_RESULT.md)、不足の評価は[供給と取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)で確認する。研究や長期設計は[資料案内](baseline/README.md)から必要な範囲だけ参照する。

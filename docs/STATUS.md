@@ -2,7 +2,25 @@
 
 更新: 2026-10-23。現行は5人自律生活v24。採集・穀物売却後の食品取得・現金購入を共同比較する。次は[NEXT_SESSION](NEXT_SESSION.md)、条件は[DECISIONS](DECISIONS.md)、実測は[v24の結果](baseline/FOOD_ACQUISITION_V24_RESULT.md)。
 
-## v25の回復修正と90日試行（最新）
+## v25の目的・抽象化の再レビューと実装図（最新の作業）
+
+2026-10-23、コード `ca885a2` を照合し、[オブジェクト設計](foundations/HMOSAIC_OBJECT_DESIGN.md#現在の抽象化と実装図)に目的・設計・思想の対応と、現行構造／状態の所有と直接変更／フィードバックの3図を追加した。既存の責務図は目標設計と明記した。**共用・差し替えの土台は実装済みだが、封じ込め・依存制限は部分実装**という判定である。
+
+実行器による目的状態の直接変更、所有者間の可変JSON共有、更新元改訂の検査不足、宣言辺で制限されない呼出し、登録名だけを検査する入力投影を確認した。第三の親の対照は既存食品テンプレートの別登録であり、新しい目的の一般化の証明ではない。親の`priority`に価値判断が残ること、制御信号の`achieved`が局所行為の完了であることも明記した。次は目的の完了条件・生活の選択契約と、状態更新・依存の権限を具体化してから生活行程を拡張する。
+
+今回の変更は設計・案内・引き継ぎ文書のみ。世界・人格コード・fixture・記録は変更していない。以下は既存実装の再検証で、生活改善や新たな抽象化の実装を達成したという結果ではない。
+
+今回実行した検証（Node v22.16.0、既存node_modules）:
+
+- `npx vitest run tests/hierarchy-recovery-v25.test.ts tests/hierarchy-v25.test.ts tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts`：6ファイル41/41成功、41.00秒。独立した接続7対照と回復行動5対照を含む。既知の栄養死を確認するテストの成功は、生活成立の合格ではない。
+- `npm run typecheck`成功。
+- `npm run autonomy:village -- replay`で同梱のv24・v23・v22の90日記録をそれぞれ再生し、全て`verified: true`。状態hashは順に`c98d56bb`／`1a773125`／`bda36c39`。Event照合は記録再生の内部検査に含まれる。
+- オブジェクト設計のMermaid全4図（現行3図＋目標設計1図）をMermaid 11とPlaywright Chromiumで構文解析・描画し、日本語フォントを読み込んだ画像を目視した。検証用ライブラリは`/tmp`へ配置し、リポジトリの依存定義は変更していない。
+- 変更8文書のローカルリンク186件・見出し参照16件・コードフェンスと`git diff --check`を検査し、問題なし。
+
+未実行: 全体テスト、本番ビルド、コンテンツ検査、アプリのブラウザテスト、VS CodeのF5操作、v25の90日CLI再計測、新しい生活選択・制御学習・構成学習・一般化の対照。今回のブラウザ利用は設計図の描画検証のみ。既存の生活実測は下記の回復修正時の結果を参照し、今回の新しい実測とはしない。
+
+## v25の回復修正と90日試行（直前の実装・実測）
 
 2026-10-23、Fの初日疲労死を再現して、帰宅だけで休息しない行程、移動前の予測評価の不足、待機を回復扱いする身体予測を修正した。[修正と実測](baseline/HMOSAIC_RECOVERY_V25_RESULT.md)、[90日JSON](../artifacts/v25-hierarchy-recovery-90-result.json)、[90日記録](../fixtures/recordings/autonomous-village-hierarchy-recovery-90.v2.json.gz)。構成`travel-body-recovery@2`と別rulesetを追加し、初版の24時間・旧3版を保持。画面は90日まで操作でき、旧24時間も選べる。保存された共有JSONから可変状態を作る際の配列参照の共有も修正した。
 
