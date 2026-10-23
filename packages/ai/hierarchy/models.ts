@@ -156,9 +156,17 @@ const scaled = (
     },
   };
 };
-function bodyPrediction(i: z.infer<typeof bodyInput>, s: Samples) {
+function bodyPrediction(
+  i: z.infer<typeof bodyInput>,
+  s: Samples,
+  revision = 1,
+) {
+  if (revision === 2 && i.minutes.kind === "point" && i.minutes.value === 0)
+    return structuredClone(i.before);
   const condition = bodyKey(i),
-    rest = ["rest", "sleep", "wait"].includes(i.activity);
+    rest = (
+      revision === 1 ? ["rest", "sleep", "wait"] : ["rest", "sleep"]
+    ).includes(i.activity);
   const result: Record<string, Estimate<number | boolean>> = {};
   for (const field of [
     "fatigue01",
@@ -171,7 +179,9 @@ function bodyPrediction(i: z.infer<typeof bodyInput>, s: Samples) {
       field === "fatigue01"
         ? rest
           ? -0.07
-          : 0.04 * (1 + i.context.mass / 8)
+          : revision === 2 && i.activity === "wait"
+            ? (0.02 * i.context.mass) / 8
+            : 0.04 * (1 + i.context.mass / 8)
         : field === "energy"
           ? rest
             ? 2
@@ -223,9 +233,10 @@ function bodyDiagnosis(
   predicted: Record<string, Estimate<number | boolean>>,
   e: Evidence,
   s: Samples,
+  revision = 1,
 ): Diagnosis {
   const actualInput = { ...i, minutes: point(e.elapsed) },
-    conditional = bodyPrediction(actualInput, s);
+    conditional = bodyPrediction(actualInput, s, revision);
   const diagnostic: Record<string, Json> = {},
     observed: Record<string, Json> = {},
     values: { key: string; value: number }[] = [];
@@ -391,8 +402,11 @@ export function registerParent(
 }
 export function createPrototypeRegistry(
   extraParents: { id: string; kind: "recovery" | "food" }[] = [],
+  revision: 1 | 2 = 1,
 ) {
-  const registry = new ModelRegistry("hierarchy-registry@1", ["subjective-v1"]);
+  const registry = new ModelRegistry(`hierarchy-registry@${revision}`, [
+    "subjective-v1",
+  ]);
   registry.learner(
     def("sample-mean@1", "learner", { samples: {} }),
     z
@@ -477,7 +491,7 @@ export function createPrototypeRegistry(
     bodyInput,
     bodyCodec,
     stateCodec,
-    { predict: bodyPrediction },
+    { predict: (input, state) => bodyPrediction(input, state) },
     bodyDiagnosis,
   );
   registry.control(
@@ -626,6 +640,7 @@ export function createPrototypeRegistry(
   registerParent(registry, "food-parent@1", "food");
   for (const parent of extraParents)
     registerParent(registry, parent.id, parent.kind);
+  if (revision === 2) registerRecoveryRevision(registry);
   return registry;
 }
 export const prototypeComposition: Composition = {
@@ -668,4 +683,168 @@ export const prototypeComposition: Composition = {
       phase: 1,
     })),
   ],
+};
+
+/** Revision 2 fixes the missing recovery action; these weights remain provisional. */
+function registerRecoveryRevision(registry: ModelRegistry) {
+  registry.forward(
+    {
+      ...def(
+        "body-forward@2",
+        "forward",
+        { samples: {} },
+        "sample-mean@1",
+        [],
+        bodyPorts,
+      ),
+      contract: "body-v1",
+    },
+    bodyInput,
+    bodyCodec,
+    stateCodec,
+    { predict: (input, state) => bodyPrediction(input, state, 2) },
+    (input, predicted, evidence, state) =>
+      bodyDiagnosis(input, predicted, evidence, state, 2),
+  );
+  registry.control(
+    def("recovery-parent@2", "control"),
+    z.object({ context: contextCodec, minute: number }).strict(),
+    codec(z.array(offerSchema)),
+    empty,
+    {
+      propose({ context: c, minute }) {
+        if (c.active) return [];
+        const targets = [
+          { id: c.site, cell: c.cell, kind: "recovery" as const },
+          ...c.destinations.filter(
+            (d) => d.kind === "recovery" && d.id !== c.site,
+          ),
+        ];
+        return targets.map((target) => {
+          const plan = makePlan("recovery-parent@2", target, minute);
+          const rest = actionStep("recover", "rest", 120);
+          rest.claims = [
+            { kind: "body", id: "self", mode: "hold", quantity: 1 },
+          ];
+          if (target.id === c.site) {
+            plan.entry = "recover";
+            plan.nodes = [rest, plan.nodes[1]];
+            plan.edges = [{ from: "recover", to: "observe", on: "completed" }];
+          } else {
+            plan.nodes.splice(1, 0, rest);
+            plan.edges = [
+              { from: "travel", to: "recover", on: "completed" },
+              { from: "recover", to: "observe", on: "completed" },
+            ];
+          }
+          return {
+            id: plan.id,
+            parent: "recovery-parent@2",
+            purpose: "recovery",
+            target: target.id,
+            deadline: minute + 720,
+            plan,
+            basis: "temporary-recovery-v2" as const,
+            priority: 0,
+            completion: "arrival" as const,
+          };
+        });
+      },
+    },
+  );
+  registry.add(
+    def("compose@2", "composer", {}, null, [durationPort, ...bodyPorts], []),
+    codec(
+      z
+        .object({
+          plan: planSchema,
+          start: projectedSchema,
+          context: contextCodec,
+        })
+        .strict(),
+    ),
+    codec(forecastSchema),
+    empty,
+    (input, _state, calls) => {
+      const forecast = compose(
+        input,
+        calls,
+        "$body",
+        calls.limit("branchesPerPlan"),
+        {
+          mass: input.context.mass,
+          maxEnergy: input.context.maxEnergy,
+          sheltered: input.context.sheltered,
+          nutritionNeed01: input.context.body.nutritionNeed01,
+        },
+      );
+      // Local prediction domain, not the formal survival probability comparison.
+      for (const segment of forecast.segments) {
+        const fatigue = segment.after.body.fatigue01,
+          energy = segment.after.body.energy;
+        if (
+          (fatigue?.kind === "point" &&
+            typeof fatigue.value === "number" &&
+            fatigue.value >= 1) ||
+          (energy?.kind === "point" &&
+            typeof energy.value === "number" &&
+            energy.value <= 0)
+        ) {
+          if (!forecast.violations.includes("predicted-capacity-exhaustion"))
+            forecast.violations.push("predicted-capacity-exhaustion");
+        }
+      }
+      return forecast;
+    },
+  );
+  registry.add(
+    def("temporary-evaluation@2", "evaluator"),
+    codec(z.object({ offer: offerSchema, forecast: forecastSchema }).strict()),
+    z.union([number, z.null()]),
+    empty,
+    ({ offer, forecast }) => {
+      const first = forecast.segments[0],
+        last = forecast.segments.at(-1);
+      if (
+        !first ||
+        !last ||
+        first.before.minute.kind !== "point" ||
+        last.after.minute.kind !== "point"
+      )
+        return null;
+      const before = first.before.body.fatigue01,
+        after = last.after.body.fatigue01;
+      if (
+        before?.kind !== "point" ||
+        after?.kind !== "point" ||
+        typeof before.value !== "number" ||
+        typeof after.value !== "number"
+      )
+        return null;
+      return (
+        offer.priority -
+        (last.after.minute.value - first.before.minute.value) / 60 +
+        40 * (before.value ** 2 - after.value ** 2)
+      );
+    },
+  );
+}
+
+export const recoveryComposition: Composition = {
+  ...structuredClone(prototypeComposition),
+  version: "travel-body-recovery@2",
+  registryVersion: "hierarchy-registry@2",
+  root: ["recovery-parent@2", "food-parent@1"],
+  composer: "compose@2",
+  evaluator: "temporary-evaluation@2",
+  evaluationBasis: "temporary-recovery-v2",
+  aliases: {
+    ...structuredClone(prototypeComposition.aliases),
+    $body: { model: "body-forward@2", contract: "body-v1" },
+  },
+  edges: prototypeComposition.edges.map((edge) => ({
+    ...edge,
+    from: edge.from === "body-forward@1" ? "body-forward@2" : edge.from,
+    to: edge.to === "compose@1" ? "compose@2" : edge.to,
+  })),
 };

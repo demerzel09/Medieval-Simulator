@@ -56,7 +56,7 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
     },
     {
-      "name": "試作: 24時間計測（v25・階層モデル）",
+      "name": "試作: 90日計測（v25・階層モデル）",
       "type": "node-terminal",
       "request": "launch",
       "cwd": "${workspaceFolder}",
@@ -64,7 +64,7 @@
         "group": "01 自律生活（現在）",
         "order": 5
       },
-      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:hierarchy -- 24"
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run autonomy:hierarchy -- 2160"
     },
     {
       "name": "比較: デバッグ画面（v19・食料行程）",

@@ -2,6 +2,8 @@
 
 更新: 2026-10-23。区分: 別人格の接続試作の実装・短時間の実測。[実装前レビュー](../foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)の順序2に対応する。運用は[運用契約](../foundations/HMOSAIC_RUNTIME_CONTRACT.md)、目的と責務は[オブジェクト設計](../foundations/HMOSAIC_OBJECT_DESIGN.md)が正本。計算法は[形式仕様](../foundations/HMOSAIC_FORMAL_SPEC.md)が主案で、今回は未採用。検証範囲は[STATUS](../STATUS.md)、次の作業は[NEXT_SESSION](../NEXT_SESSION.md)。
 
+後続: 初版のFの疲労死を行動上の不備として修正した。[回復修正と90日試行](HMOSAIC_RECOVERY_V25_RESULT.md)を現在の起動・実測の入口とする。本書は初版の24時間の証拠で、旧記録は比較用に保持する。
+
 ## 実装した接続と抽象化
 
 [新しい人格](../../packages/ai/hierarchy/village-adapter.ts)は本人の入力を必要な主観情報へ投影し、実行器の試行を既存の世界行為へ変換する。[fixture](../../fixtures/hierarchy-v25.ts)はv23の物理設定を複写し、`hierarchyModel.compositionVersion = travel-body-prototype@1`だけを追加した。v24の変更は食品判断なので、物理設定はv24とも同じ。rulesetは`autonomous-village-hierarchy-v25`、保存先は`memory.hierarchy`。標準画面・既存人格を置き換えない。
@@ -42,9 +44,7 @@
 
 ## 7対照と実測
 
-VS Codeからは[launch.json](../../.vscode/launch.json)の **試作: ブラウザ画面（v25・階層モデル）** を選んでF5で開く。`/?village=land-economy&wood=hierarchy`へ接続し、[同梱の24時間記録](../../fixtures/recordings/autonomous-village-hierarchy-24h.v2.json.gz)の地図・身体・判断履歴と予測更新数を表示する。保存記録の再生であり、ブラウザ内で新しい生活を計測する画面ではない。期間の上限は24時間、既存版は90日のまま。
-
-**試作: 24時間計測（v25・階層モデル）** は`npm run autonomy:hierarchy -- 24`をターミナルで実行する別設定。ブラウザは開かない。
+初版の[24時間記録](../../fixtures/recordings/autonomous-village-hierarchy-24h.v2.json.gz)は、ブラウザの記録選択「v25初版」または`/?village=land-economy&wood=hierarchy-legacy`で開く。現在の[launch.json](../../.vscode/launch.json)の **試作: ブラウザ画面（v25・階層モデル）** は改訂版90日を開く。初版のCLI再計測は`npm run autonomy:hierarchy -- 24 --legacy`。
 
 [対象テスト](../../tests/hierarchy-v25.test.ts)の独立した7件で確認した。
 
@@ -63,7 +63,7 @@ VS Codeからは[launch.json](../../.vscode/launch.json)の **試作: ブラウ�
 [計測CLI](../../packages/tools/hierarchy-prototype.ts)でseed240924の24時間、109判断を実行した。全判断の保存入力からの再計算、12時間保存からの再開、保存応答による世界の記録再生が一致。状態hashは`0559b3e5`、Event hashは`a237bca5`。[実測JSON](../../artifacts/v25-hierarchy-connection-result.json)にモデル更新数・追跡・保持したフィードバックと失敗を保存した。失敗記録は上限8件の保持分であり、全期間の発生総数ではない。
 
 ```bash
-npm run autonomy:hierarchy -- 24 --output /tmp/v25-result.json --record /tmp/v25-record.json.gz
+npm run autonomy:hierarchy -- 24 --legacy --output /tmp/v25-result.json --record /tmp/v25-record.json.gz
 npm run autonomy:village -- replay /tmp/v25-record.json.gz
 ```
 

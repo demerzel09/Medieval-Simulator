@@ -61,7 +61,9 @@ export class HierarchyRuntime {
     if (input.actor !== previous.actor || !Number.isSafeInteger(input.minute))
       throw Error("contract-violation: actor/time");
     checkHierarchyState(previous, this.registry, this.composition.version);
-    const committed = structuredClone(previous),
+    // Read-only recording decoding interns equal JSON values. Mutable state must
+    // expand those aliases; structuredClone preserves shared empty arrays.
+    const committed: HierarchyState = JSON.parse(JSON.stringify(previous)),
       feedbackSession = new DecisionSession(
         this.registry,
         committed,
@@ -389,7 +391,7 @@ export class HierarchyRuntime {
       source: "policy",
       chosen,
       candidates,
-      basis: "temporary-goal-v1",
+      basis: this.composition.evaluationBasis ?? "temporary-goal-v1",
       policyRevision: state.policyRevision,
       modelRevisions: Object.fromEntries(
         Object.entries(state.models).map(([id, m]) => [id, m.revision]),

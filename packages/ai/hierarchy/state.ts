@@ -96,7 +96,7 @@ export type Choice = {
     violations: string[];
     unevaluated: string[];
   }[];
-  basis: "temporary-goal-v1";
+  basis: "temporary-goal-v1" | "temporary-recovery-v2";
   policyRevision: number;
   modelRevisions: Record<string, number>;
   rngDraws: number;
@@ -299,7 +299,7 @@ const hierarchySchema = z
               })
               .strict(),
           ),
-          basis: z.literal("temporary-goal-v1"),
+          basis: z.enum(["temporary-goal-v1", "temporary-recovery-v2"]),
           policyRevision: count,
           modelRevisions: z.record(count),
           rngDraws: count,

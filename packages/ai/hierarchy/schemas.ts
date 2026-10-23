@@ -191,7 +191,7 @@ export const offerSchema: z.ZodType<Offer> = z
     purpose: z.string(),
     target: z.string(),
     deadline: nonnegative,
-    basis: z.literal("temporary-goal-v1"),
+    basis: z.enum(["temporary-goal-v1", "temporary-recovery-v2"]),
     priority: n,
     plan: planSchema,
     completion: z.enum(["arrival", "absorption"]),

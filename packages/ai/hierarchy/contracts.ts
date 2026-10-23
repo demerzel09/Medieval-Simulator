@@ -114,6 +114,7 @@ export type Composition = {
   root: string[];
   composer: string;
   evaluator: string;
+  evaluationBasis?: "temporary-goal-v1" | "temporary-recovery-v2";
   selector: string;
   analyzer: string;
   fallback: string;
@@ -241,7 +242,7 @@ export type Offer = {
   target: string;
   deadline: number;
   plan: Plan;
-  basis: "temporary-goal-v1";
+  basis: "temporary-goal-v1" | "temporary-recovery-v2";
   priority: number;
   completion: "arrival" | "absorption";
 };

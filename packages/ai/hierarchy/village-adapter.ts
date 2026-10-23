@@ -6,6 +6,7 @@ import {
   contextCodec,
   createPrototypeRegistry,
   prototypeComposition,
+  recoveryComposition,
   type PrototypeContext,
 } from "./models";
 import { HierarchyRuntime, type RuntimeInput } from "./runtime";
@@ -22,17 +23,30 @@ export const prototypeRuntime = new HierarchyRuntime(
     attemptCodec.parse({ kind: attempt.kind, args: attempt.args });
   },
 );
+export const recoveryRegistry = createPrototypeRegistry([], 2);
+export const recoveryRuntime = new HierarchyRuntime(
+  recoveryRegistry,
+  recoveryComposition,
+  (attempt) => {
+    attemptCodec.parse({ kind: attempt.kind, args: attempt.args });
+  },
+);
+function definition(version: string) {
+  if (version === prototypeComposition.version)
+    return { registry: prototypeRegistry, runtime: prototypeRuntime };
+  if (version === recoveryComposition.version)
+    return { registry: recoveryRegistry, runtime: recoveryRuntime };
+  throw Error("model-mismatch: fixture composition");
+}
 export const newVillageHierarchy = (
   actor: string,
   seed: number,
   version: string,
 ) => {
-  if (version !== prototypeComposition.version)
-    throw Error("model-mismatch: fixture composition");
-  return newHierarchyState(actor, seed, prototypeRegistry, version);
+  return newHierarchyState(actor, seed, definition(version).registry, version);
 };
 export const checkVillageHierarchy = (state: HierarchyState, version: string) =>
-  checkHierarchyState(state, prototypeRegistry, version);
+  checkHierarchyState(state, definition(version).registry, version);
 export function projectVillage(c: VillageContext): PrototypeContext {
   if (!c.effortBody || !c.needs?.sleep)
     throw Error("insufficient-observation: body");
@@ -131,7 +145,10 @@ export const hierarchyVillageModel: VillageModel = {
         ),
       },
     };
-    const result = prototypeRuntime.decide(data, state);
+    const result = definition(state.compositionVersion).runtime.decide(
+      data,
+      state,
+    );
     const attempts = [];
     if (result.attempt) {
       const a = attemptCodec.parse({

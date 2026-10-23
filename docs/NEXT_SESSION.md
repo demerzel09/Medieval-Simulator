@@ -1,6 +1,6 @@
 # 次の作業は接続試作の計測を踏まえた計算法の採用判断
 
-更新: 2026-10-23。[実装前レビュー](foundations/HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)の順序2、移動・時間・身体感覚の小さな接続試作を別人格v25で実装した。目的・思想と責務の整理は[オブジェクト設計](foundations/HMOSAIC_OBJECT_DESIGN.md)、実装・計測と限定範囲は[v25の結果](baseline/HMOSAIC_CONNECTION_V25_RESULT.md)、検証範囲は[STATUS](STATUS.md)を参照する。標準の生活実装・画面はv24のまま。
+更新: 2026-10-23。v25初版でFが1日目13:45に疲労死する問題を、回復行程の欠落として修正した。最新は`travel-body-recovery@2`の別fixture／rulesetで、画面とCLIをv24と同じ90日へ延長した。[修正と実測](baseline/HMOSAIC_RECOVERY_V25_RESULT.md)を先に確認する。24時間は5人とも生存したが、食品取得・食事は未接続のため28〜49.75時間で全員が栄養死する。**90日生存は未達**。旧v25の24時間記録と旧v24/v23/v22は保持している。
 
 運用の正本は[運用契約](foundations/HMOSAIC_RUNTIME_CONTRACT.md)、計算法の主案は[形式仕様](foundations/HMOSAIC_FORMAL_SPEC.md)。今回の仮評価・経験平均は形式仕様の採用ではなく、生存比較・制御学習・構成学習は未実装。
 
@@ -12,13 +12,17 @@
 
 ## 完了した範囲
 
-VS Codeの「実行とデバッグ」で **試作: ブラウザ画面（v25・階層モデル）** を選びF5を押すと、`/?village=land-economy&wood=hierarchy`で同梱の24時間記録を表示できる。地図・身体・判断履歴と予測更新数を表示し、24時間で再生を止める。**試作: 24時間計測（v25・階層モデル）** はCLI計測と再現検証をターミナルで実行する別設定。[launch設定](../.vscode/launch.json)を参照。標準のブラウザ画面はv24を維持する。
+VS Codeの「実行とデバッグ」で **試作: ブラウザ画面（v25・階層モデル）** を選びF5で起動する。`/?village=land-economy&wood=hierarchy`は改訂版90日、記録選択の「v25初版」／`&wood=hierarchy-legacy`は旧24時間の比較。**試作: 90日計測（v25・階層モデル）** は2160時間のCLI計測・判断再計算・保存再開・記録再生を実行する。[launch設定](../.vscode/launch.json)を参照。標準のv24画面も保持する。
 
 `packages/ai/hierarchy/`に登録・結線検査、役割別モデル、行程合成、状態・追跡の所有者、判断単位のキャッシュ・予算、A結果対応の確定とB〜Dのロールバックを実装した。`travel-forward@1`・`body-forward@1`・`travel-control@1`・`compose@1`を回復・食品確保の二つの仮の親から共用する。第三の親の追加と予測／制御の独立した差し替えも対照に含む。評価器と選択器は別登録で、共通実行器は具体的な親名・モデルIDを分岐に使わない。
 
-別fixtureの`hierarchyModel`、ruleset `autonomous-village-hierarchy-v25`、`memory.hierarchy`で隔離した。世界法則・身体係数・物品・死亡条件・旧v24/v23/v22のfixture、判断経路、同梱記録は維持。7対照は独立した7テストで確認し、seed240924の24時間・109判断で再計算、12時間保存からの再開、新記録再生が一致した。これは移動と観察の接続試作で、食品取得→食事→吸収の自律生活実装ではない。吸収や避難後の再開には合成した証拠・状態操作による対照も用いた。
+初版は別fixtureの`hierarchyModel`、ruleset `autonomous-village-hierarchy-v25`、`memory.hierarchy`で隔離した。世界法則・身体係数・物品・死亡条件・旧v24/v23/v22のfixture、判断経路、同梱記録は維持。7対照は独立した7テストで確認し、seed240924の24時間・109判断で再計算、12時間保存からの再開、新記録再生が一致した。これは移動と観察の接続試作で、食品取得→食事→吸収の自律生活実装ではない。吸収や避難後の再開には合成した証拠・状態操作による対照も用いた。
+
+改訂版は`hierarchy-registry@2`、`travel-body-recovery@2`、ruleset `autonomous-village-hierarchy-recovery-v25`。その場の2時間休息と帰宅後の休息を行程として提案し、疲労変化の仮評価と区間ごとの予測枯渇の検査を加えた。待機を休息扱いする予測を修正し、共有JSONから可変状態を作る際の配列参照の共有も解消した。初版の全判断・hashを再現して保持する。行動の対照は別の5テストで、初版7対照とは区別した。
 
 ## 次に行うこと
+
+最優先の未達は**食品取得→食事→吸収の接続と、睡眠・回復を含む行程**。現在は食事0回で、90日表示はできても生活は持続しない。休息による疲労低下だけを適応成功としない。世界の栄養消耗や食品量を変えて帳尻を合わせない。
 
 1. 実測JSONの局所予測・残差・未評価・予備応答を調べ、形式仕様の状態推定、依存の宣言、評価期間、区間優越と第二基準、参照モデル付き適合度、選択分布の採用範囲と校正条件を決める。24時間の再現一致だけで計算法を採用しない。
 2. R07の非線形・飽和・欠測を含む親固有の分析、R08の更新則・忘却・探索を具体化する。到着完了と数値的な親利得を分け、未計測の利得へ教師を作らない。現在の制御／寄与フィードバックは保存だけで、制御更新なし、寄与は`unknown`。
@@ -26,12 +30,13 @@ VS Codeの「実行とデバッグ」で **試作: ブラウザ画面（v25・�
 4. 採用判断後にレビュー順序3の生活選択へ進む。食品・回復の親を具体化し、取得から吸収までと中断・避難・再開を本人の観測から自律的につなぐ。初期ruleの条件別ifを増やして適応成功と認定しない。
 5. 生活実装の比較は、対象テスト、10日間の全判断再計算・保存再開・Event投影から始め、必要な90日・複数条件・学習固定対照へ進む。新仕様は構成／ruleset／記録の版で区別する。mainへのcommit/pushの既存許可は継承する。
 
-未実行: v25の10日・90日生活比較、R12の適応・一般化、全体テスト、コンテンツ検査、ブラウザテスト全体、Mermaid表示確認。ブラウザ接続時の本番ビルドと対象ブラウザ検査を含め、実行範囲はSTATUSに記録する。
+未実行: R12の適応・一般化、学習固定との複数条件比較、全体テスト、コンテンツ検査、ブラウザテスト全体、Mermaid表示確認。改訂版の10日・90日実走と対象検査はSTATUSに記録する。
 
 ```bash
-npx vitest run tests/hierarchy-v25.test.ts tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
+npx vitest run tests/hierarchy-recovery-v25.test.ts tests/hierarchy-v25.test.ts tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
 npm run typecheck
-npm run autonomy:hierarchy -- 24 --output /tmp/v25-connection.json --record /tmp/v25-connection.json.gz
+npm run autonomy:hierarchy -- 2160 --output /tmp/v25-connection.json --record /tmp/v25-connection.json.gz
+npm run autonomy:hierarchy -- 24 --legacy
 npm run autonomy:village -- replay /tmp/v25-connection.json.gz
 ```
 

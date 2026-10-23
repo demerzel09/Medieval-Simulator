@@ -29,4 +29,6 @@
 
 16. **v25は接続試作として隔離する。** `hierarchyModel`付きの別fixture、`autonomous-village-hierarchy-v25` ruleset、`memory.hierarchy`を用いる。二つの親から移動／身体モデルを共用し、仮評価・最大値選択・経験平均を明示して保存する。到着の完了と親の数値的な利得を分け、未計測の利得・寄与から制御を学習しない。形式仕様の採用と構成学習は後続の判断とする。[試作結果](baseline/HMOSAIC_CONNECTION_V25_RESULT.md)の7対照・24時間の再現を生活改善と読み替えず、世界法則と旧3版を保つ。
 
+17. **v25の回復修正を別の版として比較する。** 初版の接続対照を保持し、`hierarchyRecoveryV25`、`hierarchy-registry@2`、`travel-body-recovery@2`、`autonomous-village-hierarchy-recovery-v25`を追加した。その場／帰宅後の休息を実行案に含め、仮の疲労変化評価と区間ごとの予測枯渇検査で比較する。基準は`temporary-recovery-v2`、係数は仮。本人の実結果による予測更新と、開発者が行程を追加した修正を混同しない。[90日試行](baseline/HMOSAIC_RECOVERY_V25_RESULT.md)では初日疲労死を解消したが、食事0回で全員が栄養死し、生活成立は未達。世界の係数・食品・死亡条件を変えて生存を保証しない。
+
 数値・コード・実測は[v24](baseline/FOOD_ACQUISITION_V24_RESULT.md)、死亡の基準は[v23](baseline/MORTALITY_V23_RESULT.md)、継承した身体は[v22](baseline/ENERGY_EFFORT_V22_RESULT.md)、不足の評価は[供給と取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)で確認する。研究や長期設計は[資料案内](baseline/README.md)から必要な範囲だけ参照する。
