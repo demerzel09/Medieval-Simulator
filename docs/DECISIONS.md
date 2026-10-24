@@ -41,4 +41,6 @@
 
 20. **通常のモデル呼出しは宣言した依存に限定する。** `Definition.calls`で要求名・役割・契約を宣言し、省略時は呼出し不可とする。呼出し元を固定した窓口で、キャッシュより先に許可を検査する。子へ親の権限を継承しない。入力codecが必要な主観項目を切り出して凍結し、キャッシュにも投影後入力を使う。[契約と残る境界](foundations/HMOSAIC_GOAL_OUTCOME_CONTRACT.md#呼出し権限と残る境界)を参照。既存二構成の正常な応答・保存JSONは保持する内部再構成で、生活改善・学習成功ではない。診断の登録簿参照と追跡の共有状態は引き続き未分離。
 
+21. **食事の物理結果と主観更新の権限を分ける。** [食事一経路の契約](foundations/WORLD_PERSON_MEAL_CONTRACT.md)を採用する。世界が現物消費後にだけ摂取を作り、身体時計が120分後の吸収を進める。人格は入力全体の作業用複写を受け、応答も複写して確定する。入力の変更で観測証拠・経験・保存記憶を変更しない。記憶の確定には `subjectiveUpdate` が必要。吸収の本人の判定は感覚からの推定とし、世界の累計値を正解として渡さない。正常な旧版の判断・記録を保つ内部改修で、fixture / rulesetは増やさない。遠隔自己保管庫とSの市場食品の現在量を渡す旧仕様は残る。次の知覚変更では、現在観察と出所・時刻付きの最終観察記憶を分け、別fixture / ruleset / 記録で比較する。
+
 数値・コード・実測は[v24](baseline/FOOD_ACQUISITION_V24_RESULT.md)、死亡の基準は[v23](baseline/MORTALITY_V23_RESULT.md)、継承した身体は[v22](baseline/ENERGY_EFFORT_V22_RESULT.md)、不足の評価は[供給と取得の監査](baseline/FOOD_SHORTAGE_AND_ACCESS_AUDIT.md)で確認する。研究や長期設計は[資料案内](baseline/README.md)から必要な範囲だけ参照する。

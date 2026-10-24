@@ -1,4 +1,8 @@
-/** Stable semantic boundary; occupations define data, not another decision interface. */
+/** Stable semantic boundary; occupations define data, not another decision interface.
+ * World adapters must detach observations/state and take ownership of a detached response.
+ * Mutating an input is private computation; only subjectiveUpdate commits memory.
+ * Attempts request world effects and never grant access to physical state.
+ */
 export type ActorInput<Context, State, Stimulus> = {
   actorId: string;
   at: number;

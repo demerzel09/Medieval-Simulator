@@ -1,18 +1,19 @@
-# 次の作業は世界と人物の境界を食事の一経路で具体化する
+# 次の作業は観察と最終観察記憶を別版で具体化する
 
 ## コンテキスト切替時の引き継ぎ
 
-2026-10-24。直近の設計整理は `1799a93`、直近のコード変更は `6eaf3aa`。どちらもmainへpush済み。コンテキスト切替の準備としてこの節を追加した。新しい実装には着手していない。
+2026-10-24。[食事一経路の契約](foundations/WORLD_PERSON_MEAL_CONTRACT.md)を追加し、判断との入力全体・応答を複写で隔離した。この文書を含むcommitが今回の引き継ぎ単位。直前の引き継ぎは `a2b1ec8`、設計整理は `1799a93`、以前のコード変更は `6eaf3aa`。
 
 - **現在の依頼**: 世界と判断主体としての人物を最上位に置き直す。人物も世界も物理的制約に従う。人物は身体を持つ世界内の存在であり、世界の外から状態を操作する存在ではない。
 - **最も重要な訂正**: 既存実装の維持は不要。構造が合わなければ置換・統合・削除してよい。法則・既存記録と比較可能性は保ち、挙動変更を版で明示する。
-- **読む順序**: README→NEXT_SESSION→STATUS→DESIGN→DECISIONS。その後、[世界と人物の設計](foundations/WORLD_AND_PERSON_DESIGN.md)、[コロニー系の比較](foundations/COLONY_SIM_ARCHITECTURE_REVIEW.md)を必要な順に読む。全文書を一括読込しない。
+- **読む順序**: README→NEXT_SESSION→STATUS→DESIGN→DECISIONS。その後、[世界と人物の設計](foundations/WORLD_AND_PERSON_DESIGN.md)、[食事経路](foundations/WORLD_PERSON_MEAL_CONTRACT.md)を読む。[コロニー系の比較](foundations/COLONY_SIM_ARCHITECTURE_REVIEW.md)は根拠が必要な場合だけ追加する。全文書を一括読込しない。
 - **最初の返答**: 読んだ文書と、目的／最上位の二つ／物理と身体／知覚・記憶／行為と実結果／再利用と置換／検証と未達、の7点を短く日本語で要約する。以前のHMOSAIC内部の改修を、そのまま最優先として再開しない。
-- **次の具体作業**: 食事の一経路について、実状態→感覚・観察→判断→試み→現物消費→遅延吸収→結果の記憶を、関数・保存項目・Eventへ対応づける。更新権限と情報の到達根拠を定め、必要な実装変更を選ぶ。`packages/sim/autonomous-world.ts`の`localView / attempt / advanceVillageWorld`、`packages/sim/effort-body.ts`、`packages/ai/personality.ts`が入口。
-- **完了と未達**: 全体図・外部5作品の比較・現行コードの対応表は作成済み。外部実装はコード読解のみ。新しい最上位境界の実装・受入対照は未着手。v25の食品・睡眠の生活接続と生存改善も未達。既存回帰の成功を新設計の成立としない。
+- **次の具体作業**: `localView` の遠隔 `fieldGrainStores / grainStores` と、Sの `stock_S` が `ownFood / edibleMeals / ownFoodLots` に場所を問わず入る旧仕様を、現在観察と場所・時刻・出所付きの最終観察記憶へ分ける。新fixture / ruleset / 記録で区別し、現地再確認・遠隔数量変化・食事拒否・保存再開の対照を作る。身体法則・食料量は変えない。`eat`の対象ロット指定の採否も具体化する。
+- **確認した原因と変更**: 人格へ渡した `view / stimuli` が世界の記録・経験にも使われていた。入力を編集する対照は改修前に `village event graph` で失敗し、複写後は通常人格と全状態hashが一致する。世界が身体・現物・配送を更新し、主観更新は応答で確定する。身体・記憶は同じ保存JSONに残す。
+- **完了と未達**: 食事全経路の責任表・更新権限と新しい6対照は完了。実際の採集食品の摂食・遅延吸収・推定記憶・保存再開・再生まで確認した。推定記憶の人格はテスト専用、競合予約は合成条件。全面的な知覚監査、世界と具体人格の組立て依存の分離、v25食品・睡眠接続、生存改善は未達。
 - **環境と許可**: リポジトリrootで作業、Node v22（確認時v22.16.0、`$HOME/.local/node/bin`でも利用可）。node_modulesがなければ`npm ci`。シェル・ファイル編集・テスト・記録再生が必要。mainへのcommit/pushの既存許可を継承し、終了時にNEXT_SESSION・STATUS・関係設計文書を更新する。
 
-前回の検証はSTATUSに記録済み。`/tmp`のログや図の検証スクリプトは補助資料で、次のセッションでも存在することを前提にしない。今回の切替準備は文書リンク・差分のみを検査し、コードテストや記録再生は再実行しない。
+今回の検証・未実行は[STATUS](STATUS.md)の先頭へ記録する。Nodeは `export PATH="$HOME/.local/node/bin:$PATH"` でv22.16.0を使用した。`/tmp`の補助ログの存在を次回の前提にしない。
 
 ## 既存の生活試作の状況
 
@@ -24,9 +25,9 @@
 
 ユーザーとの整理により、最上位は世界と判断主体である人間（人物）とする。人物の身体は世界に実在し、世界も人物も物理的制約に従う。HMOSAICは人物内部の判断方式である。[全体図と現行コードの対応](foundations/WORLD_AND_PERSON_DESIGN.md)と[外部実装の比較](foundations/COLONY_SIM_ARCHITECTURE_REVIEW.md)を追加した。ユーザー提示のMountaincoreとRust版COLONYも比較している。
 
-**既存実装を保持する必要はない。** 法則・既存記録と比較可能性を保ち、責任の枠組みに合わないコードは置換・統合・削除してよい。今回の変更は設計・引き継ぎ文書だけで、再構成の実装や生活改善は行っていない。
+**既存実装を保持する必要はない。** 法則・既存記録と比較可能性を保ち、責任の枠組みに合わないコードは置換・統合・削除してよい。今回、食事経路の判断入出力を複写へ置換した。正常な判断・物理結果を保つ内部改修で、生活改善ではない。
 
-次は、食事の一経路で実状態・感覚・記憶・試み・現物消費・遅延吸収・結果配送を関数／保存項目／Eventへ対応づけ、更新権限を決める。その結果から最小の実装変更を選ぶ。`localView`が遠隔の自己保管庫の現物数量を渡す仕様と、世界の進行が人格固有の組立てに依存する点を照合する。全面的な隔離や誤った情報漏れを既に実証したとはしない。詳細は全体設計の「具体的に残る照合点」を参照。
+食事の責任対応・最初の境界改善は[新契約](foundations/WORLD_PERSON_MEAL_CONTRACT.md)に記した。次は遠隔在庫の知覚を別版で扱う。所有権は現在量の知覚根拠にせず、現地観察と最後の記憶を分ける。世界の進行が人格固有の組立てに依存する点も残る。今回の複写を、全経路の情報到達や外部の世界参照まで封じた証明とはしない。
 
 ## 再開時の入口
 
@@ -62,10 +63,10 @@ VS Codeの「実行とデバッグ」で **試作: ブラウザ画面（v25・�
 4. 接続7対照・再現性と、生活の実結果を別に判定する。対象テスト、10日間の全判断再計算・保存再開・Event投影から始め、必要な90日・複数条件へ進む。食事・吸収・疲労・欠食時間・死亡を報告し、既知の死亡を再現するテストの成功を生活成立としない。新仕様は構成／ruleset／記録の版で区別する。
 5. R07の非線形・飽和・欠測を含む分析、R08の更新則・忘却・探索、R09のモデル内の子・引数・順序の変更を段階的に具体化する。未計測の親利得から教師を作らず、許可操作・再検査・版・旧状態保持と学習固定比較を定める。行程の再計画、開発者による構成変更、新たな条件別ifを適応成功としない。mainへのcommit/pushの既存許可は継承する。
 
-未実行: R12の適応・一般化、学習固定との複数条件比較、全体テスト、コンテンツ検査、ブラウザテスト全体。今回の設計書のMermaid表示確認はSTATUSを参照。改訂版の10日・90日実走と対象検査はSTATUSに記録する。
+未実行: R12の適応・一般化、学習固定との複数条件比較、全体テスト、ブラウザテスト、VS Code F5、次版の知覚変更、v25食品・睡眠接続後の生活試行。型検査・本番ビルド・コンテンツ検査と今回の対象検査はSTATUSを参照。既存図は今回変更・再描画していない。
 
 ```bash
-npx vitest run tests/hierarchy-boundaries-v25.test.ts tests/hierarchy-ownership-v25.test.ts tests/hierarchy-recovery-v25.test.ts tests/hierarchy-v25.test.ts tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
+npx vitest run tests/world-person-meal-boundary.test.ts tests/hierarchy-boundaries-v25.test.ts tests/hierarchy-ownership-v25.test.ts tests/hierarchy-recovery-v25.test.ts tests/hierarchy-v25.test.ts tests/food-acquisition-v24.test.ts tests/mortality-v23.test.ts tests/energy-effort-v22.test.ts tests/village-food-audit.test.ts
 npm run typecheck
 npm run autonomy:hierarchy -- 2160 --output /tmp/v25-connection.json --record /tmp/v25-connection.json.gz
 npm run autonomy:hierarchy -- 24 --legacy

@@ -1660,8 +1660,11 @@ export function advanceVillageWorld(w: VillageWorld, hours: number, model: Villa
       const stimuli = [...person.inbox, observation];
       person.inbox = [];
       const subjectiveBefore = structuredClone(person.memory);
-      const response = model.decide({ actorId: id, at: w.hour, stimuli,
-        subjectiveState: structuredClone(subjectiveBefore), knownContext: view });
+      // The personality owns a working copy, never the observation used by the world
+      // for evidence/experience. Detach its response too: retained model references
+      // must not become authority over a committed attempt or subjective memory.
+      const response = structuredClone(model.decide(structuredClone({ actorId: id, at: w.hour, stimuli,
+        subjectiveState: subjectiveBefore, knownContext: view })));
       if (!Number.isSafeInteger(response.wait.at) || response.wait.at <= w.hour || response.attempts.length > 1)
         throw Error("invalid village response");
       person.nextWakeAt = response.wait.at;
