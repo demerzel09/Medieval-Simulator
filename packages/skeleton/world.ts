@@ -25,7 +25,8 @@ interface ThingRecord {
 type Scheduled =
   | { at: number; seq: number; kind: 'complete'; instance: number }
   | { at: number; seq: number; kind: 'wake'; person: ThingId }
-  | { at: number; seq: number; kind: 'natural'; type: string; binding: Binding };
+  | { at: number; seq: number; kind: 'natural'; type: string; binding: Binding }
+  | { at: number; seq: number; kind: 'natural-all'; type: string; binding: Binding };
 
 export interface RunStats {
   completed: number;
@@ -82,8 +83,38 @@ export class World implements WorldView {
 
   // ---- 予定 ----
 
+  /** 自然の作用を、束縛を一つに定めて予定する。 */
   scheduleNatural(type: string, binding: Binding, at: number): void {
     this.push({ at, seq: this.seq++, kind: 'natural', type, binding });
+  }
+
+  /**
+   * 自然の作用を、影響範囲の全要素に予定する。期日に役割の条件を満たす束縛をすべて列挙し、
+   * 一つずつ実例を作る。鮮度を持つ全ロットが腐り、生きている全員が消耗する、という書き方になる。
+   */
+  scheduleNaturalForAll(type: string, partial: Binding, at: number): void {
+    this.push({ at, seq: this.seq++, kind: 'natural-all', type, binding: partial });
+  }
+
+  /** 影響範囲の列挙: 未束縛の役割に条件を満たす事物を順に入れ、成り立つ束縛をすべて返す。 */
+  bindAll(type: ActionType, partial: Binding): Binding[] {
+    const out: Binding[] = [];
+    const walk = (index: number, bound: Binding): void => {
+      if (index === type.roles.length) {
+        out.push(bound);
+        return;
+      }
+      const role = type.roles[index]!;
+      const given = bound[role.name];
+      if (given !== undefined) {
+        const t = this.thing(given);
+        if (t && role.where(t, bound, this)) walk(index + 1, bound);
+        return;
+      }
+      for (const candidate of this.query((t) => role.where(t, bound, this))) walk(index + 1, { ...bound, [role.name]: candidate.id });
+    };
+    walk(0, { ...partial });
+    return out;
   }
 
   private push(item: Scheduled): void {
@@ -160,9 +191,20 @@ export class World implements WorldView {
       this.now = item.at;
       if (item.kind === 'complete') this.complete(item.instance);
       else if (item.kind === 'wake') this.wake(item.person);
-      else this.natural(item.type, item.binding);
+      else if (item.kind === 'natural') this.natural(item.type, item.binding);
+      else this.naturalAll(item.type, item.binding);
     }
     this.now = until;
+  }
+
+  private naturalAll(typeId: string, partial: Binding): void {
+    const type = this.types.get(typeId);
+    if (!type) return;
+    for (const bound of this.bindAll(type, partial)) {
+      const guard = type.guard?.(bound, this) ?? null;
+      if (guard) continue;
+      this.createInstance(type, bound);
+    }
   }
 
   private complete(instanceId: number): void {

@@ -26,7 +26,8 @@ const str = (t: ThingSnapshot | undefined, a: string): string => {
   return typeof v === 'string' ? v : '';
 };
 const alive = (t: ThingSnapshot | undefined): boolean => str(t, 'alive') === 'yes';
-const isPlace = (t: ThingSnapshot): boolean => t.kind === 'place' || t.kind === 'field' || t.kind === 'forest';
+/** 場所とは「居場所数という属性を持つ事物」。種類ではなく属性で決める（畑も森も果樹も場所になれる）。 */
+const isPlace = (t: ThingSnapshot): boolean => typeof t.attrs['occupants'] === 'number';
 const locationOf = (w: WorldView, id: ThingId | undefined): string => str(w.thing(id ?? ''), 'location');
 /** 保管者と場所の組ごとに一つあるロット（入れ物）。無ければ undefined。 */
 const lotAt = (w: WorldView, kind: string, custodian: string, location: string): ThingSnapshot | undefined =>
@@ -85,20 +86,24 @@ export const bake: ActionType = {
   },
 };
 
-/** 自然 ↔ パンのロット: 腐敗。鮮度が 1 下がり、0 になると量が廃棄へ移る。 */
+/**
+ * 自然 ↔ 鮮度を持つロット: 腐敗。影響範囲は「鮮度という属性を持ち、量のある事物」すべて。
+ * 鮮度が 1 下がり、0 になると量が廃棄へ移る。パンでも果実でも同じ型が働く。
+ */
 export const decay: ActionType = {
   id: 'decay',
-  version: 'skeleton-1',
+  version: 'skeleton-2',
   agentRole: 'nature',
   roles: [
     { name: 'nature', where: (t) => t.kind === 'nature' },
-    { name: 'bread', where: (t) => t.kind === 'bread' && num(t, 'quantity') > 0 && num(t, 'freshness') >= 1 },
+    { name: 'lot', where: (t) => t.kind !== 'nature' && typeof t.attrs['freshness'] === 'number' && num(t, 'quantity') > 0 && num(t, 'freshness') >= 1 },
   ],
   duration: () => 0,
   effects: (b, w) => {
-    const bread = w.thing(b['bread']!)!;
-    const effects: Effect[] = [{ kind: 'transfer', attr: 'freshness', from: b['bread']!, to: b['nature']!, amount: 1 }];
-    if (num(bread, 'freshness') <= 1) effects.push({ kind: 'transfer', attr: 'quantity', from: b['bread']!, to: b['nature']!, amount: num(bread, 'quantity') });
+    const lot = w.thing(b['lot']!)!;
+    const effects: Effect[] = [{ kind: 'transfer', attr: 'freshness', from: b['lot']!, to: b['nature']!, amount: 1 }];
+    // 鮮度が尽きたロットの量は廃棄になる（量という属性から廃棄という属性への変換。損失なし）。
+    if (num(lot, 'freshness') <= 1) effects.push({ kind: 'convert', from: b['lot']!, fromAttr: 'quantity', amount: num(lot, 'quantity'), to: b['nature']!, toAttr: 'waste', produced: num(lot, 'quantity'), lossTo: b['nature']!, lossAttr: 'waste' });
     return effects;
   },
 };
@@ -123,13 +128,13 @@ export const move: ActionType = {
       { kind: 'transfer', attr: 'occupants', from: b['from']!, to: b['to']!, amount: 1 },
       { kind: 'reassign', thing: person, attr: 'location', from: b['from']!, to: b['to']!, giver: b['from']!, receiver: b['to']! },
     ];
-    for (const kind of ['grain', 'bread', 'wood']) {
+    for (const kind of ['grain', 'bread', 'wood', 'fruit']) {
       const src = lotAt(w, kind, person, b['from']!);
       const dst = lotAt(w, kind, person, b['to']!);
       if (!src || !dst || num(src, 'quantity') <= 0) continue;
       effects.push({ kind: 'transfer', attr: 'quantity', from: src.id, to: dst.id, amount: num(src, 'quantity') });
       const refresh = num(src, 'freshness') - num(dst, 'freshness');
-      if (kind === 'bread' && refresh > 0) effects.push({ kind: 'transfer', attr: 'freshness', from: 'nature', to: dst.id, amount: refresh });
+      if (typeof src.attrs['freshness'] === 'number' && refresh > 0) effects.push({ kind: 'transfer', attr: 'freshness', from: 'nature', to: dst.id, amount: refresh });
     }
     return effects;
   },
@@ -201,7 +206,7 @@ export const wear: ActionType = {
 };
 
 // 知覚で写す属性。新しい属性を足すときはここにも足す（属性ごとに可視かどうかを決める）。
-const VISIBLE = ['quantity', 'freshness', 'crop', 'wood', 'custodian', 'location'];
+const VISIBLE = ['quantity', 'freshness', 'crop', 'wood', 'fruit', 'custodian', 'location'];
 
 /** 人物 ↔ 同じ場所の事物: 知覚。周囲の可視属性の写しを心象に書く。対象側の変化はゼロ。他の人物の所在も見える。 */
 export const perceive: ActionType = {
@@ -297,6 +302,159 @@ export const exchange: ActionType = {
 };
 
 export const woodTypes: ActionType[] = [regrow, gather, exchange];
+
+// ---- いちばん小さな生活の環: 果実を採って食べる ----
+
+/** 自然 → 果樹: 実がなる。上限まで 1 ずつ。 */
+export const ripen: ActionType = {
+  id: 'ripen',
+  version: 'skeleton-1',
+  agentRole: 'nature',
+  roles: [
+    { name: 'nature', where: (t) => t.kind === 'nature' },
+    { name: 'tree', where: (t) => t.kind === 'tree' && num(t, 'fruit') < num(t, 'cap') },
+  ],
+  duration: () => 0,
+  effects: (b) => [{ kind: 'transfer', attr: 'fruit', from: b['nature']!, to: b['tree']!, amount: 1 }],
+};
+
+/** 人物 ↔ 果樹: 採取。到達している（同じ場所にいる）木の実 1 を、自分の果実ロット 1 に移す。 */
+export const pick: ActionType = {
+  id: 'pick',
+  version: 'skeleton-1',
+  agentRole: 'person',
+  roles: [
+    { name: 'person', where: (t) => t.kind === 'person' && alive(t) },
+    { name: 'tree', where: (t, b, w) => t.kind === 'tree' && str(t, 'location') === locationOf(w, b['person']) && num(t, 'fruit') >= 1 },
+    { name: 'fruit', where: (t, b, w) => t.kind === 'fruit' && str(t, 'custodian') === b['person'] && str(t, 'location') === locationOf(w, b['person']) },
+  ],
+  duration: () => 10 * MINUTE,
+  effects: (b, w) => {
+    const effects: Effect[] = [{ kind: 'convert', from: b['tree']!, fromAttr: 'fruit', amount: 1, to: b['fruit']!, toAttr: 'quantity', produced: 1, lossTo: 'nature', lossAttr: 'waste' }];
+    const refresh = 2 - num(w.thing(b['fruit']!), 'freshness');
+    if (refresh > 0) effects.push({ kind: 'transfer', attr: 'freshness', from: 'nature', to: b['fruit']!, amount: refresh });
+    return effects;
+  },
+};
+
+/** 人物 ↔ 自分の果実: 摂取。果実 1 が胃の内容 1 になる。 */
+export const eatFruit: ActionType = {
+  id: 'eat-fruit',
+  version: 'skeleton-1',
+  agentRole: 'person',
+  roles: [
+    { name: 'person', where: (t) => t.kind === 'person' && alive(t) && num(t, 'stomach') < 2 },
+    { name: 'fruit', where: (t, b, w) => t.kind === 'fruit' && str(t, 'custodian') === b['person'] && str(t, 'location') === locationOf(w, b['person']) && num(t, 'quantity') >= 1 },
+  ],
+  duration: () => 5 * MINUTE,
+  effects: (b) => [{ kind: 'convert', from: b['fruit']!, fromAttr: 'quantity', amount: 1, to: b['person']!, toAttr: 'stomach', produced: 1, lossTo: 'nature', lossAttr: 'waste' }],
+};
+
+export const fruitTypes: ActionType[] = [ripen, pick, eatFruit, decay, move, digest, wear, perceive];
+
+/** 採取者: 手持ちの果実が目標を下回れば木へ行って採り、空腹なら食べ、足りれば家へ戻る。 */
+export class ForagerMind implements Mind {
+  constructor(
+    private readonly grove: string,
+    private readonly target = 3,
+    private readonly eatBelow = 4,
+  ) {}
+  nextWake(_self: ThingSnapshot, now: number): number {
+    return now + 2 * HOUR;
+  }
+  observe(self: ThingSnapshot, _now: number): Attempt[] {
+    return [{ type: 'perceive', binding: { person: self.id } }];
+  }
+  decide(self: ThingSnapshot, _now: number): Attempt[] {
+    const me = self.id;
+    const here = str(self, 'location');
+    const home = str(self, 'home');
+    const attempts: Attempt[] = [];
+    const fruitHere = knownLotQuantity(self, 'fruit', me, here);
+    const hungry = num(self, 'stomach') < 1 && num(self, 'nutrition') < this.eatBelow;
+    if (hungry && fruitHere >= 1) attempts.push({ type: 'eat-fruit', binding: { person: me } });
+    if (fruitHere < this.target) {
+      if (here === this.grove) {
+        const onTree = Number(known(self)[this.grove]?.attrs['fruit'] ?? 0);
+        if (onTree >= 1) for (let i = 0; i < Math.min(onTree, this.target - fruitHere); i++) attempts.push({ type: 'pick', binding: { person: me } });
+        else if (!hungry) attempts.push({ type: 'move', binding: { person: me, to: home } });
+      } else attempts.push({ type: 'move', binding: { person: me, to: this.grove } });
+    } else if (here !== home) {
+      attempts.push({ type: 'move', binding: { person: me, to: home } });
+    }
+    return attempts;
+  }
+}
+
+export interface FruitOptions {
+  /** 採取者の人数（同じ果樹を使う）。 */
+  persons?: number;
+  /** 実がなる間隔（時間）。 */
+  ripenEveryHours?: number;
+}
+
+/** 果実の場面: 果樹の林一つと家一軒。採取者は林と家を往復して果実で生きる。 */
+export function buildFruitScenario(options: FruitOptions = {}): Scenario {
+  const w = new World();
+  const n = options.persons ?? 1;
+  const persons = Array.from({ length: n }, (_, i) => `P${i + 1}`);
+  const locations = ['grove', 'home'];
+  w.addThing('nature', 'nature', { fruit: 100000, waste: 0, freshness: 100000, nutrition: 0 });
+  // 果樹は場所でもある。実の上限 12。初期の実 6 は仮の比較条件。
+  w.addThing('grove', 'tree', { location: 'grove', fruit: 6, cap: 12, occupants: 0 });
+  w.addThing('home', 'place', { occupants: n });
+  for (const p of persons) {
+    w.addThing(p, 'person', { alive: 'yes', location: 'home', home: 'home', nutrition: 6, stomach: 0, keep: 0, knowledge: {} });
+    for (const loc of locations) w.addThing(`fruit:${p}@${loc}`, 'fruit', { custodian: p, location: loc, quantity: 0, freshness: 0 });
+  }
+  for (const t of fruitTypes) w.addType(t);
+  for (const p of persons) w.addMind(p, new ForagerMind('grove'));
+  return { world: w, persons, locations };
+}
+
+/** 果実の場面の自然の予定。影響範囲は期日に列挙する（人物やロットごとの配線をしない）。 */
+export function scheduleFruitNature(w: World, fromDay: number, toDay: number, ripenEveryHours = 4): void {
+  for (let day = fromDay; day < toDay; day++) {
+    const base = day * DAY;
+    for (let h = 0; h < 24; h++) {
+      const at = base + h * HOUR;
+      w.scheduleNaturalForAll('wear', { nature: 'nature' }, at);
+      if (h % 2 === 0) w.scheduleNaturalForAll('digest', { nature: 'nature' }, at);
+      if (h % ripenEveryHours === 0) w.scheduleNaturalForAll('ripen', { nature: 'nature' }, at);
+      if (h % 8 === 0) w.scheduleNaturalForAll('decay', { nature: 'nature' }, at);
+    }
+  }
+}
+
+export function runFruitDays(days: number, options: FruitOptions = {}): { scenario: Scenario; daily: Record<string, number | string>[] } {
+  const scenario = buildFruitScenario(options);
+  const { world, persons } = scenario;
+  scheduleFruitNature(world, 0, days, options.ripenEveryHours ?? 4);
+  const daily: Record<string, number | string>[] = [];
+  for (let day = 0; day < days; day++) {
+    world.run((day + 1) * DAY);
+    judgeDeath(world, persons);
+    daily.push(summarizeFruit(world, persons));
+  }
+  return { scenario, daily };
+}
+
+export function summarizeFruit(w: World, persons: ThingId[]): Record<string, number | string> {
+  const out: Record<string, number | string> = { day: Math.round(w.now / DAY) };
+  for (const p of persons) {
+    const t = w.thing(p)!;
+    out[`${p}.alive`] = str(t, 'alive');
+    out[`${p}.location`] = str(t, 'location');
+    out[`${p}.nutrition`] = Number(num(t, 'nutrition').toFixed(2));
+    out[`${p}.fruit`] = w.total('quantity', (x) => x.kind === 'fruit' && str(x, 'custodian') === p);
+  }
+  out['grove.fruit'] = num(w.thing('grove'), 'fruit');
+  out['nature.waste'] = Number(num(w.thing('nature'), 'waste').toFixed(2));
+  out['completed'] = w.stats.completed;
+  out['rejected'] = w.stats.rejected;
+  out['cancelled'] = w.stats.cancelled;
+  return out;
+}
 
 // ---- 心象・予測・配分（最小の規則） ----
 
@@ -516,19 +674,19 @@ export function buildMealScenario(options: ScenarioOptions = {}): Scenario {
  * 自然の予定を置く。再生は 4 時間ごと（6/日。二人の需要 2.4×2÷0.8＝6 と同程度の仮の比較条件）、
  * 腐敗は 8 時間ごと、消化は 2 時間ごと、消耗は 1 時間ごと。森があれば薪の再生も 4 時間ごと。
  */
-export function scheduleNature(w: World, fromDay: number, toDay: number, scenario?: Pick<Scenario, 'persons' | 'locations'>): void {
-  const persons = scenario?.persons ?? BASE_PERSONS;
-  const locations = scenario?.locations ?? BASE_LOCATIONS;
+export function scheduleNature(w: World, fromDay: number, toDay: number, _scenario?: Pick<Scenario, 'persons' | 'locations'>): void {
+  // 影響範囲は期日に列挙する。生きている全員が消耗し、胃に内容のある全員が消化し、
+  // 上限未満の全ての畑・森に実り、鮮度を持つ全ロットが腐る。人物やロットごとの配線はしない。
   const hasForest = w.thing('forest') !== undefined;
   for (let day = fromDay; day < toDay; day++) {
     const base = day * DAY;
     for (let h = 0; h < 24; h++) {
       const at = base + h * HOUR;
-      for (const person of persons) w.scheduleNatural('wear', { nature: 'nature', person }, at);
-      if (h % 2 === 0) for (const person of persons) w.scheduleNatural('digest', { nature: 'nature', person }, at);
-      if (h % 4 === 0) w.scheduleNatural('regen', { nature: 'nature', field: 'field' }, at);
-      if (h % 4 === 0 && hasForest) w.scheduleNatural('regrow', { nature: 'nature', forest: 'forest' }, at);
-      if (h % 8 === 0) for (const person of persons) for (const loc of locations) w.scheduleNatural('decay', { nature: 'nature', bread: `bread:${person}@${loc}` }, at);
+      w.scheduleNaturalForAll('wear', { nature: 'nature' }, at);
+      if (h % 2 === 0) w.scheduleNaturalForAll('digest', { nature: 'nature' }, at);
+      if (h % 4 === 0) w.scheduleNaturalForAll('regen', { nature: 'nature' }, at);
+      if (h % 4 === 0 && hasForest) w.scheduleNaturalForAll('regrow', { nature: 'nature' }, at);
+      if (h % 8 === 0) w.scheduleNaturalForAll('decay', { nature: 'nature' }, at);
     }
   }
 }
