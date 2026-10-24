@@ -1,264 +1,139 @@
-// 最小の骨格の不変条件。docs/DESIGN.md「細部へ降りる前に満たす条件」と Laurier・Poels の表1に対応する。
+// 最小の骨格（Δt ごとの法則）の検査。docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, buildMealScenario, buildFruitScenario, runDays, runFruitDays, mealTypes, decay, DAY, HOUR } from '../packages/skeleton/index.js';
-import type { Effect, LedgerEntry, ThingSnapshot } from '../packages/skeleton/index.js';
+import { World, buildFruitScenario, runFruitDays, massTotal, fruitLaws, DAY, DT, HOUR } from '../packages/skeleton/index.js';
+import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
-const str = (t: ThingSnapshot | undefined, a: string): string => (typeof t?.attrs[a] === 'string' ? (t!.attrs[a] as string) : '');
 const num = (t: ThingSnapshot | undefined, a: string): number => (typeof t?.attrs[a] === 'number' ? (t!.attrs[a] as number) : 0);
+const str = (t: ThingSnapshot | undefined, a: string): string => (typeof t?.attrs[a] === 'string' ? (t!.attrs[a] as string) : '');
+const fruitsOn = (w: World, holder: string) => w.query((t) => t.kind === 'fruit' && str(t, 'attachedTo') === holder);
 
-/** 作物・穀物・パン・胃・栄養・廃棄の総和。自然を含めれば保存される。 */
-function foodTotal(w: World): number {
-  return w.total('crop') + w.total('quantity', (t) => t.kind === 'grain' || t.kind === 'bread') + w.total('stomach') + w.total('nutrition') + w.total('waste');
+/** 二人が手の届く所にいる、実が一つだけの木。 */
+function twoPickersOneFruit(): World {
+  const w = new World();
+  w.addThing('nature', 'nature', { fruitStock: 100, growth: 100, growthSpent: 0, waste: 0, nutrition: 0, rotPerHour: 0 });
+  w.addThing('tree', 'tree', { x: 0, y: 0, visibility: 300, cap: 12, growth: 0, ripenPerHour: 0, fruitFreshness: 2, fruitVisibility: 30, fruitOdor: 5 });
+  for (const id of ['A', 'B']) {
+    w.addThing(id, 'person', {
+      alive: 'yes', x: 1, y: 0, homeX: 1, homeY: 0, visibility: 100, sight: 60, reach: 1.5, smell: 3, speedPerHour: 60, walkCostPerMeter: 0,
+      pickPerHour: 6, eatPerHour: 12, digestPerHour: 0.5, digestYield: 0.8, wearPerHour: 0, nutrition: 6, stomach: 0,
+      intent: 'pick', target: 'tree', targetX: 0, targetY: 0, knowledge: {},
+    });
+  }
+  w.seed({ kind: 'spawn', id: 'fruit#1', thingKind: 'fruit', attrs: { attachedTo: 'tree', freshness: 2, visibility: 30, odor: 5 }, from: 'nature', fromAttr: 'fruitStock', amount: 1 });
+  for (const law of fruitLaws) w.addLaw(law);
+  return w;
 }
 
-describe('skeleton: 条件1・2 属性は作用の実例によってしか変わらず、両側を一度に変える', () => {
-  it('完了した実例の効果は、どれも二つの事物の間で釣り合う', () => {
-    const { scenario } = runDays(3);
-    const completes = scenario.world.ledger.filter((e): e is Extract<LedgerEntry, { kind: 'complete' }> => e.kind === 'complete');
-    expect(completes.length).toBeGreaterThan(0);
-    for (const c of completes) {
-      for (const e of c.effects) {
-        if (e.kind === 'transfer') expect(e.from).not.toBe(e.to);
-        if (e.kind === 'convert') expect(e.amount - e.produced).toBeGreaterThanOrEqual(-1e-9);
-        if (e.kind === 'reassign') expect(e.giver).not.toBe(e.receiver);
-      }
-    }
-  });
-
-  it('食物の総量は、自然の源泉と廃棄を含めれば保存される（Laurier・Poels 第二公理）', () => {
-    const { scenario } = runDays(5);
-    const fresh = buildMealScenario().world;
-    expect(foodTotal(scenario.world)).toBeCloseTo(foodTotal(fresh), 6);
-  });
-
-  it('効果の検証に失敗すれば、何も変わらない（片側だけ成功しない）', () => {
-    const w = new World();
-    w.addThing('x', 'bread', { quantity: 1, custodian: 'p', location: 'h' });
-    w.addThing('y', 'bread', { quantity: 0, custodian: 'q', location: 'h' });
-    w.addType({
-      id: 'bad',
-      version: 't',
-      agentRole: 'a',
-      roles: [{ name: 'a', where: (t) => t.id === 'x' }],
-      duration: () => 0,
-      effects: () => [
-        { kind: 'transfer', attr: 'quantity', from: 'x', to: 'y', amount: 1 },
-        { kind: 'transfer', attr: 'quantity', from: 'x', to: 'y', amount: 5 }, // 不足で失敗する
-      ],
-    });
-    w.attempt({ type: 'bad', binding: { a: 'x' } });
-    expect(() => w.run(1)).toThrow(/insufficient/);
-    expect(num(w.thing('x'), 'quantity')).toBe(1);
-    expect(num(w.thing('y'), 'quantity')).toBe(0);
-  });
-});
-
-describe('skeleton: 条件3・4 保管者と到達', () => {
-  it('どの事物も保管者はちょうど一人で、引き渡しは両保管者のロットを同じ実例で変える', () => {
-    const { scenario } = runDays(6);
-    const w = scenario.world;
-    for (const lot of w.query((t) => t.kind === 'bread' || t.kind === 'grain')) {
-      expect(['A', 'B']).toContain(str(lot, 'custodian'));
-    }
-    const handovers = w.ledger.filter((e): e is Extract<LedgerEntry, { kind: 'complete' }> => e.kind === 'complete' && e.type === 'handover');
-    for (const h of handovers) {
-      const t = h.effects.find((e): e is Extract<Effect, { kind: 'transfer' }> => e.kind === 'transfer' && e.attr === 'quantity');
-      expect(t).toBeDefined();
-      expect(str(w.thing(t!.from), 'custodian')).toBe(h.binding['giver']);
-      expect(str(w.thing(t!.to), 'custodian')).toBe(h.binding['receiver']);
-    }
-  });
-
-  it('到達していない場所のパンは食べられない（影響範囲に入らない）', () => {
-    const { world } = buildMealScenario();
-    // A の家にパンを置く。B は homeB にいるので、B の eat の影響範囲には入らない。
-    world.addType({
-      id: 'seed',
-      version: 't',
-      agentRole: 'nature',
-      roles: [{ name: 'nature', where: (t) => t.kind === 'nature' }],
-      duration: () => 0,
-      effects: () => [{ kind: 'convert', from: 'nature', fromAttr: 'crop', amount: 1, to: 'bread:A@homeA', toAttr: 'quantity', produced: 1, lossTo: 'nature', lossAttr: 'waste' }],
-    });
-    world.attempt({ type: 'seed', binding: { nature: 'nature' } });
-    world.run(1);
-    expect(num(world.thing('bread:A@homeA'), 'quantity')).toBe(1);
-    const r = world.attempt({ type: 'eat', binding: { person: 'B' } });
-    expect(r.accepted).toBe(false);
-    expect(r.reason).toMatch(/bread: no thing in scope/);
-  });
-});
-
-describe('skeleton: 条件5 心象は知覚でしか変わらず、古く、誤り得る', () => {
-  it('知覚した事物だけが心象に入り、時刻と出所を持つ', () => {
-    const { scenario } = runDays(1);
-    const a = scenario.world.thing('A')!;
-    const knowledge = a.attrs['knowledge'] as Record<string, { at: number; source: string; attrs: Record<string, unknown> }>;
-    const keys = Object.keys(knowledge);
-    expect(keys.length).toBeGreaterThan(0);
-    for (const k of keys) {
-      expect(knowledge[k]!.source).toBe('A');
-      expect(knowledge[k]!.at).toBeGreaterThanOrEqual(0);
-    }
-    // homeB の事物は A の心象に無い（A は homeB に行っていない）。
-    expect(keys.some((k) => k.endsWith('@homeB'))).toBe(false);
-  });
-});
-
-describe('skeleton: 条件7・8 自然の作用は補正されず、同じ初期状態から同じ結果になる', () => {
-  it('二回走らせると記録が一致する', () => {
-    const a = runDays(4);
-    const b = runDays(4);
-    expect(JSON.stringify(a.scenario.world.ledger)).toBe(JSON.stringify(b.scenario.world.ledger));
-    expect(a.daily).toEqual(b.daily);
-  });
-
-  it('栄養は需要に合わせて補正されず、食べなければ減り、減った分は自然へ移る', () => {
-    const w = new World();
-    w.addThing('nature', 'nature', { nutrition: 0, waste: 0 });
-    w.addThing('P', 'person', { alive: 'yes', nutrition: 1, stomach: 0, location: 'h', home: 'h', keep: 0, knowledge: {} });
-    for (const t of mealTypes) w.addType(t);
-    for (let h = 0; h < 24; h++) w.scheduleNatural('wear', { nature: 'nature', person: 'P' }, h * HOUR);
-    w.run(DAY);
-    expect(num(w.thing('P'), 'nutrition')).toBeLessThan(1);
-    expect(num(w.thing('nature'), 'nutrition')).toBeCloseTo(1 - num(w.thing('P'), 'nutrition'), 6);
-  });
-});
-
-describe('skeleton: 対照 配分の規則だけを変え、世界側は変えない', () => {
-  it('基準では訪問者が10日以内に餓死し、農夫が栄養4未満でだけ食べる対照では二人とも生きる。食物の総量はどちらも保存される', () => {
-    const base = runDays(10);
-    const contrast = runDays(10, { farmer: { eatBelow: 4 } });
-    const last = (r: typeof base) => r.daily[r.daily.length - 1]!;
-    expect(last(base)['A.alive']).toBe('yes');
-    expect(last(base)['B.alive']).toBe('no');
-    expect(last(contrast)['A.alive']).toBe('yes');
-    expect(last(contrast)['B.alive']).toBe('yes');
-    const fresh = buildMealScenario().world;
-    expect(foodTotal(base.scenario.world)).toBeCloseTo(foodTotal(fresh), 6);
-    expect(foodTotal(contrast.scenario.world)).toBeCloseTo(foodTotal(fresh), 6);
-  });
-});
-
-describe('skeleton: 拡張 第二の資源（薪）と交換の双対', () => {
-  it('薪と木こりを属性と作用の型の追加だけで足せ、交換は二つの移転を一つの実例で確定し、総量は保存される', () => {
-    const { scenario } = runDays(10, { wood: true, farmer: { eatBelow: 4 } });
-    const w = scenario.world;
-    const fresh = buildMealScenario({ wood: true }).world;
-    const total = (x: World) => foodTotal(x) + x.total('wood') + x.total('quantity', (t) => t.kind === 'wood');
-    expect(total(w)).toBeCloseTo(total(fresh), 6);
-    const exchanges = w.ledger.filter((e): e is Extract<LedgerEntry, { kind: 'complete' }> => e.kind === 'complete' && e.type === 'exchange');
-    expect(exchanges.length).toBeGreaterThan(0);
-    for (const x of exchanges) {
-      const transfers = x.effects.filter((e): e is Extract<Effect, { kind: 'transfer' }> => e.kind === 'transfer' && e.attr === 'quantity');
-      expect(transfers.length).toBe(2);
-      const custodians = transfers.map((t) => [str(w.thing(t.from), 'custodian'), str(w.thing(t.to), 'custodian')]);
-      // 一方は売り手→買い手、他方は買い手→売り手。
-      expect(custodians[0]![0]).toBe(custodians[1]![1]);
-      expect(custodians[0]![1]).toBe(custodians[1]![0]);
-    }
-  });
-
-  it('物々交換だけでは生産の連鎖が始まらず、初期の賦存を使い切ると止まる（記録・約束が要ることの対照）', () => {
-    const { daily } = runDays(10, { wood: true });
-    const last = daily[daily.length - 1]!;
-    expect(last['A.alive']).toBe('no');
-    expect(last['C.alive']).toBe('no');
-    expect(Number(last['C.wood'])).toBeGreaterThanOrEqual(1); // 木こりは薪を持ったまま、農夫はパンを持たないまま止まる
-    expect(Number(last['A.wood'])).toBe(0);
-  });
-});
-
-describe('skeleton: 果実を採って食べて生きる（いちばん小さな環）', () => {
+describe('skeleton: 果実を採って食べて生きる', () => {
   it('採取者一人は果実だけで30日生き、毎日栄養が正である', () => {
     const { daily } = runFruitDays(30);
     for (const row of daily) {
       expect(row['P1.alive']).toBe('yes');
       expect(Number(row['P1.nutrition'])).toBeGreaterThan(0);
     }
-    expect(daily[daily.length - 1]!['grove.fruit']).toBe(12); // 一人なら供給が需要を上回り、木は上限で止まる
   });
 
-  it('同じ果樹を二人で使うと、同じ実を二人が狙った試みは完了時に取り消され、実は負にならず、両者が生きる', () => {
+  it('同じ木を二人で使っても両者が生き、実は一つずつ誰か一人にしか付かない', () => {
     const { scenario, daily } = runFruitDays(30, { persons: 2 });
-    const w = scenario.world;
-    expect(w.stats.cancelled).toBeGreaterThan(0);
-    expect(num(w.thing('grove'), 'fruit')).toBeGreaterThanOrEqual(0);
     for (const row of daily) {
       expect(row['P1.alive']).toBe('yes');
       expect(row['P2.alive']).toBe('yes');
     }
+    for (const f of scenario.world.query((t) => t.kind === 'fruit')) {
+      expect(['tree', 'P1', 'P2']).toContain(str(f, 'attachedTo'));
+    }
+  });
+
+  it('総量は保存される（自然の蓄え、実、胃、栄養、廃棄、熱の和が変わらない）', () => {
+    const { scenario } = runFruitDays(10, { persons: 2 });
     const fresh = buildFruitScenario({ persons: 2 }).world;
-    const total = (x: World) => x.total('fruit') + x.total('quantity', (t) => t.kind === 'fruit') + x.total('stomach') + x.total('nutrition') + x.total('waste');
-    expect(total(w)).toBeCloseTo(total(fresh), 6);
+    expect(massTotal(scenario.world)).toBeCloseTo(massTotal(fresh), 6);
   });
 
-  it('到達していない果樹からは採れない（影響範囲に入らない）', () => {
-    const { world } = buildFruitScenario();
-    const r = world.attempt({ type: 'pick', binding: { person: 'P1' } }); // P1 は家にいる
-    expect(r.accepted).toBe(false);
-    expect(r.reason).toMatch(/tree: no thing in scope/);
+  it('同じ初期状態から同じ記録になる', () => {
+    const a = runFruitDays(5);
+    const b = runFruitDays(5);
+    expect(JSON.stringify(a.scenario.world.ledger)).toBe(JSON.stringify(b.scenario.world.ledger));
   });
 });
 
-describe('skeleton: 影響範囲の列挙 自然の作用は条件を満たす全事物に一つずつ起こる', () => {
-  it('消耗は生きている全員に一つずつ起き、死者には起きない。腐敗は鮮度を持つロットなら種類を問わない', () => {
+describe('skeleton: 影響範囲の種類（視界・手の届く範囲）と心象', () => {
+  it('木は家から見えるが、実は見える範囲が狭いので近づくまで見えない', () => {
+    const { world } = buildFruitScenario(); // 木まで 40m、人の視界 60m、木の visibility 300、実の visibility 30
+    world.tick(DT);
+    const k = world.thing('P1')!.attrs['knowledge'] as Record<string, { kind: string }>;
+    expect(k['tree']?.kind).toBe('tree');
+    expect(Object.values(k).some((e) => e.kind === 'fruit')).toBe(false);
+    world.run(2 * HOUR, DT); // 木へ近づく
+    const k2 = world.thing('P1')!.attrs['knowledge'] as Record<string, { kind: string }>;
+    expect(Object.values(k2).some((e) => e.kind === 'fruit')).toBe(true);
+  });
+
+  it('視界が木まで届かなければ木を知ることがなく、探索が無いので動けずに死ぬ', () => {
+    const { scenario, daily } = runFruitDays(5, { sight: 20 });
+    const k = scenario.world.thing('P1')!.attrs['knowledge'] as Record<string, unknown>;
+    expect(k['tree']).toBeUndefined();
+    expect(daily[daily.length - 1]!['P1.alive']).toBe('no');
+  });
+
+  it('手の届く範囲の外からは採れない', () => {
+    const w = twoPickersOneFruit();
+    // B を 10m 離す。
+    w.seed({ kind: 'move', thing: 'B', dx: 9, dy: 0, costFrom: 'B', costAttr: 'nutrition', costTo: 'nature', cost: 0 });
+    w.tick(DT);
+    expect(fruitsOn(w, 'A').length).toBe(1);
+    expect(fruitsOn(w, 'B').length).toBe(0);
+  });
+
+  it('二人が同じ最後の実に手を伸ばすと、順番で先の一人に移り、もう一人には何も起きない', () => {
+    const w = twoPickersOneFruit();
+    w.tick(DT);
+    expect(fruitsOn(w, 'A').length + fruitsOn(w, 'B').length).toBe(1);
+    expect(fruitsOn(w, 'tree').length).toBe(0);
+    const picks = w.ledger.filter((e) => 'law' in e && e.law === 'pick');
+    expect(picks.length).toBe(1);
+  });
+
+  it('食べた実は心象からも消える（見直し）', () => {
+    const w = twoPickersOneFruit();
+    w.tick(DT); // A が採る
+    const holder = fruitsOn(w, 'A').length === 1 ? 'A' : 'B';
+    w.seed({ kind: 'intend', person: holder, intent: 'eat' });
+    w.tick(DT); // 知覚 → 見直し → 食べる、の順なので、この刻みの終わりには実は消えているが心象には残る
+    expect(fruitsOn(w, holder).length).toBe(0);
+    w.tick(DT); // 次の刻みの見直しで心象から消える
+    const k = w.thing(holder)!.attrs['knowledge'] as Record<string, unknown>;
+    expect(k['fruit#1']).toBeUndefined();
+    // 実 1 が胃に入り、二刻みぶん消化が進んでいる（0.5/時 × 10 分 × 2）。
+    expect(num(w.thing(holder), 'stomach')).toBeCloseTo(1 - 2 * (0.5 / 60) * 10, 6);
+  });
+});
+
+describe('skeleton: 属性は法則の流れでしか変わらず、足りなければ流れが細る', () => {
+  it('不足した transfer は残量だけ移り、負にならない', () => {
     const w = new World();
-    w.addThing('nature', 'nature', { nutrition: 0, waste: 0, freshness: 100 });
-    w.addThing('x', 'person', { alive: 'yes', nutrition: 2, stomach: 0, location: 'h', home: 'h', keep: 0, knowledge: {} });
-    w.addThing('y', 'person', { alive: 'yes', nutrition: 2, stomach: 0, location: 'h', home: 'h', keep: 0, knowledge: {} });
-    w.addThing('z', 'person', { alive: 'no', nutrition: 0, stomach: 0, location: 'h', home: 'h', keep: 0, knowledge: {} });
-    w.addThing('b', 'bread', { custodian: 'x', location: 'h', quantity: 1, freshness: 1 });
-    w.addThing('f', 'fruit', { custodian: 'y', location: 'h', quantity: 2, freshness: 2 });
-    w.addThing('g', 'grain', { custodian: 'y', location: 'h', quantity: 2 }); // 鮮度を持たない
-    for (const t of mealTypes) w.addType(t);
-    const wearType = mealTypes.find((t) => t.id === 'wear')!;
-    expect(w.bindAll(wearType, { nature: 'nature' }).map((b) => b['person'])).toEqual(['x', 'y']);
-    expect(w.bindAll(decay, { nature: 'nature' }).map((b) => b['lot'])).toEqual(['b', 'f']);
-    w.scheduleNaturalForAll('wear', { nature: 'nature' }, 0);
-    w.scheduleNaturalForAll('decay', { nature: 'nature' }, 0);
-    w.run(1);
-    expect(num(w.thing('x'), 'nutrition')).toBeCloseTo(1.9, 6);
-    expect(num(w.thing('y'), 'nutrition')).toBeCloseTo(1.9, 6);
-    expect(num(w.thing('z'), 'nutrition')).toBe(0);
-    expect(num(w.thing('b'), 'quantity')).toBe(0); // 鮮度 1 → 0 で廃棄
-    expect(num(w.thing('f'), 'freshness')).toBe(1);
-    expect(num(w.thing('f'), 'quantity')).toBe(2);
-    expect(num(w.thing('nature'), 'waste')).toBe(1);
+    w.addThing('a', 'x', { v: 0.3 });
+    w.addThing('b', 'x', { v: 0 });
+    w.addLaw({ id: 'drain', version: 't', scope: () => [{ a: 'a' }], flow: () => [{ kind: 'transfer', attr: 'v', from: 'a', to: 'b', amount: 1 }] });
+    w.tick(1);
+    expect(num(w.thing('a'), 'v')).toBe(0);
+    expect(num(w.thing('b'), 'v')).toBeCloseTo(0.3, 9);
+    const entry = w.ledger.find((e) => 'law' in e && e.law === 'drain');
+    expect(entry && 'applied' in entry ? entry.applied : NaN).toBeCloseTo(0.3, 9);
+  });
+
+  it('栄養が尽きた人物は刻みの終わりに世界が死亡と確定し、以後の法則の範囲から外れる', () => {
+    const w = new World();
+    w.addThing('nature', 'nature', { nutrition: 0, waste: 0 });
+    w.addThing('P', 'person', { alive: 'yes', x: 0, y: 0, nutrition: 0.05, stomach: 0, wearPerHour: 0.6, digestPerHour: 0.5, digestYield: 0.8, intent: 'idle', knowledge: {} });
+    for (const law of fruitLaws) w.addLaw(law);
+    w.tick(DT);
+    expect(str(w.thing('P'), 'alive')).toBe('no');
+    const before = w.ledger.length;
+    w.tick(DT);
+    expect(w.ledger.filter((e) => 'law' in e && e.law === 'wear').length).toBe(1); // 二刻み目は消耗しない
+    expect(w.ledger.length).toBeGreaterThanOrEqual(before);
   });
 });
 
-describe('skeleton: 条件9 影響範囲は実例を作る前に決まり、完了時に再評価される', () => {
-  it('開始後に対象が失われた実例は取り消され、部分的に成功しない', () => {
-    const { world } = buildMealScenario();
-    world.addType({
-      id: 'blight',
-      version: 't',
-      agentRole: 'nature',
-      roles: [{ name: 'nature', where: (t) => t.kind === 'nature' }],
-      duration: () => 0,
-      effects: () => [{ kind: 'transfer', attr: 'crop', from: 'field', to: 'nature', amount: 10 }],
-    });
-    world.addType({
-      id: 'teleport',
-      version: 't',
-      agentRole: 'nature',
-      roles: [{ name: 'nature', where: (t) => t.kind === 'nature' }],
-      duration: () => 0,
-      effects: () => [
-        { kind: 'transfer', attr: 'occupants', from: 'homeA', to: 'field', amount: 1 },
-        { kind: 'reassign', thing: 'A', attr: 'location', from: 'homeA', to: 'field', giver: 'homeA', receiver: 'field' },
-      ],
-    });
-    world.attempt({ type: 'teleport', binding: { nature: 'nature' } });
-    world.run(1);
-    const r = world.attempt({ type: 'harvest', binding: { person: 'A' } });
-    expect(r.accepted).toBe(true);
-    const inst = world.instance(r.instance!)!;
-    expect(inst.scope).toEqual(expect.arrayContaining(['A', 'field', 'grain:A@field', 'nature']));
-    world.attempt({ type: 'blight', binding: { nature: 'nature' } });
-    world.run(inst.dueAt);
-    expect(world.instance(r.instance!)!.state).toBe('cancelled');
-    expect(num(world.thing('grain:A@field'), 'quantity')).toBe(0);
-  });
-});
+void DAY;
