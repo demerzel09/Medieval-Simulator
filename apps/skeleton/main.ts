@@ -144,7 +144,7 @@ function drawMap() {
     });
     ctx.fillStyle = '#e6e3d5';
     ctx.font = '12px "Noto Sans JP", sans-serif';
-    ctx.fillText(`木 実${fruits.length}`, x + 14, y - 12);
+    ctx.fillText(`木 実${fruits.length}`, x - 16, y + 30); // 人の名札（右上・右下）と重ならない位置
   }
   // 人
   scenario.persons.forEach((p, i) => {

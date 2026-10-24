@@ -66,7 +66,7 @@ flowchart TD
 
 | 中核 | 何であるか | 対応する既存の語 |
 |---|---|---|
-| 事物 | 属性の束。状態を持ち、作用を受ける。それ自身は何もしない。穀物のロット、パン、水、薪、通貨、畑、棚、荷車、身体、人物 | REA の経済資源、BFO の継続体、Valueflows の EconomicResource、Petri net のトークン、ECS の Entity、Unreal の Actor |
+| 事物 | 属性・状態・関係・資源を持つもの。作用を受ける。それ自身は何もしない。穀物のロット、パン、水、薪、通貨、畑、棚、荷車、身体、人物 | REA の経済資源、BFO の継続体、Valueflows の EconomicResource、Petri net のトークン、ECS の Entity、Unreal の Actor |
 | 属性 | 事物に付く札と仕様の値。どの法則が当たり得るか（相手のどの札と反応するか）と速さを決める。更新は書かない。男女、草食・肉食、見える範囲、採る速さ | REA・Valueflows の知識レベル（ResourceSpecification）、CPN の色集合とガード、Unreal GAS のタグ要件と AttributeSet の基本値、Coad の青（Description）、BFO の傾向性 |
 | 状態 | 更新が書く値。位置、付属先、生死、意図。種類のようでも変わる値（生→死）はここ | Valueflows の EconomicResource の stage・state、BFO の性質、ECS の Component のデータ |
 | 関係 | 相手ごとに持つ状態。心象（いつ・どこで・何を見たか）、相性、所有。向きは両側が別に持つ | BFO 2020 の関係的性質、Valueflows の AgentRelationship、Coad の黄（Role） |
