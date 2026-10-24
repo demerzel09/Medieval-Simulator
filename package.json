@@ -26,7 +26,8 @@
     "autonomy:living": "tsx packages/tools/living-market.ts",
     "content:validate": "tsx packages/tools/validate.ts",
     "test:browser": "playwright test",
-    "fixtures": "tsx packages/tools/combat-report.ts"
+    "fixtures": "tsx packages/tools/combat-report.ts",
+    "skeleton": "tsx packages/tools/skeleton.ts"
   },
   "dependencies": {
     "@fontsource/noto-sans-jp": "5.3.0",
