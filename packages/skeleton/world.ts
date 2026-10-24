@@ -3,7 +3,7 @@
 // 情報層: 観測を集め、関係（心象）との差を事象（現れた・消えた）にし、心が意図を定め、死亡を確定する。
 // 値を変える経路はこのファイルの apply だけである。属性には書く経路が無い。足りなければその効果だけ縮める。
 
-import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingId, ThingSnapshot, WorldView } from './types.js';
+import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingDef, ThingId, ThingSnapshot, WorldView } from './types.js';
 
 interface ThingRecord {
   id: ThingId;
@@ -39,6 +39,7 @@ export class World implements WorldView {
   private readonly rangeAttrs: string[];
   private readonly allPairs: boolean;
   private readonly things = new Map<ThingId, ThingRecord>();
+  private readonly defs = new Map<string, ThingDef>();
   private readonly laws: Law[] = [];
   private readonly senses: Sense[] = [];
   private readonly minds = new Map<ThingId, Mind>();
@@ -66,6 +67,34 @@ export class World implements WorldView {
       state: { ...(parts.state ?? {}) },
       rel: { ...(parts.rel ?? {}) },
       res: { ...(parts.res ?? {}) },
+    });
+  }
+
+  // ---- 種類の定義と生成（Factory） ----
+
+  /** 種類の定義を登録する。親は先に登録されていること。 */
+  addDef(def: ThingDef): void {
+    if (this.defs.has(def.name)) throw new Error(`duplicate def ${def.name}`);
+    if (def.parent !== undefined && !this.defs.has(def.parent)) throw new Error(`def ${def.name}: unknown parent ${def.parent}`);
+    this.defs.set(def.name, def);
+  }
+
+  /** 定義を解決する。親の既定値の上に自分の値を重ねる（属性・状態・資源それぞれ名ごとに上書き）。 */
+  def(name: string): { attr: Record<string, Scalar>; state: State; res: Resources } {
+    const d = this.defs.get(name);
+    if (!d) throw new Error(`unknown def ${name}`);
+    const base = d.parent !== undefined ? this.def(d.parent) : { attr: {}, state: {}, res: {} };
+    return { attr: { ...base.attr, ...(d.attr ?? {}) }, state: { ...base.state, ...(d.state ?? {}) }, res: { ...base.res, ...(d.res ?? {}) } };
+  }
+
+  /** 定義から事物を作る。overrides は生成時だけの上書きで、属性もここでなら決められる（以後は凍結）。 */
+  addFromDef(id: ThingId, name: string, overrides: ThingParts = {}): void {
+    const d = this.def(name);
+    this.addThing(id, name, {
+      attr: { ...d.attr, ...(overrides.attr ?? {}) },
+      state: { ...d.state, ...(overrides.state ?? {}) },
+      rel: { ...(overrides.rel ?? {}) },
+      res: { ...d.res, ...(overrides.res ?? {}) },
     });
   }
 
@@ -332,8 +361,9 @@ export class World implements WorldView {
         if (this.things.has(e.id)) return 0;
         const have = this.resOf(e.from, e.fromRes);
         if (have < e.amount) return 0;
+        const d = this.def(e.def);
         this.setRes(e.from, e.fromRes, have - e.amount);
-        this.things.set(e.id, { id: e.id, kind: e.thingKind, attr: Object.freeze({ ...e.attr }), state: { ...e.state }, rel: {}, res: { ...e.res, quantity: e.amount } });
+        this.things.set(e.id, { id: e.id, kind: e.def, attr: Object.freeze({ ...d.attr }), state: { ...d.state, ...(e.state ?? {}) }, rel: {}, res: { ...d.res, quantity: e.amount } });
         this.touched.add(e.id);
         return e.amount;
       }

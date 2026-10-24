@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, buildFruitScenario, runFruitDays, massTotal, fruitLaws, sight, edibleOn, DAY, DT, HOUR } from '../packages/skeleton/index.js';
+import { World, buildFruitScenario, runFruitDays, massTotal, fruitLaws, fruitDefs, sight, edibleOn, DAY, DT, HOUR } from '../packages/skeleton/index.js';
 import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
@@ -14,16 +14,14 @@ const PERSON_ATTR = {
   eats: 'plant', picks: true, visibility: 100, sight: 60, reach: 1.5, smell: 3, speedPerHour: 60, walkCostPerMeter: 0,
   pickPerHour: 6, eatPerHour: 12, digestPerHour: 0.5, digestYield: 0.8, wearPerHour: 0, homeX: 1, homeY: 0,
 };
-const FRUIT = (id: string) => ({
-  kind: 'spawn' as const, id, thingKind: 'fruit', attr: { edible: 'plant', perishable: true, visibility: 30, odor: 5 }, state: { attachedTo: 'tree' }, res: { freshness: 2 },
-  from: 'nature', fromRes: 'fruitStock', amount: 1,
-});
+const FRUIT = (id: string) => ({ kind: 'spawn' as const, id, def: 'fruit', state: { attachedTo: 'tree' }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
 
 /** 二人が手の届く所にいる、実が一つだけの木。 */
 function twoPickersOneFruit(): World {
   const w = new World();
+  for (const d of fruitDefs) w.addDef(d);
   w.addThing('nature', 'nature', { attr: { sink: true, grows: true, rotPerHour: 0 }, res: { fruitStock: 100, growth: 100, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0 } });
-  w.addThing('tree', 'tree', { attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: 0, fruitFreshness: 2, fruitVisibility: 30, fruitOdor: 5 }, state: { x: 0, y: 0 }, res: { growth: 0 } });
+  w.addThing('tree', 'tree', { attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: 0 }, state: { x: 0, y: 0 }, res: { growth: 0 } });
   for (const id of ['A', 'B']) {
     w.addThing(id, 'person', {
       attr: PERSON_ATTR,
@@ -104,6 +102,33 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
     w.run(DAY, DT);
     expect(w.thing('nature')).toBeDefined();
     expect(flows(w, 'rot').every((e) => 'a' in e && e.a !== 'nature')).toBe(true);
+  });
+
+  it('種類の定義はデータで、親の既定値を継いで自分の値で上書きする。振る舞いは継がない', () => {
+    const w = new World();
+    for (const d of fruitDefs) w.addDef(d);
+    w.addDef({ name: 'strong', parent: 'person', attr: { pickPerHour: 12 } }); // 採るのが速い人
+    const strong = w.def('strong');
+    expect(strong.attr['eats']).toBe('plant'); // 親から
+    expect(strong.attr['pickPerHour']).toBe(12); // 自分で上書き
+    expect(strong.res['nutrition']).toBe(6);
+    w.addFromDef('S', 'strong', { attr: { sight: 10 } });
+    expect(w.thing('S')!.attr['pickPerHour']).toBe(12);
+    expect(w.thing('S')!.attr['sight']).toBe(10); // 生成時の上書き
+    expect(w.thing('S')!.kind).toBe('strong');
+    expect(() => w.addDef({ name: 'orphan', parent: 'nobody' })).toThrow(/unknown parent/);
+  });
+
+  it('生成は定義から行い、木が生む実の種類は木の札 bears が指す定義で決まる', () => {
+    const { world } = buildFruitScenario({ ripenPerHour: 6 }); // 10 分ごとに 1 個
+    world.tick(DT);
+    const fruits = world.query((t) => 'edible' in t.attr);
+    expect(fruits.length).toBe(7);
+    for (const f of fruits) {
+      expect(f.kind).toBe('fruit');
+      expect(f.attr['perishable']).toBe(true);
+      expect(f.res['quantity']).toBe(1);
+    }
   });
 
   it('心象は関係（相手ごとの状態）として、いつ・どこで・何を見たかを持つ', () => {

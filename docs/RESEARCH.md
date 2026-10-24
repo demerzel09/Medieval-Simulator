@@ -160,6 +160,27 @@ MAREAは名前と公開要旨でREAの利用を明示する多主体ビジネス
 
 資料に無いもの。相手の属性と自分の状態（空腹、関心、注意）から何に注意を向けるかを選ぶ規則（関心の段）は、どの資料にも無い。候補として Unreal の AI Perception の所属フィルタ、Mountaincore の派閥があるが未確認。対に付く状態を一級の部品として持つ ECS として Flecs の relationship があるが未確認。四区分を一般の法則に落とすには、男女・捕食・親子・友人・所有・雇用を要件として集め、定義が全部に当てはまるかを見る。
 
+<a id="conventions"></a>
+### 種類が増えても壊れない書き方の定石
+
+2026-10-25、ユーザーの問い「派生（継承）を使わないと、事物の種類が増えたときフラグと if のお化けにならないか。オブジェクト指向とその後の研究に定石があるのではないか」に答えて、関連する定石を一次資料で確かめた。結論は、分野を越えて同じ形に収束している。**種類は型やクラスではなくデータであり、振る舞いは組に対する規則で、規則は札の組で選ぶ。** 事物の派生クラスにメソッドを持たせる形は、相互作用が二つの事物の間で起こるため片側しか選べず、相手側の分岐（種類 × 種類）が残る。
+
+| 定石 | 内容 | 確認した一次資料 | ここでの対応 |
+|---|---|---|---|
+| 継承より合成 | 振る舞いは部品の組合せで作り、クラス階層で作らない。Gamma ほか『デザインパターン』（1994）の原則 | [Wikipedia の項](https://en.wikipedia.org/wiki/Composition_over_inheritance)（原典の引用を含む。原典本文は未照合） | 札の重ね合わせ |
+| 式の問題 | 新しい型の追加と新しい操作の追加を、既存コードを変えずに両立させる難しさ。OOP は型の追加が易しく操作が難しく、関数型は逆 | [Wadler 1998 の原文](https://homepages.inf.ed.ac.uk/wadler/papers/expression/expression.txt) | 種類はデータなので追加はただ、操作は法則を一つ足す。両方が易しい |
+| 多重ディスパッチ | 引数の型の組で処理を選ぶ。単一ディスパッチの相手側分岐を解消する | [Julia のマニュアル](https://docs.julialang.org/en/v1/manual/methods/)（「multiple dispatch … a powerful and convenient paradigm for structuring and organizing programs」） | 法則のガードが (a の札, b の札) で選ぶ |
+| ECS とデータ指向 | Entity はデータ、System は「部品 X と Y を持つもの」を問い合わせて処理する | [Unity Entities](https://docs.unity3d.com/Packages/com.unity.entities@1.0/manual/concepts-intro.html)、[Bevy の ECS 入門](https://bevyengine.org/learn/quick-start/getting-started/ecs/)（Query）、[Flecs の Relationships](https://github.com/SanderMertens/flecs/blob/master/docs/Relationships.md)（(Likes, Bob) のような組を一級の部品に持つ） | 法則が札の組で相手を選ぶ。関係（相手ごとの状態）は Flecs の組にあたる |
+| データ駆動の種類の定義 | 生物や物の種類を定義ファイルの札で書き、種類を何百足してもコードを変えない。親の定義から既定値を継ぐ | [Dwarf Fortress の生物トークン](https://dwarffortresswiki.org/index.php/Creature_token)（CARNIVORE、GRAZER など）、[RimWorld の Def と ParentName 継承](https://rimworldwiki.com/wiki/Modding_Tutorials/Def_classes)、[Unreal の GameplayTag](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-gameplay-tags-in-unreal-engine)（階層つきの札） | 種類の定義 `ThingDef`（parent で既定値を継ぐ）、札の値の階層 |
+
+The Sims の smart object（物が「自分に何ができるか」を広告し、人物は汎用）も同じ系列の定石として知られるが、一次資料（Wright・Forbus の講義資料や GDC 講演）は今回取得できず未確認。
+
+**お化けになる条件と規律。** どちらの書き方でも、札を旗のように読んで一つの法則の中で `if 植物 … else if 肉 …` と分岐し始めればお化けになる。規律は「一法則は一つの相互作用、ガードは札の組の判定だけ。分岐が増えたら法則を割る。法則は種類名（kind）を読まない」。種類の違いは札の値（`eats: plant` と `edible: plant` の一致）で吸収し、歩留まりのような差は札の値で持つ。法則の数は相互作用の種類の数に比例し、事物の種類の数には比例しない。
+
+**派生（継承）が向く場所。** 判断の仕組みだけが違う心（rule・NN・LLM・人間）の実装クラス、法則どうしの共通処理、種類の定義の既定値の継承（RimWorld の ParentName）。いずれも事物そのもののクラス階層ではない。
+
+**生成の位置。** 走っている世界での生成は、法則の効果（spawn）であり、量を源泉の資源から引く（釣り合い）。消滅（食べる、腐る）も効果である。種類の定義は雛形のデータで、初期配置と法則の効果の両方が同じ定義から作る。更新の外にあるのは初期配置と定義の登録だけで、Factory という別の仕組みは置かない。
+
 <a id="valueflows"></a>
 ## 2. ValueflowsとhREA――資源に結びついた過程
 

@@ -6,7 +6,7 @@
 import '@fontsource/noto-sans-jp/400.css';
 import '@fontsource/noto-sans-jp/700.css';
 import '../web/style.css';
-import { buildFruitScenario, summarize, edibleOn, DT, HOUR, DAY, type Scenario, type ThingSnapshot, type LedgerEntry } from '../../packages/skeleton/index.js';
+import { buildFruitScenario, summarize, edibleOn, fruitDef, DT, HOUR, DAY, type Scenario, type ThingSnapshot, type LedgerEntry } from '../../packages/skeleton/index.js';
 
 const q = new URLSearchParams(window.location.search);
 const numParam = (k: string, d: number) => {
@@ -131,14 +131,14 @@ function drawMap() {
   if (tree) {
     const [x, y] = px(tx, Number(tree.state['y'] ?? 0));
     const fruits = edibleOn(w, 'tree');
-    const vis = Number(tree.attr['fruitVisibility'] ?? 30);
+    const vis = Number(fruitDef.attr?.['visibility'] ?? 30);
     ctx.strokeStyle = 'rgba(214,180,118,0.25)';
     ctx.beginPath(); ctx.arc(x, y, vis * scale, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = '#3f8a4f';
     ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
     fruits.forEach((f, i) => {
       const a = (i / Math.max(1, fruits.length)) * Math.PI * 2;
-      const fr = Number(f.res['freshness'] ?? 0) / Number(tree.attr['fruitFreshness'] ?? 2);
+      const fr = Number(f.res['freshness'] ?? 0) / Number(fruitDef.res?.['freshness'] ?? 2);
       ctx.fillStyle = `rgba(230,140,60,${0.35 + 0.65 * Math.max(0, Math.min(1, fr))})`;
       ctx.beginPath(); ctx.arc(x + Math.cos(a) * 14, y + Math.sin(a) * 14, 3, 0, Math.PI * 2); ctx.fill();
     });

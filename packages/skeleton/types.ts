@@ -24,6 +24,19 @@ export type Relations = Record<ThingId, Relation>;
 /** 資源: 量として保存される状態。 */
 export type Resources = Record<string, number>;
 
+/**
+ * 種類の定義（Def）: 事物の雛形。札と仕様（attr）、初期の状態と資源をデータとして持つ。
+ * parent を指すと親の既定値を継ぎ、自分の値で上書きする（振る舞いは継がない。振る舞いは法則にある）。
+ * Unity の prefab、RimWorld の Def、Dwarf Fortress の raw、REA の ResourceSpecification にあたる。
+ */
+export interface ThingDef {
+  name: string;
+  parent?: string;
+  attr?: Record<string, Scalar>;
+  state?: State;
+  res?: Resources;
+}
+
 /** 事物の読み取り専用の写し。 */
 export interface ThingSnapshot {
   readonly id: ThingId;
@@ -47,8 +60,8 @@ export type Effect =
   | { kind: 'convert'; from: ThingId; fromRes: string; amount: number; to: ThingId; toRes: string; produced: number; lossTo: ThingId; lossRes: string }
   /** 付属先（状態 attachedTo）の付け替え。from は現在の付属先で、変わっていれば何も起きない。 */
   | { kind: 'reassign'; thing: ThingId; from: ThingId; to: ThingId }
-  /** 事物の生成。量は源泉の資源から引き、生まれる事物の資源 quantity になる（保存則）。 */
-  | { kind: 'spawn'; id: ThingId; thingKind: string; attr: Record<string, Scalar>; state: State; res: Resources; from: ThingId; fromRes: string; amount: number }
+  /** 事物の生成。種類の定義 def から作り、state で初期の状態を上書きする。量は源泉の資源から引き、生まれる事物の資源 quantity になる（保存則）。 */
+  | { kind: 'spawn'; id: ThingId; def: string; state?: State; from: ThingId; fromRes: string; amount: number }
   /** 事物の消滅。量は行き先の資源へ移り、差分は loss へ。 */
   | { kind: 'despawn'; thing: ThingId; to: ThingId; toRes: string; produced: number; lossTo: ThingId; lossRes: string }
   /** 位置（状態 x, y）の変化。動いた分の費用（資源）を別の事物へ移す。 */
@@ -79,6 +92,8 @@ export interface WorldView {
   inRange(kind: 'sight' | 'reach' | 'smell', subject: ThingId, object: ThingId): boolean;
   /** この刻みで事物に残っている時間（分）。 */
   timeLeft(id: ThingId): number;
+  /** 種類の定義を、親の既定値を継いで解決した形で返す。 */
+  def(name: string): { attr: Record<string, Scalar>; state: State; res: Resources };
 }
 
 /**

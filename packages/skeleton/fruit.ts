@@ -7,7 +7,7 @@
 // 札は資源の有無では代用しない。鮮度の受け皿である自然も資源 freshness を持つので、資源の有無で「腐る物」を選ぶと自然自身に腐敗が当たる。
 // 数値はすべて仮の比較条件であり、校正値ではない。
 
-import type { Effect, Law, Mind, Relation, Sense, ThingId, ThingSnapshot, WorldView } from './types.js';
+import type { Effect, Law, Mind, Relation, Sense, ThingDef, ThingId, ThingSnapshot, WorldView } from './types.js';
 import { World } from './world.js';
 
 export const MINUTE = 1;
@@ -34,14 +34,58 @@ const alive = (t: ThingSnapshot | undefined): boolean => state(t, 'alive') === '
 /** 食べられる物（札 edible）で、holder に付いているもの。 */
 export const edibleOn = (w: WorldView, holder: ThingId) => w.query((t) => has(t, 'edible') && state(t, 'attachedTo') === holder);
 
+// ---- 種類の定義（データ）。札と仕様、初期の状態と資源。振る舞いは持たない ----
+
+export const natureDef: ThingDef = {
+  name: 'nature',
+  attr: { sink: true, grows: true, rotPerHour: 1 / 16 },
+  res: { fruitStock: 100000, growth: 100000, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0 },
+};
+/** 木。bears は生む実の定義の名。 */
+export const treeDef: ThingDef = {
+  name: 'tree',
+  attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: 0.25 },
+  state: { x: 40, y: 0 },
+  res: { growth: 0 },
+};
+export const fruitDef: ThingDef = {
+  name: 'fruit',
+  attr: { edible: 'plant', perishable: true, visibility: 30, odor: 5 },
+  state: { attachedTo: '' },
+  res: { freshness: 2 },
+};
+export const personDef: ThingDef = {
+  name: 'person',
+  attr: {
+    eats: 'plant',
+    picks: true,
+    visibility: 100,
+    sight: 60,
+    reach: 1.5,
+    smell: 3,
+    speedPerHour: 60,
+    walkCostPerMeter: 0.0005,
+    pickPerHour: 6,
+    eatPerHour: 12,
+    digestPerHour: 0.5,
+    digestYield: 0.8,
+    wearPerHour: 0.1,
+    homeX: 0,
+    homeY: 0,
+  },
+  state: { alive: 'yes', x: 0, y: 0, intent: 'idle', target: '', targetX: 0, targetY: 0 },
+  res: { nutrition: 6, stomach: 0 },
+};
+export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, personDef];
+
 // ---- 物理層の法則。組 (a, b) の札で当たるかを決め、状態・資源・距離で流れを決める ----
 
-/** (育てる, 実をつける): 実る。育ちが自然から木へ移り、1 たまるごとに、上限まで、実という事物が木に生まれる。実の量は自然の蓄えから引く。 */
+/** (育てる, 実をつける): 実る。育ちが自然から木へ移り、1 たまるごとに、上限まで、bears が指す定義の事物が木に生まれる。量は自然の蓄えから引く。 */
 export const ripen: Law = {
   id: 'ripen',
-  version: 'kinds-1',
+  version: 'defs-1',
   pair: (a, b, dt, w) => {
-    if (!has(a, 'grows') || b.attr['bears'] !== 'fruit') return [];
+    if (!has(a, 'grows') || typeof b.attr['bears'] !== 'string') return [];
     const rate = attr(b, 'ripenPerHour') / HOUR; // 実/分
     const effects: Effect[] = [{ kind: 'transfer', res: 'growth', from: a.id, to: b.id, amount: rate * dt }];
     const growth = res(b, 'growth') + rate * dt;
@@ -49,17 +93,7 @@ export const ripen: Law = {
     const whole = Math.min(Math.floor(growth), room);
     for (let i = 0; i < whole; i++) {
       effects.push({ kind: 'convert', from: b.id, fromRes: 'growth', amount: 1, to: a.id, toRes: 'growthSpent', produced: 1, lossTo: a.id, lossRes: 'growthSpent' });
-      effects.push({
-        kind: 'spawn',
-        id: (w as World).nextSpawnId('fruit'),
-        thingKind: 'fruit',
-        attr: { edible: 'plant', perishable: true, visibility: attr(b, 'fruitVisibility'), odor: attr(b, 'fruitOdor') },
-        state: { attachedTo: b.id },
-        res: { freshness: attr(b, 'fruitFreshness') },
-        from: a.id,
-        fromRes: 'fruitStock',
-        amount: 1,
-      });
+      effects.push({ kind: 'spawn', id: (w as World).nextSpawnId(b.attr['bears'] as string), def: b.attr['bears'] as string, state: { attachedTo: b.id }, from: a.id, fromRes: 'fruitStock', amount: 1 });
     }
     return effects;
   },
@@ -251,52 +285,16 @@ export function buildFruitScenario(options: FruitOptions = {}): Scenario {
   const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], allPairs: options.allPairs ?? false });
   const n = options.persons ?? 1;
   const ids = Array.from({ length: n }, (_, i) => `P${i + 1}`);
-  w.addThing('nature', 'nature', {
-    attr: { sink: true, grows: true, rotPerHour: 1 / 16 },
-    res: { fruitStock: 100000, growth: 100000, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0 },
-  });
-  w.addThing('tree', 'tree', {
-    attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: options.ripenPerHour ?? 0.25, fruitFreshness: 2, fruitVisibility: 30, fruitOdor: 5 },
-    state: { x: options.treeDistance ?? 40, y: 0 },
-    res: { growth: 0 },
-  });
+  for (const d of fruitDefs) w.addDef(d);
+  w.addFromDef('nature', 'nature');
+  w.addFromDef('tree', 'tree', { attr: { ripenPerHour: options.ripenPerHour ?? 0.25 }, state: { x: options.treeDistance ?? 40 } });
   for (const id of ids) {
-    w.addThing(id, 'person', {
-      attr: {
-        eats: 'plant',
-        picks: true,
-        visibility: 100,
-        sight: options.sight ?? 60,
-        reach: 1.5,
-        smell: 3,
-        speedPerHour: 60,
-        walkCostPerMeter: 0.0005,
-        pickPerHour: 6,
-        eatPerHour: 12,
-        digestPerHour: 0.5,
-        digestYield: 0.8,
-        wearPerHour: 0.1,
-        homeX: 0,
-        homeY: 0,
-      },
-      state: { alive: 'yes', x: 0, y: 0, intent: 'idle', target: '', targetX: 0, targetY: 0 },
-      res: { nutrition: 6, stomach: 0 },
-    });
+    w.addFromDef(id, 'person', { attr: { sight: options.sight ?? 60 } });
     w.addMind(id, new ForagerMind());
   }
   // 初期の実 6 個を木に付ける（自然の蓄えから）。
   for (let i = 0; i < 6; i++) {
-    w.seed({
-      kind: 'spawn',
-      id: w.nextSpawnId('fruit'),
-      thingKind: 'fruit',
-      attr: { edible: 'plant', perishable: true, visibility: 30, odor: 5 },
-      state: { attachedTo: 'tree' },
-      res: { freshness: 2 },
-      from: 'nature',
-      fromRes: 'fruitStock',
-      amount: 1,
-    });
+    w.seed({ kind: 'spawn', id: w.nextSpawnId('fruit'), def: 'fruit', state: { attachedTo: 'tree' }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
   }
   for (const law of fruitLaws) w.addLaw(law);
   w.addSense(sight);
