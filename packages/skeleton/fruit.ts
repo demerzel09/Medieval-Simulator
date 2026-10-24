@@ -1,9 +1,10 @@
 // いちばん小さな生活の環: 果実を採って食べる。
 // 事物: 自然、木、木に付いた実（一つずつが事物）、人物。すべて位置と範囲を持つ。
-// 法則: 実る、腐る、知覚、移動、採る、食べる、消化、消耗。Δt ごとに速度 × Δt。
+// 物理層の法則（二つの事物の組に対して）: 実る、腐る、移動、採る、食べる、消化、消耗。Δt ごとに速度 × Δt。
+// 情報層の感覚: 視界。観測と心象の差が事象になる。
 // 数値はすべて仮の比較条件であり、校正値ではない。
 
-import type { Binding, Effect, Knowledge, Law, Mind, ThingId, ThingSnapshot, WorldView } from './types.js';
+import type { Effect, Knowledge, Law, Mind, Sense, ThingId, ThingSnapshot, WorldView } from './types.js';
 import { World } from './world.js';
 
 export const MINUTE = 1;
@@ -20,35 +21,30 @@ const str = (t: ThingSnapshot | undefined, a: string): string => {
   return typeof v === 'string' ? v : '';
 };
 const alive = (t: ThingSnapshot | undefined): boolean => str(t, 'alive') === 'yes';
-const persons = (w: WorldView) => w.query((t) => t.kind === 'person' && alive(t));
+const isPerson = (t: ThingSnapshot): boolean => t.kind === 'person' && alive(t);
 const fruitsOn = (w: WorldView, holder: ThingId) => w.query((t) => t.kind === 'fruit' && str(t, 'attachedTo') === holder);
 
-// ---- 法則 ----
+// ---- 物理層の法則。組 (a, b) の両者の属性と距離から流れを決める ----
 
-/** 自然 → 木: 実る。育ちが 1 たまるごとに、上限まで、実という事物を木に付ける。実の量は自然の蓄えから引く。 */
+/** (自然, 木): 実る。育ちが自然から木へ移り、1 たまるごとに、上限まで、実という事物が木に生まれる。実の量は自然の蓄えから引く。 */
 export const ripen: Law = {
   id: 'ripen',
-  version: 'tick-1',
-  scope: (w) => w.query((t) => t.kind === 'tree').map((t) => ({ tree: t.id })),
-  flow: (b, dt, w) => {
-    const tree = w.thing(b['tree']!)!;
-    const rate = num(tree, 'ripenPerHour') / HOUR; // 実/分
-    const effects: Effect[] = [];
-    const growth = num(tree, 'growth') + rate * dt;
-    const attached = fruitsOn(w, tree.id).length;
-    let whole = Math.floor(growth);
-    const room = Math.max(0, num(tree, 'cap') - attached);
-    whole = Math.min(whole, room);
-    // 育ちは木の属性として自然から移す（釣り合い）。実る分だけ実に変える。
-    effects.push({ kind: 'transfer', attr: 'growth', from: 'nature', to: tree.id, amount: rate * dt });
+  version: 'pair-1',
+  pair: (a, b, dt, w) => {
+    if (a.kind !== 'nature' || b.kind !== 'tree') return [];
+    const rate = num(b, 'ripenPerHour') / HOUR; // 実/分
+    const effects: Effect[] = [{ kind: 'transfer', attr: 'growth', from: a.id, to: b.id, amount: rate * dt }];
+    const growth = num(b, 'growth') + rate * dt;
+    const room = Math.max(0, num(b, 'cap') - fruitsOn(w, b.id).length);
+    const whole = Math.min(Math.floor(growth), room);
     for (let i = 0; i < whole; i++) {
-      effects.push({ kind: 'convert', from: tree.id, fromAttr: 'growth', amount: 1, to: 'nature', toAttr: 'growthSpent', produced: 1, lossTo: 'nature', lossAttr: 'growthSpent' });
+      effects.push({ kind: 'convert', from: b.id, fromAttr: 'growth', amount: 1, to: a.id, toAttr: 'growthSpent', produced: 1, lossTo: a.id, lossAttr: 'growthSpent' });
       effects.push({
         kind: 'spawn',
         id: (w as World).nextSpawnId('fruit'),
         thingKind: 'fruit',
-        attrs: { attachedTo: tree.id, freshness: num(tree, 'fruitFreshness'), visibility: num(tree, 'fruitVisibility'), odor: num(tree, 'fruitOdor') },
-        from: 'nature',
+        attrs: { attachedTo: b.id, freshness: num(b, 'fruitFreshness'), visibility: num(b, 'fruitVisibility'), odor: num(b, 'fruitOdor') },
+        from: a.id,
         fromAttr: 'fruitStock',
         amount: 1,
       });
@@ -57,134 +53,118 @@ export const ripen: Law = {
   },
 };
 
-/** 自然 ↔ 実: 腐る。鮮度が速度で下がり、尽きた実は廃棄になる。木に付いていても人が持っていても同じ。 */
+/** (実, 自然): 腐る。鮮度が速度で自然へ移り、尽きた実は廃棄になる。木に付いていても人が持っていても同じ。 */
 export const rot: Law = {
   id: 'rot',
-  version: 'tick-1',
-  scope: (w) => w.query((t) => t.kind === 'fruit').map((t) => ({ fruit: t.id })),
-  flow: (b, dt, w) => {
-    const fruit = w.thing(b['fruit']!)!;
-    const rate = num(w.thing('nature'), 'rotPerHour') / HOUR;
-    if (num(fruit, 'freshness') - rate * dt <= 1e-9) {
-      return [{ kind: 'despawn', thing: fruit.id, to: 'nature', toAttr: 'waste', produced: num(fruit, 'quantity'), lossTo: 'nature', lossAttr: 'waste' }];
+  version: 'pair-1',
+  pair: (a, b, dt) => {
+    if (a.kind !== 'fruit' || b.kind !== 'nature') return [];
+    const rate = num(b, 'rotPerHour') / HOUR;
+    if (num(a, 'freshness') - rate * dt <= 1e-9) {
+      return [{ kind: 'despawn', thing: a.id, to: b.id, toAttr: 'waste', produced: num(a, 'quantity'), lossTo: b.id, lossAttr: 'waste' }];
     }
-    return [{ kind: 'transfer', attr: 'freshness', from: fruit.id, to: 'nature', amount: rate * dt }];
+    return [{ kind: 'transfer', attr: 'freshness', from: a.id, to: b.id, amount: rate * dt }];
   },
 };
 
-/** 人 ← 事物: 知覚。視界（人の sight と対象の visibility）の内側にある事物の写しを心象に書く。自分に付いた物は常に分かる。 */
-export const perceive: Law = {
-  id: 'perceive',
-  version: 'tick-1',
-  scope: (w) =>
-    persons(w).flatMap((p) =>
-      w
-        .query((t) => t.id !== p.id && t.kind !== 'nature' && (w.inRange('sight', p.id, t.id) || str(t, 'attachedTo') === p.id))
-        .map((t) => ({ person: p.id, target: t.id })),
-    ),
-  flow: (b) => [{ kind: 'inform', observer: b['person']!, about: b['target']!, attrs: ['attachedTo', 'freshness', 'cap', 'ripenPerHour'] }],
-};
-
-/**
- * 人 ← 心象: 見直し。覚えている場所が視界の内側にあるのに、その事物がそこに見えなければ（消えた、移った）心象から消す。
- * 自分が持っていた実を食べたときも、これで「もう持っていない」と分かる。
- */
-export const revise: Law = {
-  id: 'revise',
-  version: 'tick-1',
-  scope: (w) =>
-    persons(w).flatMap((p) => {
-      const k = (p.attrs['knowledge'] as Knowledge | undefined) ?? {};
-      const pos = w.positionOf(p.id)!;
-      return Object.entries(k)
-        .filter(([id, e]) => {
-          const remembered = Math.hypot(e.x - pos.x, e.y - pos.y);
-          const canSeeSpot = remembered <= num(p, 'sight');
-          const exists = w.thing(id) !== undefined;
-          const stillThere = exists && (w.inRange('sight', p.id, id) || str(w.thing(id), 'attachedTo') === p.id);
-          return canSeeSpot && !stillThere;
-        })
-        .map(([id]) => ({ person: p.id, about: id }));
-    }),
-  flow: (b) => [{ kind: 'forget', observer: b['person']!, about: b['about']! }],
-};
-
-/** 人 ↔ 地面: 移動。意図した目標へ速度 × Δt だけ進む。動いた分の栄養が熱として自然へ移る。 */
+/** (人, 自然): 移動。意図した目標へ、残っている時間 × 速度だけ進む。動いた分の栄養が熱として自然へ移る。 */
 export const walk: Law = {
   id: 'walk',
-  version: 'tick-1',
-  scope: (w) => persons(w).filter((p) => str(p, 'intent') === 'move').map((p) => ({ person: p.id })),
-  flow: (b, dt, w) => {
-    const p = w.thing(b['person']!)!;
-    const pos = w.positionOf(p.id)!;
-    const tx = num(p, 'targetX');
-    const ty = num(p, 'targetY');
-    const dist = Math.hypot(tx - pos.x, ty - pos.y);
-    if (dist < 1e-9) return [];
-    const step = Math.min(dist, (num(p, 'speedPerHour') / HOUR) * dt);
-    const dx = ((tx - pos.x) / dist) * step;
-    const dy = ((ty - pos.y) / dist) * step;
-    return [{ kind: 'move', thing: p.id, dx, dy, costFrom: p.id, costAttr: 'nutrition', costTo: 'nature', cost: num(p, 'walkCostPerMeter') * step }];
+  version: 'pair-1',
+  pair: (a, b, _dt, w) => {
+    if (!isPerson(a) || b.kind !== 'nature' || str(a, 'intent') !== 'move') return [];
+    const pos = w.positionOf(a.id)!;
+    const dist = Math.hypot(num(a, 'targetX') - pos.x, num(a, 'targetY') - pos.y);
+    const speed = num(a, 'speedPerHour') / HOUR; // m/分
+    const time = w.timeLeft(a.id);
+    if (dist < 1e-9 || time <= 0 || speed <= 0) return [];
+    const step = Math.min(dist, speed * time);
+    const dx = ((num(a, 'targetX') - pos.x) / dist) * step;
+    const dy = ((num(a, 'targetY') - pos.y) / dist) * step;
+    return [
+      { kind: 'move', thing: a.id, dx, dy, costFrom: a.id, costAttr: 'nutrition', costTo: b.id, cost: num(a, 'walkCostPerMeter') * step },
+      { kind: 'spend', thing: a.id, minutes: step / speed },
+    ];
   },
 };
 
-/** 人 ↔ 木: 採る。意図した木が手の届く範囲にあれば、速度 × Δt 個の実が木から人へ付け替わる。二人なら順に、無くなれば止まる。 */
+/** (人, 実): 採る。意図した木に付いた実が手の届く範囲にあり、時間が残っていれば、実が人へ付け替わる。二人なら順に、無くなれば止まる。 */
 export const pick: Law = {
   id: 'pick',
-  version: 'tick-1',
-  scope: (w) =>
-    persons(w)
-      .filter((p) => str(p, 'intent') === 'pick' && w.thing(str(p, 'target'))?.kind === 'tree' && w.inRange('reach', p.id, str(p, 'target')))
-      .map((p) => ({ person: p.id, tree: str(p, 'target') })),
-  flow: (b, dt, w) => {
-    const p = w.thing(b['person']!)!;
-    const n = Math.floor((num(p, 'pickPerHour') / HOUR) * dt + 1e-9);
-    return fruitsOn(w, b['tree']!)
-      .slice(0, n)
-      .map<Effect>((f) => ({ kind: 'reassign', thing: f.id, attr: 'attachedTo', from: b['tree']!, to: p.id }));
+  version: 'pair-1',
+  pair: (a, b, _dt, w) => {
+    if (!isPerson(a) || b.kind !== 'fruit' || str(a, 'intent') !== 'pick') return [];
+    const tree = str(a, 'target');
+    if (str(b, 'attachedTo') !== tree || w.distance(a.id, b.id) > num(a, 'reach')) return [];
+    const cost = HOUR / num(a, 'pickPerHour'); // 分/個
+    if (w.timeLeft(a.id) + 1e-9 < cost) return [];
+    return [
+      { kind: 'reassign', thing: b.id, attr: 'attachedTo', from: tree, to: a.id },
+      { kind: 'spend', thing: a.id, minutes: cost },
+    ];
   },
 };
 
-/** 人 ↔ 自分の実: 食べる。意図が eat で実を持っていれば、速度 × Δt 個の実が胃の内容になる。 */
+/** (人, 自分の実): 食べる。意図が eat で、その実を持っていて、時間が残っていれば、実は胃の内容になる。 */
 export const eat: Law = {
   id: 'eat',
-  version: 'tick-1',
-  scope: (w) => persons(w).filter((p) => str(p, 'intent') === 'eat').map((p) => ({ person: p.id })),
-  flow: (b, dt, w) => {
-    const p = w.thing(b['person']!)!;
-    const n = Math.floor((num(p, 'eatPerHour') / HOUR) * dt + 1e-9);
-    return fruitsOn(w, p.id)
-      .slice(0, n)
-      .map<Effect>((f) => ({ kind: 'despawn', thing: f.id, to: p.id, toAttr: 'stomach', produced: num(f, 'quantity'), lossTo: 'nature', lossAttr: 'waste' }));
+  version: 'pair-1',
+  pair: (a, b, _dt, w) => {
+    if (!isPerson(a) || b.kind !== 'fruit' || str(a, 'intent') !== 'eat' || str(b, 'attachedTo') !== a.id) return [];
+    const cost = HOUR / num(a, 'eatPerHour');
+    if (w.timeLeft(a.id) + 1e-9 < cost) return [];
+    return [
+      { kind: 'despawn', thing: b.id, to: a.id, toAttr: 'stomach', produced: num(b, 'quantity'), lossTo: a.id, lossAttr: 'stomach' },
+      { kind: 'spend', thing: a.id, minutes: cost },
+    ];
   },
 };
 
-/** 自然 ↔ 身体: 消化。胃の内容が速度で栄養になり、一部は排出へ。 */
+/** (人, 自然): 消化。胃の内容が速度で栄養になり、一部は排出として自然へ。 */
 export const digest: Law = {
   id: 'digest',
-  version: 'tick-1',
-  scope: (w) => persons(w).filter((p) => num(p, 'stomach') > 0).map((p) => ({ person: p.id })),
-  flow: (b, dt, w) => {
-    const p = w.thing(b['person']!)!;
-    const amount = (num(p, 'digestPerHour') / HOUR) * dt;
-    const yieldRatio = num(p, 'digestYield');
-    return [{ kind: 'convert', from: p.id, fromAttr: 'stomach', amount, to: p.id, toAttr: 'nutrition', produced: amount * yieldRatio, lossTo: 'nature', lossAttr: 'waste' }];
+  version: 'pair-1',
+  pair: (a, b, dt) => {
+    if (!isPerson(a) || b.kind !== 'nature' || num(a, 'stomach') <= 0) return [];
+    const amount = (num(a, 'digestPerHour') / HOUR) * dt;
+    return [{ kind: 'convert', from: a.id, fromAttr: 'stomach', amount, to: a.id, toAttr: 'nutrition', produced: amount * num(a, 'digestYield'), lossTo: b.id, lossAttr: 'waste' }];
   },
 };
 
-/** 自然 ↔ 身体: 消耗。栄養が速度で熱として自然へ移る。 */
+/** (人, 自然): 消耗。栄養が速度で熱として自然へ移る。 */
 export const wear: Law = {
   id: 'wear',
-  version: 'tick-1',
-  scope: (w) => persons(w).map((p) => ({ person: p.id })),
-  flow: (b, dt, w) => {
-    const p = w.thing(b['person']!)!;
-    return [{ kind: 'transfer', attr: 'nutrition', from: p.id, to: 'nature', amount: (num(p, 'wearPerHour') / HOUR) * dt }];
+  version: 'pair-1',
+  pair: (a, b, dt) => {
+    if (!isPerson(a) || b.kind !== 'nature') return [];
+    return [{ kind: 'transfer', attr: 'nutrition', from: a.id, to: b.id, amount: (num(a, 'wearPerHour') / HOUR) * dt }];
   },
 };
 
-/** 法則の順。知覚と見直し → 行為（移動・採る・食べる）→ 自然（消化・消耗・実る・腐る）。 */
-export const fruitLaws: Law[] = [perceive, revise, walk, pick, eat, digest, wear, ripen, rot];
+/** 法則の順。行為（移動・採る・食べる）→ 身体（消化・消耗）→ 自然（実る・腐る）。 */
+export const fruitLaws: Law[] = [walk, pick, eat, digest, wear, ripen, rot];
+
+// ---- 情報層の感覚 ----
+
+/** 心象に写す属性。見える範囲（visibility）を写すのは、覚えている物が見えるはずかを後で判定するため。 */
+const SEEN_ATTRS = ['attachedTo', 'freshness', 'cap', 'ripenPerHour', 'visibility'];
+
+/** 視界。観測者の sight と対象の visibility の小さい方の内側なら見える。自分に付いた物は常に分かる。自然は見る対象ではない。 */
+export const sight: Sense = {
+  id: 'sight',
+  version: 'event-1',
+  observe: (observer, object, w) => {
+    if (object.kind === 'nature') return null;
+    if (str(object, 'attachedTo') === observer.id || w.inRange('sight', observer.id, object.id)) return SEEN_ATTRS;
+    return null;
+  },
+  expected: (observer, remembered, w) => {
+    const pos = w.positionOf(observer.id)!;
+    const d = Math.hypot(remembered.x - pos.x, remembered.y - pos.y);
+    const vis = typeof remembered.attrs['visibility'] === 'number' ? remembered.attrs['visibility'] : Number.POSITIVE_INFINITY;
+    return remembered.attrs['attachedTo'] === observer.id || d <= Math.min(num(observer, 'sight'), vis);
+  },
+};
 
 // ---- 心 ----
 
@@ -309,6 +289,7 @@ export function buildFruitScenario(options: FruitOptions = {}): Scenario {
     });
   }
   for (const law of fruitLaws) w.addLaw(law);
+  w.addSense(sight);
   return { world: w, persons: ids };
 }
 
@@ -324,6 +305,7 @@ export function summarize(w: World, persons: ThingId[]): Record<string, number |
   }
   out['tree.fruits'] = fruitsOn(w, 'tree').length;
   out['nature.waste'] = Number(num(w.thing('nature'), 'waste').toFixed(2));
+  out['things'] = w.thingCount;
   out['ledger'] = w.ledger.length;
   return out;
 }
@@ -342,5 +324,3 @@ export function runFruitDays(days: number, options: FruitOptions = {}): { scenar
 export function massTotal(w: World): number {
   return w.total('fruitStock') + w.total('quantity', (t) => t.kind === 'fruit') + w.total('stomach') + w.total('nutrition') + w.total('waste');
 }
-
-export type { Binding };
