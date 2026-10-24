@@ -4,6 +4,8 @@
 
 | 目的 | 文書 |
 |---|---|
+| 世界と人物という最上位の責任・身体・認識・行為の境界 | [WORLD_AND_PERSON_DESIGN](WORLD_AND_PERSON_DESIGN.md)。2026-10-24の合意と現行コードの対応。既存実装の維持は制約ではない |
+| コロニー系実装の構成と、採用できる部分・異なる部分 | [COLONY_SIM_ARCHITECTURE_REVIEW](COLONY_SIM_ARCHITECTURE_REVIEW.md)。Mountaincore・Rust版COLONY等の限定的なコード調査。外部実装は実行未検証 |
 | 人格の外側の境界・認識・行動の契約 | [AUTONOMY_INTERFACE_CONTRACT](AUTONOMY_INTERFACE_CONTRACT.md)、[AGENT_INTERFACES_v2](AGENT_INTERFACES_v2.md) |
 | 現行ruleの階層モデルへの分割と共用を検討する | [HMOSAIC_MODULE_DESIGN](HMOSAIC_MODULE_DESIGN.md)。2026-10-04のコード調査に基づく分割案。予測と制御の独立、基本要素の共用、入出力、利得・学習の不足。2026-10-23に実装上の責務を下記オブジェクト設計へ接続 |
 | 目的・責務・抽象化の現状を図で確認する | [HMOSAIC_OBJECT_DESIGN](HMOSAIC_OBJECT_DESIGN.md)。2026-10-23の現行コードレビューと採用する実装構造。役割別の多態性、合成、登録定義／個人の学習／呼出しの分離、構成変更の版、7対照へ追加する抽象化の検証。v25の共用・差し替えの土台は実装済み。`ca885a2`の構造・状態・フィードバックの3図と、封じ込め・依存制限の未達を追記。計測と未決は[試作結果](../baseline/HMOSAIC_CONNECTION_V25_RESULT.md) |
