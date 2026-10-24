@@ -140,6 +140,35 @@ describe('skeleton: 対照 配分の規則だけを変え、世界側は変え�
   });
 });
 
+describe('skeleton: 拡張 第二の資源（薪）と交換の双対', () => {
+  it('薪と木こりを属性と作用の型の追加だけで足せ、交換は二つの移転を一つの実例で確定し、総量は保存される', () => {
+    const { scenario } = runDays(10, { wood: true, farmer: { eatBelow: 4 } });
+    const w = scenario.world;
+    const fresh = buildMealScenario({ wood: true }).world;
+    const total = (x: World) => foodTotal(x) + x.total('wood') + x.total('quantity', (t) => t.kind === 'wood');
+    expect(total(w)).toBeCloseTo(total(fresh), 6);
+    const exchanges = w.ledger.filter((e): e is Extract<LedgerEntry, { kind: 'complete' }> => e.kind === 'complete' && e.type === 'exchange');
+    expect(exchanges.length).toBeGreaterThan(0);
+    for (const x of exchanges) {
+      const transfers = x.effects.filter((e): e is Extract<Effect, { kind: 'transfer' }> => e.kind === 'transfer' && e.attr === 'quantity');
+      expect(transfers.length).toBe(2);
+      const custodians = transfers.map((t) => [str(w.thing(t.from), 'custodian'), str(w.thing(t.to), 'custodian')]);
+      // 一方は売り手→買い手、他方は買い手→売り手。
+      expect(custodians[0]![0]).toBe(custodians[1]![1]);
+      expect(custodians[0]![1]).toBe(custodians[1]![0]);
+    }
+  });
+
+  it('物々交換だけでは生産の連鎖が始まらず、初期の賦存を使い切ると止まる（記録・約束が要ることの対照）', () => {
+    const { daily } = runDays(10, { wood: true });
+    const last = daily[daily.length - 1]!;
+    expect(last['A.alive']).toBe('no');
+    expect(last['C.alive']).toBe('no');
+    expect(Number(last['C.wood'])).toBeGreaterThanOrEqual(1); // 木こりは薪を持ったまま、農夫はパンを持たないまま止まる
+    expect(Number(last['A.wood'])).toBe(0);
+  });
+});
+
 describe('skeleton: 条件9 影響範囲は実例を作る前に決まり、完了時に再評価される', () => {
   it('開始後に対象が失われた実例は取り消され、部分的に成功しない', () => {
     const { world } = buildMealScenario();

@@ -10,8 +10,10 @@ export const MINUTE = 1;
 export const HOUR = 60;
 export const DAY = 24 * HOUR;
 
-const LOCATIONS = ['field', 'homeA', 'homeB'] as const;
-const PERSONS = ['A', 'B'] as const;
+const BASE_LOCATIONS = ['field', 'homeA', 'homeB'];
+const BASE_PERSONS = ['A', 'B'];
+const WOOD_LOCATIONS = [...BASE_LOCATIONS, 'forest', 'homeC'];
+const WOOD_PERSONS = [...BASE_PERSONS, 'C'];
 
 // ---- 補助 ----
 
@@ -24,7 +26,7 @@ const str = (t: ThingSnapshot | undefined, a: string): string => {
   return typeof v === 'string' ? v : '';
 };
 const alive = (t: ThingSnapshot | undefined): boolean => str(t, 'alive') === 'yes';
-const isPlace = (t: ThingSnapshot): boolean => t.kind === 'place' || t.kind === 'field';
+const isPlace = (t: ThingSnapshot): boolean => t.kind === 'place' || t.kind === 'field' || t.kind === 'forest';
 const locationOf = (w: WorldView, id: ThingId | undefined): string => str(w.thing(id ?? ''), 'location');
 /** 保管者と場所の組ごとに一つあるロット（入れ物）。無ければ undefined。 */
 const lotAt = (w: WorldView, kind: string, custodian: string, location: string): ThingSnapshot | undefined =>
@@ -121,7 +123,7 @@ export const move: ActionType = {
       { kind: 'transfer', attr: 'occupants', from: b['from']!, to: b['to']!, amount: 1 },
       { kind: 'reassign', thing: person, attr: 'location', from: b['from']!, to: b['to']!, giver: b['from']!, receiver: b['to']! },
     ];
-    for (const kind of ['grain', 'bread']) {
+    for (const kind of ['grain', 'bread', 'wood']) {
       const src = lotAt(w, kind, person, b['from']!);
       const dst = lotAt(w, kind, person, b['to']!);
       if (!src || !dst || num(src, 'quantity') <= 0) continue;
@@ -198,7 +200,8 @@ export const wear: ActionType = {
   effects: (b, w) => [{ kind: 'transfer', attr: 'nutrition', from: b['person']!, to: b['nature']!, amount: Math.min(0.1, num(w.thing(b['person']!), 'nutrition')) }],
 };
 
-const VISIBLE = ['quantity', 'freshness', 'crop', 'custodian', 'location'];
+// 知覚で写す属性。新しい属性を足すときはここにも足す（属性ごとに可視かどうかを決める）。
+const VISIBLE = ['quantity', 'freshness', 'crop', 'wood', 'custodian', 'location'];
 
 /** 人物 ↔ 同じ場所の事物: 知覚。周囲の可視属性の写しを心象に書く。対象側の変化はゼロ。他の人物の所在も見える。 */
 export const perceive: ActionType = {
@@ -218,6 +221,82 @@ export const perceive: ActionType = {
 };
 
 export const mealTypes: ActionType[] = [regen, harvest, bake, decay, move, handover, eat, digest, wear, perceive];
+
+// ---- 第二の資源: 薪。属性と作用の型の追加だけで足せるかを確かめるための拡張 ----
+
+/** 自然 → 森: 薪が再生する。 */
+export const regrow: ActionType = {
+  id: 'regrow',
+  version: 'skeleton-1',
+  agentRole: 'nature',
+  roles: [
+    { name: 'nature', where: (t) => t.kind === 'nature' },
+    { name: 'forest', where: (t) => t.kind === 'forest' && num(t, 'wood') < 20 },
+  ],
+  duration: () => 0,
+  effects: (b) => [{ kind: 'transfer', attr: 'wood', from: b['nature']!, to: b['forest']!, amount: 1 }],
+};
+
+/** 人物 ↔ 森: 採集。森の薪 1 を、人物が保管する薪ロット 1 に変える。 */
+export const gather: ActionType = {
+  id: 'gather',
+  version: 'skeleton-1',
+  agentRole: 'person',
+  roles: [
+    { name: 'person', where: (t) => t.kind === 'person' && alive(t) },
+    { name: 'forest', where: (t, b, w) => t.kind === 'forest' && locationOf(w, b['person']) === t.id && num(t, 'wood') >= 1 },
+    { name: 'wood', where: (t, b) => t.kind === 'wood' && str(t, 'custodian') === b['person'] && str(t, 'location') === b['forest'] },
+  ],
+  duration: () => 30 * MINUTE,
+  effects: (b) => [{ kind: 'convert', from: b['forest']!, fromAttr: 'wood', amount: 1, to: b['wood']!, toAttr: 'quantity', produced: 1, lossTo: 'nature', lossAttr: 'waste' }],
+};
+
+/** 薪を使う製パン。穀物 1 と薪 1 → パン 1。薪は燃えて廃棄へ。 */
+export const bakeWithWood: ActionType = {
+  id: 'bake',
+  version: 'skeleton-1-wood',
+  agentRole: 'person',
+  roles: [
+    ...bake.roles,
+    { name: 'wood', where: (t, b, w) => t.kind === 'wood' && str(t, 'custodian') === b['person'] && str(t, 'location') === locationOf(w, b['person']) && num(t, 'quantity') >= 1 },
+  ],
+  duration: bake.duration,
+  effects: (b, w) => [
+    ...bake.effects(b, w),
+    { kind: 'convert', from: b['wood']!, fromAttr: 'quantity', amount: 1, to: 'nature', toAttr: 'waste', produced: 0, lossTo: 'nature', lossAttr: 'waste' },
+  ],
+};
+
+/**
+ * 人物 ↔ 人物: 交換。同じ場所で、売り手の薪 1 と買い手のパン 1 を一つの実例で互いに移す。
+ * REA の交換の双対（give と take）を一つの作用として確定する。
+ */
+export const exchange: ActionType = {
+  id: 'exchange',
+  version: 'skeleton-1',
+  agentRole: 'seller',
+  roles: [
+    { name: 'seller', where: (t) => t.kind === 'person' && alive(t) },
+    { name: 'buyer', where: (t, b, w) => t.kind === 'person' && alive(t) && t.id !== b['seller'] && str(t, 'location') === locationOf(w, b['seller']) },
+    { name: 'sellerWood', where: (t, b, w) => t.kind === 'wood' && str(t, 'custodian') === b['seller'] && str(t, 'location') === locationOf(w, b['seller']) && num(t, 'quantity') >= 1 },
+    { name: 'buyerBread', where: (t, b, w) => t.kind === 'bread' && str(t, 'custodian') === b['buyer'] && str(t, 'location') === locationOf(w, b['buyer']) && num(t, 'quantity') >= 1 },
+    { name: 'buyerWood', where: (t, b, w) => t.kind === 'wood' && str(t, 'custodian') === b['buyer'] && str(t, 'location') === locationOf(w, b['buyer']) },
+    { name: 'sellerBread', where: (t, b, w) => t.kind === 'bread' && str(t, 'custodian') === b['seller'] && str(t, 'location') === locationOf(w, b['seller']) },
+  ],
+  guard: (b, w) => (num(w.thing(b['buyerBread']!), 'quantity') - 1 >= num(w.thing(b['buyer']!), 'keep') ? null : 'buyer keeps its bread'),
+  duration: () => 5 * MINUTE,
+  effects: (b, w) => {
+    const effects: Effect[] = [
+      { kind: 'transfer', attr: 'quantity', from: b['sellerWood']!, to: b['buyerWood']!, amount: 1 },
+      { kind: 'transfer', attr: 'quantity', from: b['buyerBread']!, to: b['sellerBread']!, amount: 1 },
+    ];
+    const refresh = num(w.thing(b['buyerBread']!), 'freshness') - num(w.thing(b['sellerBread']!), 'freshness');
+    if (refresh > 0) effects.push({ kind: 'transfer', attr: 'freshness', from: 'nature', to: b['sellerBread']!, amount: refresh });
+    return effects;
+  },
+};
+
+export const woodTypes: ActionType[] = [regrow, gather, exchange];
 
 // ---- 心象・予測・配分（最小の規則） ----
 
@@ -254,16 +333,20 @@ export interface FarmerOptions {
   grainTarget?: number;
   /** 栄養の見込み（ここでは自分の栄養属性を感覚として読む）がこれ以上なら食べない。Infinity なら空腹感だけで食べる。 */
   eatBelow?: number;
+  /** 製パンに薪が要る場面か。要るなら薪の見込みが無いときは焼かずに待つ。 */
+  needsWood?: boolean;
 }
 
 export class FarmerMind implements Mind {
   private readonly reorderPoint: number;
   private readonly grainTarget: number;
   private readonly eatBelow: number;
+  private readonly needsWood: boolean;
   constructor(options: FarmerOptions = {}) {
     this.reorderPoint = options.reorderPoint ?? 2;
     this.grainTarget = options.grainTarget ?? 6;
     this.eatBelow = options.eatBelow ?? Number.POSITIVE_INFINITY;
+    this.needsWood = options.needsWood ?? false;
   }
   nextWake(_self: ThingSnapshot, now: number): number {
     return now + 2 * HOUR;
@@ -280,10 +363,14 @@ export class FarmerMind implements Mind {
     if (hungry && knownLotQuantity(self, 'bread', me, here) >= 1) attempts.push({ type: 'eat', binding: { person: me } });
     const breadHere = knownLotQuantity(self, 'bread', me, here);
     const grainHere = knownLotQuantity(self, 'grain', me, here);
+    const woodHere = knownLotQuantity(self, 'wood', me, here);
     if (here === home) {
       if (breadHere < this.reorderPoint) {
-        if (grainHere >= 1) for (let i = 0; i < Math.min(grainHere, 3); i++) attempts.push({ type: 'bake', binding: { person: me } });
-        else attempts.push({ type: 'move', binding: { person: me, to: 'field' } });
+        if (grainHere >= 1) {
+          const bakes = this.needsWood ? Math.min(grainHere, woodHere, 3) : Math.min(grainHere, 3);
+          for (let i = 0; i < bakes; i++) attempts.push({ type: 'bake', binding: { person: me } });
+          // 薪が無ければ焼けないので待つ。薪は交換で届く。
+        } else attempts.push({ type: 'move', binding: { person: me, to: 'field' } });
       }
     } else if (here === 'field') {
       const crop = knownCrop(self);
@@ -326,55 +413,122 @@ export class VisitorMind implements Mind {
   }
 }
 
+/** 木こり: 森で薪を目標量まで採り、農夫の家で薪とパンを交換し、食べて帰る。 */
+export class WoodcutterMind implements Mind {
+  constructor(
+    private readonly farmerHome: string,
+    private readonly woodTarget = 4,
+  ) {}
+  nextWake(_self: ThingSnapshot, now: number): number {
+    return now + 2 * HOUR;
+  }
+  observe(self: ThingSnapshot, _now: number): Attempt[] {
+    return [{ type: 'perceive', binding: { person: self.id } }];
+  }
+  decide(self: ThingSnapshot, _now: number): Attempt[] {
+    const me = self.id;
+    const here = str(self, 'location');
+    const home = str(self, 'home');
+    const attempts: Attempt[] = [];
+    const breadHere = knownLotQuantity(self, 'bread', me, here);
+    const woodHere = knownLotQuantity(self, 'wood', me, here);
+    if (num(self, 'stomach') < 1 && breadHere >= 1) attempts.push({ type: 'eat', binding: { person: me } });
+    if (breadHere >= 1) {
+      if (here !== home) attempts.push({ type: 'move', binding: { person: me, to: home } });
+      return attempts;
+    }
+    if (here === 'forest') {
+      const wood = Number(known(self)['forest']?.attrs['wood'] ?? 0);
+      if (woodHere >= this.woodTarget || wood < 1) attempts.push({ type: 'move', binding: { person: me, to: this.farmerHome } });
+      else for (let i = 0; i < Math.min(wood, this.woodTarget - woodHere, 4); i++) attempts.push({ type: 'gather', binding: { person: me } });
+    } else if (here === this.farmerHome) {
+      const farmer = Object.entries(known(self)).find(([, k]) => k.kind === 'person' && k.attrs['location'] === here);
+      const farmerBread = farmer ? knownLotQuantity(self, 'bread', farmer[0], here) : 0;
+      if (woodHere >= 1 && farmer && farmerBread >= 1) attempts.push({ type: 'exchange', binding: { seller: me, buyer: farmer[0] } });
+      else if (woodHere < 1) attempts.push({ type: 'move', binding: { person: me, to: 'forest' } });
+      else attempts.push({ type: 'move', binding: { person: me, to: home } }); // 農夫が留守かパンが無い。一度帰る
+    } else {
+      attempts.push({ type: 'move', binding: { person: me, to: woodHere >= 1 ? this.farmerHome : 'forest' } });
+    }
+    return attempts;
+  }
+}
+
 // ---- 場面 ----
 
 export interface Scenario {
   world: World;
   persons: ThingId[];
+  locations: string[];
 }
 
 export interface ScenarioOptions {
   farmer?: FarmerOptions;
   /** 農夫が手元に残すパンの数（引き渡しの方針）。 */
   farmerKeep?: number;
+  /** 薪と木こりCを加える。製パンに薪が要る。 */
+  wood?: boolean;
 }
 
-/** 最小の場面: 畑一つ、家二軒、農夫Aと訪問者B。 */
+/** 最小の場面: 畑一つ、家二軒、農夫Aと訪問者B。wood なら森と家Cと木こりCが加わる。 */
 export function buildMealScenario(options: ScenarioOptions = {}): Scenario {
   const w = new World();
-  w.addThing('nature', 'nature', { crop: 1000, waste: 0, freshness: 1000, nutrition: 0, quantity: 0 });
+  const persons = options.wood ? WOOD_PERSONS : BASE_PERSONS;
+  const locations = options.wood ? WOOD_LOCATIONS : BASE_LOCATIONS;
+  w.addThing('nature', 'nature', { crop: 1000, wood: 1000, waste: 0, freshness: 1000, nutrition: 0, quantity: 0 });
   w.addThing('field', 'field', { location: 'field', crop: 10, occupants: 0 });
   w.addThing('homeA', 'place', { occupants: 1 });
   w.addThing('homeB', 'place', { occupants: 1 });
   // 初期栄養 6 は仮の比較条件（消耗 0.1/時なので、食べなければ 60 時間で尽きる）。
   w.addThing('A', 'person', { alive: 'yes', location: 'homeA', home: 'homeA', nutrition: 6, stomach: 0, keep: options.farmerKeep ?? 1, knowledge: {} });
   w.addThing('B', 'person', { alive: 'yes', location: 'homeB', home: 'homeB', nutrition: 6, stomach: 0, keep: 0, knowledge: {} });
-  // ロットは保管者と場所の組ごとに一つ用意する（量 0 でも存在する）。移動で所在が変わる。
-  for (const person of PERSONS) {
-    for (const loc of LOCATIONS) {
-      w.addThing(`grain:${person}@${loc}`, 'grain', { custodian: person, location: loc, quantity: 0 });
-      w.addThing(`bread:${person}@${loc}`, 'bread', { custodian: person, location: loc, quantity: 0, freshness: 0 });
+  if (options.wood) {
+    w.addThing('forest', 'forest', { location: 'forest', wood: 10, occupants: 0 });
+    w.addThing('homeC', 'place', { occupants: 1 });
+    w.addThing('C', 'person', { alive: 'yes', location: 'homeC', home: 'homeC', nutrition: 6, stomach: 0, keep: 0, knowledge: {} });
+  }
+  // ロットは保管者と場所の組ごとに一つ用意する入れ物（量 0 でも存在し、動かない）。
+  const kinds = options.wood ? ['grain', 'bread', 'wood'] : ['grain', 'bread'];
+  for (const person of persons) {
+    for (const loc of locations) {
+      for (const kind of kinds) {
+        const attrs: Record<string, number | string> = { custodian: person, location: loc, quantity: 0 };
+        if (kind === 'bread') attrs['freshness'] = 0;
+        // 初期の賦存: 農夫は薪 3 を持って始める。パンには薪が要り、薪はパンとしか交換されないので、
+        // どちらかに初期の持ち分が無いと交換が始まらない（動かして分かったこと 11）。
+        if (kind === 'wood' && person === 'A' && loc === 'homeA') attrs['quantity'] = 3;
+        w.addThing(`${kind}:${person}@${loc}`, kind, attrs);
+      }
     }
   }
-  for (const t of mealTypes) w.addType(t);
-  w.addMind('A', new FarmerMind(options.farmer));
+  for (const t of mealTypes) if (!(options.wood && t.id === 'bake')) w.addType(t);
+  if (options.wood) {
+    w.addType(bakeWithWood);
+    for (const t of woodTypes) w.addType(t);
+  }
+  w.addMind('A', new FarmerMind({ ...options.farmer, needsWood: options.wood ?? false }));
   w.addMind('B', new VisitorMind('homeA'));
-  return { world: w, persons: [...PERSONS] };
+  if (options.wood) w.addMind('C', new WoodcutterMind('homeA'));
+  return { world: w, persons: [...persons], locations: [...locations] };
 }
 
 /**
  * 自然の予定を置く。再生は 4 時間ごと（6/日。二人の需要 2.4×2÷0.8＝6 と同程度の仮の比較条件）、
- * 腐敗は 8 時間ごと、消化は 2 時間ごと、消耗は 1 時間ごと。
+ * 腐敗は 8 時間ごと、消化は 2 時間ごと、消耗は 1 時間ごと。森があれば薪の再生も 4 時間ごと。
  */
-export function scheduleNature(w: World, fromDay: number, toDay: number): void {
+export function scheduleNature(w: World, fromDay: number, toDay: number, scenario?: Pick<Scenario, 'persons' | 'locations'>): void {
+  const persons = scenario?.persons ?? BASE_PERSONS;
+  const locations = scenario?.locations ?? BASE_LOCATIONS;
+  const hasForest = w.thing('forest') !== undefined;
   for (let day = fromDay; day < toDay; day++) {
     const base = day * DAY;
     for (let h = 0; h < 24; h++) {
       const at = base + h * HOUR;
-      for (const person of PERSONS) w.scheduleNatural('wear', { nature: 'nature', person }, at);
-      if (h % 2 === 0) for (const person of PERSONS) w.scheduleNatural('digest', { nature: 'nature', person }, at);
+      for (const person of persons) w.scheduleNatural('wear', { nature: 'nature', person }, at);
+      if (h % 2 === 0) for (const person of persons) w.scheduleNatural('digest', { nature: 'nature', person }, at);
       if (h % 4 === 0) w.scheduleNatural('regen', { nature: 'nature', field: 'field' }, at);
-      if (h % 8 === 0) for (const person of PERSONS) for (const loc of LOCATIONS) w.scheduleNatural('decay', { nature: 'nature', bread: `bread:${person}@${loc}` }, at);
+      if (h % 4 === 0 && hasForest) w.scheduleNatural('regrow', { nature: 'nature', forest: 'forest' }, at);
+      if (h % 8 === 0) for (const person of persons) for (const loc of locations) w.scheduleNatural('decay', { nature: 'nature', bread: `bread:${person}@${loc}` }, at);
     }
   }
 }
@@ -398,8 +552,10 @@ export function summarize(w: World, persons: ThingId[]): Record<string, number |
     out[`${p}.stomach`] = num(t, 'stomach');
     out[`${p}.bread`] = w.total('quantity', (x) => x.kind === 'bread' && str(x, 'custodian') === p);
     out[`${p}.grain`] = w.total('quantity', (x) => x.kind === 'grain' && str(x, 'custodian') === p);
+    if (w.thing('forest')) out[`${p}.wood`] = w.total('quantity', (x) => x.kind === 'wood' && str(x, 'custodian') === p);
   }
   out['field.crop'] = num(w.thing('field'), 'crop');
+  if (w.thing('forest')) out['forest.wood'] = num(w.thing('forest'), 'wood');
   out['nature.waste'] = Number(num(w.thing('nature'), 'waste').toFixed(2));
   out['completed'] = w.stats.completed;
   out['rejected'] = w.stats.rejected;
@@ -410,7 +566,7 @@ export function summarize(w: World, persons: ThingId[]): Record<string, number |
 export function runDays(days: number, options: ScenarioOptions = {}): { scenario: Scenario; daily: Record<string, number | string>[] } {
   const scenario = buildMealScenario(options);
   const { world, persons } = scenario;
-  scheduleNature(world, 0, days);
+  scheduleNature(world, 0, days, scenario);
   const daily: Record<string, number | string>[] = [];
   for (let day = 0; day < days; day++) {
     world.run((day + 1) * DAY);

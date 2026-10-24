@@ -8,11 +8,12 @@ import { runDays, type ScenarioOptions } from '../skeleton/index.js';
 const days = Number(process.argv[2] ?? '3');
 const showLedger = process.argv.includes('--ledger');
 const contrast = process.argv.includes('--contrast');
+const wood = process.argv.includes('--wood');
 
-const options: ScenarioOptions = contrast ? { farmer: { eatBelow: 4 } } : {};
+const options: ScenarioOptions = { ...(contrast ? { farmer: { eatBelow: 4 } } : {}), ...(wood ? { wood: true } : {}) };
 const { scenario, daily } = runDays(days, options);
 
-console.log(contrast ? '# contrast: farmer eats only below nutrition 4' : '# baseline: farmer eats whenever hungry');
+console.log(`# ${contrast ? 'contrast: farmer eats only below nutrition 4' : 'baseline: farmer eats whenever hungry'}${wood ? ' + wood: forest, woodcutter C, bread needs wood, wood-for-bread exchange' : ''}`);
 for (const row of daily) console.log(JSON.stringify(row));
 
 const byKind: Record<string, number> = {};
