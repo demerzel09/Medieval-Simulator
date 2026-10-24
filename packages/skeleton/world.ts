@@ -1,14 +1,26 @@
 // 最小の骨格: 世界の進行。
-// 物理層: 刻み Δt ごとに、法則の順に、すべての事物の組（自分自身を含む）へ法則を当て、返った流れを順に適用する。
-// 情報層: 観測を集め、心象との差を事象（現れた・消えた）にし、心が意図を定め、死亡を確定する。
-// 属性を変える経路はこのファイルの apply だけである。足りなければその効果だけ縮める。
+// 物理層: 刻み Δt ごとに、すべての事物の組（自分自身を含む）のうち影響範囲にある組へ、法則の順に法則を当て、返った流れを順に適用する。
+// 情報層: 観測を集め、関係（心象）との差を事象（現れた・消えた）にし、心が意図を定め、死亡を確定する。
+// 値を変える経路はこのファイルの apply だけである。属性には書く経路が無い。足りなければその効果だけ縮める。
 
-import type { AttrValue, Effect, InfoEffect, Knowledge, Law, LedgerEntry, Mind, Sense, ThingId, ThingSnapshot, WorldView } from './types.js';
+import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingId, ThingSnapshot, WorldView } from './types.js';
 
 interface ThingRecord {
   id: ThingId;
   kind: string;
-  attrs: Record<string, AttrValue>;
+  attr: Attrs;
+  state: State;
+  rel: Relations;
+  res: Resources;
+}
+
+const snapshot = (t: ThingRecord): ThingSnapshot => ({ id: t.id, kind: t.kind, attr: t.attr, state: t.state, rel: t.rel, res: t.res });
+
+export interface ThingParts {
+  attr?: Record<string, Scalar>;
+  state?: State;
+  rel?: Relations;
+  res?: Resources;
 }
 
 export interface WorldOptions {
@@ -44,14 +56,22 @@ export class World implements WorldView {
 
   // ---- 事物 ----
 
-  addThing(id: ThingId, kind: string, attrs: Record<string, AttrValue>): void {
+  /** 事物を置く。attr は属性（仕様）で凍結され、以後どの効果も書けない。state・rel・res は更新が書く。 */
+  addThing(id: ThingId, kind: string, parts: ThingParts): void {
     if (this.things.has(id)) throw new Error(`duplicate thing ${id}`);
-    this.things.set(id, { id, kind, attrs: { ...attrs } });
+    this.things.set(id, {
+      id,
+      kind,
+      attr: Object.freeze({ ...(parts.attr ?? {}) }),
+      state: { ...(parts.state ?? {}) },
+      rel: { ...(parts.rel ?? {}) },
+      res: { ...(parts.res ?? {}) },
+    });
   }
 
   thing(id: ThingId): ThingSnapshot | undefined {
     const t = this.things.get(id);
-    return t ? { id: t.id, kind: t.kind, attrs: t.attrs } : undefined;
+    return t ? snapshot(t) : undefined;
   }
 
   private sortedIds(): ThingId[] {
@@ -61,8 +81,7 @@ export class World implements WorldView {
   query(pred: (t: ThingSnapshot) => boolean): ThingSnapshot[] {
     const out: ThingSnapshot[] = [];
     for (const id of this.sortedIds()) {
-      const t = this.things.get(id)!;
-      const s: ThingSnapshot = { id: t.id, kind: t.kind, attrs: t.attrs };
+      const s = snapshot(this.things.get(id)!);
       if (pred(s)) out.push(s);
     }
     return out;
@@ -71,13 +90,13 @@ export class World implements WorldView {
   positionOf(id: ThingId): { x: number; y: number } | undefined {
     let cur = this.things.get(id);
     for (let hops = 0; cur && hops < 8; hops++) {
-      const at = cur.attrs['attachedTo'];
+      const at = cur.state['attachedTo'];
       if (typeof at === 'string' && at !== '' && this.things.has(at)) {
         cur = this.things.get(at);
         continue;
       }
-      const x = cur.attrs['x'];
-      const y = cur.attrs['y'];
+      const x = cur.state['x'];
+      const y = cur.state['y'];
       return typeof x === 'number' && typeof y === 'number' ? { x, y } : undefined;
     }
     return undefined;
@@ -90,8 +109,13 @@ export class World implements WorldView {
     return Math.hypot(p.x - q.x, p.y - q.y);
   }
 
+  private attrNum(t: ThingRecord, a: string): number {
+    const v = t.attr[a];
+    return typeof v === 'number' ? v : 0;
+  }
+
   /**
-   * 範囲の種類。
+   * 範囲の種類。すべて属性で決まる。
    * sight: 観測者の視界（sight）と対象の見える範囲（visibility）の小さい方の内側。
    * reach: 観測者の手の届く範囲（reach）の内側。
    * smell: 観測者の嗅覚（smell）と対象の匂う範囲（odor）の小さい方の内側。
@@ -101,14 +125,13 @@ export class World implements WorldView {
     const o = this.things.get(object);
     if (!s || !o) return false;
     const d = this.distance(subject, object);
-    const num = (t: ThingRecord, a: string) => (typeof t.attrs[a] === 'number' ? (t.attrs[a] as number) : 0);
     switch (kind) {
       case 'sight':
-        return d <= Math.min(num(s, 'sight'), num(o, 'visibility'));
+        return d <= Math.min(this.attrNum(s, 'sight'), this.attrNum(o, 'visibility'));
       case 'reach':
-        return d <= num(s, 'reach');
+        return d <= this.attrNum(s, 'reach');
       case 'smell':
-        return d <= Math.min(num(s, 'smell'), num(o, 'odor'));
+        return d <= Math.min(this.attrNum(s, 'smell'), this.attrNum(o, 'odor'));
     }
   }
 
@@ -128,12 +151,7 @@ export class World implements WorldView {
     if (!pa || !pb) return true;
     const d = Math.hypot(pa.x - pb.x, pa.y - pb.y);
     let r = 0;
-    for (const t of [a, b]) {
-      for (const attr of this.rangeAttrs) {
-        const v = t.attrs[attr];
-        if (typeof v === 'number' && v > r) r = v;
-      }
-    }
+    for (const t of [a, b]) for (const attr of this.rangeAttrs) r = Math.max(r, this.attrNum(t, attr));
     return d <= r + 1e-9;
   }
 
@@ -159,7 +177,7 @@ export class World implements WorldView {
   /**
    * 一刻み。
    * 1. 物理層: すべての事物の組（a, b。a === b を含む）のうち影響範囲にある組へ、法則の順に法則を当て、流れを適用する。
-   * 2. 情報層: 観測を集め、心象との差を事象にする。心が意図を定める。死亡を確定する。
+   * 2. 情報層: 観測を集め、関係（心象）との差を事象にする。心が意図を定める。死亡を確定する。
    * 3. 時刻を Δt 進める。
    */
   tick(dt: number): void {
@@ -177,14 +195,13 @@ export class World implements WorldView {
       }
     }
     this.stats.activePairs += pairs.length;
-    // 影響範囲にある組へ、法則の順に法則を当てる。
     for (const law of this.laws) {
       for (const [aId, bId] of pairs) {
         const a = this.things.get(aId);
         const b = this.things.get(bId);
         if (!a || !b) continue; // 途中で消えた事物
         this.stats.pairEvaluations += 1;
-        const effects = law.pair({ id: a.id, kind: a.kind, attrs: a.attrs }, { id: b.id, kind: b.kind, attrs: b.attrs }, dt, this);
+        const effects = law.pair(snapshot(a), snapshot(b), dt, this);
         for (const effect of effects) {
           this.touched = new Set();
           const applied = this.apply(effect);
@@ -198,22 +215,23 @@ export class World implements WorldView {
     this.perceive();
     for (const [person, mind] of [...this.minds.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
       const self = this.thing(person);
-      if (!self || self.attrs['alive'] !== 'yes') continue;
+      if (!self || self.state['alive'] !== 'yes') continue;
       const intent = mind.decide(self, this.now);
       if (!intent) continue;
       const changed =
-        self.attrs['intent'] !== intent.intent ||
-        self.attrs['target'] !== (intent.target ?? '') ||
-        self.attrs['targetX'] !== (intent.targetX ?? 0) ||
-        self.attrs['targetY'] !== (intent.targetY ?? 0);
+        self.state['intent'] !== intent.intent ||
+        self.state['target'] !== (intent.target ?? '') ||
+        self.state['targetX'] !== (intent.targetX ?? 0) ||
+        self.state['targetY'] !== (intent.targetY ?? 0);
       if (!changed) continue;
       this.apply({ kind: 'intend', person, ...intent });
       this.ledger.push({ at: this.now, event: 'intend', person, intent: intent.intent, target: intent.target });
     }
+    // 死亡の確定: 生きている（状態 alive）事物の栄養（資源）が尽きたら、世界が確定する。
     for (const t of this.things.values()) {
-      if (t.kind === 'person' && t.attrs['alive'] === 'yes' && typeof t.attrs['nutrition'] === 'number' && t.attrs['nutrition'] <= 1e-9) {
-        t.attrs['alive'] = 'no';
-        t.attrs['intent'] = 'none';
+      if (t.state['alive'] === 'yes' && typeof t.res['nutrition'] === 'number' && t.res['nutrition'] <= 1e-9) {
+        this.setState(t.id, 'alive', 'no');
+        this.setState(t.id, 'intent', 'none');
         this.ledger.push({ at: this.now, event: 'death', person: t.id });
       }
     }
@@ -223,16 +241,16 @@ export class World implements WorldView {
   }
 
   /**
-   * 観測と事象。生きている人物ごとに、他のすべての事物を感覚で観測する（これも全組）。
-   * 観測できた事物は心象に写す（初めてなら「現れた」事象）。覚えているのに、見えるはずの位置で観測できなければ「消えた」事象。
+   * 観測と事象。生きている事物ごとに、他のすべての事物を感覚で観測する（これも全組）。
+   * 観測できた事物は関係（心象）に写す（初めてなら「現れた」事象）。覚えているのに、見えるはずの位置で観測できなければ「消えた」事象。
    */
   private perceive(): void {
     const ids = this.sortedIds();
     for (const pId of ids) {
       const p = this.things.get(pId)!;
-      if (p.kind !== 'person' || p.attrs['alive'] !== 'yes') continue;
-      const observer: ThingSnapshot = { id: p.id, kind: p.kind, attrs: p.attrs };
-      const before = { ...((p.attrs['knowledge'] as Knowledge | undefined) ?? {}) };
+      if (p.state['alive'] !== 'yes') continue;
+      const observer = snapshot(p);
+      const before: Relations = { ...p.rel };
       const seen = new Set<ThingId>();
       for (const sense of this.senses) {
         for (const oId of ids) {
@@ -240,11 +258,11 @@ export class World implements WorldView {
           const o = this.things.get(oId);
           if (!o) continue;
           this.stats.observations += 1;
-          const attrs = sense.observe(observer, { id: o.id, kind: o.kind, attrs: o.attrs }, this);
-          if (!attrs) continue;
+          const fields = sense.observe(observer, snapshot(o), this);
+          if (!fields) continue;
           seen.add(oId);
           if (!(oId in before)) this.ledger.push({ at: this.now, event: 'appear', person: pId, about: oId, kind: o.kind });
-          this.apply({ kind: 'inform', observer: pId, about: oId, attrs });
+          this.apply({ kind: 'inform', observer: pId, about: oId, fields });
         }
       }
       for (const [oId, remembered] of Object.entries(before)) {
@@ -279,70 +297,70 @@ export class World implements WorldView {
     return applied;
   }
 
-  // ---- 属性を変える唯一の経路。戻り値は実際に適用した量（0 なら何も変えていない） ----
+  // ---- 値を変える唯一の経路。戻り値は実際に適用した量（0 なら何も変えていない）。属性を書く経路は無い ----
 
   private apply(e: Effect | InfoEffect): number {
     switch (e.kind) {
       case 'transfer': {
-        const have = this.num(e.from, e.attr);
+        const have = this.resOf(e.from, e.res);
         const amount = Math.min(e.amount, have);
         if (amount <= 0) return 0;
-        this.set(e.from, e.attr, have - amount);
-        this.set(e.to, e.attr, this.num(e.to, e.attr) + amount);
+        this.setRes(e.from, e.res, have - amount);
+        this.setRes(e.to, e.res, this.resOf(e.to, e.res) + amount);
         return amount;
       }
       case 'convert': {
-        const have = this.num(e.from, e.fromAttr);
+        const have = this.resOf(e.from, e.fromRes);
         const amount = Math.min(e.amount, have);
         if (amount <= 0 || e.amount <= 0) return 0;
         const ratio = amount / e.amount;
         const produced = e.produced * ratio;
         const loss = amount - produced;
         if (loss < -1e-9) throw new Error(`convert produces more than consumed: ${JSON.stringify(e)}`);
-        this.set(e.from, e.fromAttr, have - amount);
-        this.set(e.to, e.toAttr, this.num(e.to, e.toAttr) + produced);
-        if (loss > 0) this.set(e.lossTo, e.lossAttr, this.num(e.lossTo, e.lossAttr) + loss);
+        this.setRes(e.from, e.fromRes, have - amount);
+        this.setRes(e.to, e.toRes, this.resOf(e.to, e.toRes) + produced);
+        if (loss > 0) this.setRes(e.lossTo, e.lossRes, this.resOf(e.lossTo, e.lossRes) + loss);
         return amount;
       }
       case 'reassign': {
         const t = this.things.get(e.thing);
-        if (!t || t.attrs[e.attr] !== e.from || !this.things.has(e.to)) return 0; // 既に別の相手へ移っていれば何も起きない
-        this.set(e.thing, e.attr, e.to);
+        if (!t || t.state['attachedTo'] !== e.from || !this.things.has(e.to)) return 0; // 既に別の相手へ移っていれば何も起きない
+        this.setState(e.thing, 'attachedTo', e.to);
         return 1;
       }
       case 'spawn': {
         if (this.things.has(e.id)) return 0;
-        const have = this.num(e.from, e.fromAttr);
+        const have = this.resOf(e.from, e.fromRes);
         if (have < e.amount) return 0;
-        this.set(e.from, e.fromAttr, have - e.amount);
-        this.things.set(e.id, { id: e.id, kind: e.thingKind, attrs: { ...e.attrs, quantity: e.amount } });
+        this.setRes(e.from, e.fromRes, have - e.amount);
+        this.things.set(e.id, { id: e.id, kind: e.thingKind, attr: Object.freeze({ ...e.attr }), state: { ...e.state }, rel: {}, res: { ...e.res, quantity: e.amount } });
         this.touched.add(e.id);
         return e.amount;
       }
       case 'despawn': {
         const t = this.things.get(e.thing);
         if (!t) return 0;
-        const amount = typeof t.attrs['quantity'] === 'number' ? t.attrs['quantity'] : 0;
+        const amount = t.res['quantity'] ?? 0;
         const loss = amount - e.produced;
         if (loss < -1e-9) throw new Error(`despawn produces more than the thing holds: ${JSON.stringify(e)}`);
-        this.set(e.to, e.toAttr, this.num(e.to, e.toAttr) + e.produced);
-        if (loss > 0) this.set(e.lossTo, e.lossAttr, this.num(e.lossTo, e.lossAttr) + loss);
+        this.setRes(e.to, e.toRes, this.resOf(e.to, e.toRes) + e.produced);
+        if (loss > 0) this.setRes(e.lossTo, e.lossRes, this.resOf(e.lossTo, e.lossRes) + loss);
         this.things.delete(e.thing);
         this.touched.add(e.thing);
         return amount || 1;
       }
       case 'move': {
         const t = this.things.get(e.thing);
-        if (!t || typeof t.attrs['x'] !== 'number' || typeof t.attrs['y'] !== 'number') return 0;
-        const have = this.num(e.costFrom, e.costAttr);
+        if (!t || typeof t.state['x'] !== 'number' || typeof t.state['y'] !== 'number') return 0;
+        const have = this.resOf(e.costFrom, e.costRes);
         const cost = Math.min(e.cost, have);
         const ratio = e.cost > 0 ? cost / e.cost : 1;
         if (ratio <= 0) return 0;
-        this.set(e.thing, 'x', (t.attrs['x'] as number) + e.dx * ratio);
-        this.set(e.thing, 'y', (t.attrs['y'] as number) + e.dy * ratio);
+        this.setState(e.thing, 'x', (t.state['x'] as number) + e.dx * ratio);
+        this.setState(e.thing, 'y', (t.state['y'] as number) + e.dy * ratio);
         if (cost > 0) {
-          this.set(e.costFrom, e.costAttr, have - cost);
-          this.set(e.costTo, e.costAttr, this.num(e.costTo, e.costAttr) + cost);
+          this.setRes(e.costFrom, e.costRes, have - cost);
+          this.setRes(e.costTo, e.costRes, this.resOf(e.costTo, e.costRes) + cost);
         }
         return Math.hypot(e.dx * ratio, e.dy * ratio);
       }
@@ -359,45 +377,52 @@ export class World implements WorldView {
         if (!observer || !about) return 0;
         const pos = this.positionOf(e.about);
         if (!pos) return 0;
-        const knowledge: Knowledge = { ...((observer.attrs['knowledge'] as Knowledge | undefined) ?? {}) };
-        const attrs: Record<string, number | string> = {};
-        for (const a of e.attrs) {
-          const v = about.attrs[a];
-          if (typeof v === 'number' || typeof v === 'string') attrs[a] = v;
+        const entry: Relation = { at: this.now, x: pos.x, y: pos.y };
+        for (const f of e.fields) {
+          const v = about.attr[f] ?? about.state[f] ?? about.res[f];
+          if (v !== undefined) entry[f] = v;
         }
-        knowledge[e.about] = { at: this.now, kind: about.kind, x: pos.x, y: pos.y, attrs };
-        this.set(e.observer, 'knowledge', knowledge);
+        this.setRel(e.observer, { ...observer.rel, [e.about]: entry });
         return 1;
       }
       case 'forget': {
         const observer = this.things.get(e.observer);
-        if (!observer) return 0;
-        const knowledge = { ...((observer.attrs['knowledge'] as Knowledge | undefined) ?? {}) };
-        if (!(e.about in knowledge)) return 0;
-        delete knowledge[e.about];
-        this.set(e.observer, 'knowledge', knowledge);
+        if (!observer || !(e.about in observer.rel)) return 0;
+        const rel = { ...observer.rel };
+        delete rel[e.about];
+        this.setRel(e.observer, rel);
         return 1;
       }
       case 'intend': {
-        const t = this.things.get(e.person);
-        if (!t) return 0;
-        this.set(e.person, 'intent', e.intent);
-        this.set(e.person, 'target', e.target ?? '');
-        this.set(e.person, 'targetX', e.targetX ?? 0);
-        this.set(e.person, 'targetY', e.targetY ?? 0);
+        if (!this.things.has(e.person)) return 0;
+        this.setState(e.person, 'intent', e.intent);
+        this.setState(e.person, 'target', e.target ?? '');
+        this.setState(e.person, 'targetX', e.targetX ?? 0);
+        this.setState(e.person, 'targetY', e.targetY ?? 0);
         return 1;
       }
     }
   }
 
-  private num(id: ThingId, attr: string): number {
-    const v = this.things.get(id)?.attrs[attr];
-    if (typeof v !== 'number') throw new Error(`${id}.${attr} is not a number`);
+  private resOf(id: ThingId, res: string): number {
+    const t = this.things.get(id);
+    const v = t?.res[res];
+    if (typeof v !== 'number') throw new Error(`${id}.${res} is not a resource${t && res in t.attr ? ' (it is a spec attribute; the update must not write it)' : ''}`);
     return v;
   }
 
-  private set(id: ThingId, attr: string, value: AttrValue): void {
-    this.things.get(id)!.attrs[attr] = value;
+  private setRes(id: ThingId, res: string, value: number): void {
+    this.things.get(id)!.res[res] = value;
+    this.touched.add(id);
+  }
+
+  private setState(id: ThingId, key: string, value: Scalar): void {
+    this.things.get(id)!.state[key] = value;
+    this.touched.add(id);
+  }
+
+  private setRel(id: ThingId, rel: Relations): void {
+    this.things.get(id)!.rel = rel;
     this.touched.add(id);
   }
 
@@ -409,10 +434,11 @@ export class World implements WorldView {
 
   // ---- 検査 ----
 
-  total(attr: string, pred: (t: ThingSnapshot) => boolean = () => true): number {
+  /** 資源の総量。 */
+  total(res: string, pred: (t: ThingSnapshot) => boolean = () => true): number {
     let sum = 0;
     for (const t of this.query(pred)) {
-      const v = t.attrs[attr];
+      const v = t.res[res];
       if (typeof v === 'number') sum += v;
     }
     return sum;

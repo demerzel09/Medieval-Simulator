@@ -142,6 +142,24 @@ flowchart TB
 
 MAREAは名前と公開要旨でREAの利用を明示する多主体ビジネスシミュレータである。2018年の論文は、商社モデルの実行からイベントログを抽出し、プロセスマイニングへつなぐ実装を報告する。確認できたのは出版社の公開要旨などで、本文全体と対応ソースコードは未確認。2026-10-24に二度検索したが、原著（Vymětal・Schoeller 2012、Silesian University in Opava）を含めソースコードや配布物は見つからなかった。身体を持つ人物の生活世界全体の実装とは確認していない。[Itoほか, 2018](https://link.springer.com/article/10.1007/s10588-018-9268-6)
 
+<a id="value-kinds"></a>
+### 事物が持つ値の四区分：属性・状態・関係・資源
+
+2026-10-25、ユーザーの問い「属性と状態（ステータス）は違うのではないか。友人の相性のように、相手との組や向きで変わるものは属性か状態か」から、資料を「値がどこに属し、何がそれを変えるか」で読み直した。結論は、値は四つに分かれ、基準は固定か可変かではなく**更新がそれを書くかどうか**である。「可変属性」という区分は置かない。更新が書くなら状態である。
+
+| 区分 | 定義 | 例 | 資料の対応 |
+|---|---|---|---|
+| 属性 | 仕様の側の値。どの法則が当たり得るか、どの速さかを決める。更新は書かない。変えるには別の事物に置き換えるか、明示の出来事が要る | 男女、草食・肉食、見える範囲、採る速さ | REA・Valueflows の知識レベル（ResourceSpecification）、CPN の色集合とガード、Unreal GAS のタグ要件、Coad の青（Description）、BFO の傾向性 |
+| 状態 | 運用の側の値。更新が書くものはすべて状態。種類のようでも変わる値（子供→大人、新鮮→腐敗、生→死）はここ | 位置、空腹、意図、生死 | Valueflows の EconomicResource の `stage`・`state`（仕様ではなく実物側）、BFO の性質（quality） |
+| 関係 | 相手ごとに持つ状態。向きは両側が別に持つ | 友人の相性、好意、親子、所有、雇用。心象もこの形 | BFO 2020 の関係的性質、Valueflows の AgentRelationship と AgentRelationshipRole、Coad の黄（Role）、経済理論の特定相手への依存（ホールドアップ）と委任（プリンシパル＝エージェント） |
+| 資源 | 量として保存される状態。釣り合いはここだけに掛かる | 栄養、鮮度、蓄え、廃棄 | REA の stock-flow と duality、hREA の DecrementIncrement、Petri net のトークン保存 |
+
+法則のガードは四つとも読む。空腹（状態）なら食べられる物（属性）に、親（関係）なら自分の子に注意が向く、という規則は三つを一緒に読む。区別は読む側ではなく書く側にある。
+
+確認した一次資料（2026-10-25）。BFO 2020 の公開コア定義（[公式案内](https://bfo-ontology.github.io/bfo-2020.html)、[定義ファイル bfo-core.ofn](https://github.com/BFO-ontology/BFO-2020/blob/master/21838-2/owl/bfo-core.ofn)）は BFO_0000145「relational quality」を「b は性質であり、互いに異なる c と d が存在して、b が c にも d にも特異的に依存する」と定義する。Valueflows の型定義 [`@valueflows/vf-graphql`](https://www.npmjs.com/package/@valueflows/vf-graphql) 0.9.1-alpha.4（`schemas/agent.gql`、`index.d.ts`）には `AgentRelationship`（二主体と `relationship: AgentRelationshipRole`）と `AgentRelationshipRole`（「二つの主体の間に存在する経済的な関係の役割。member、trading partner など」）がある。[流用範囲の表](#rea-reuse)に挙げた EconomicResource の `stage`・`state` は実物側の項目である。Coad の役割と経済理論は[第4節](#other-modeling)・[第6節](#economics)の記録のとおり。
+
+資料に無いもの。相手の属性と自分の状態（空腹、関心、注意）から何に注意を向けるかを選ぶ規則（関心の段）は、どの資料にも無い。候補として Unreal の AI Perception の所属フィルタ、Mountaincore の派閥があるが未確認。対に付く状態を一級の部品として持つ ECS として Flecs の relationship があるが未確認。四区分を一般の法則に落とすには、男女・捕食・親子・友人・所有・雇用を要件として集め、定義が全部に当てはまるかを見る。
+
 <a id="valueflows"></a>
 ## 2. ValueflowsとhREA――資源に結びついた過程
 

@@ -1,10 +1,13 @@
-// いちばん小さな生活の環: 果実を採って食べる。
-// 事物: 自然、木、木に付いた実（一つずつが事物）、人物。すべて位置と範囲を持つ。
-// 物理層の法則（二つの事物の組に対して）: 実る、腐る、移動、採る、食べる、消化、消耗。Δt ごとに速度 × Δt。
-// 情報層の感覚: 視界。観測と心象の差が事象になる。
+// いちばん小さな生活の環: 果実を採って食べる。採取だけの経済。
+// 事物: 自然、木、木に付いた実（一つずつが事物）、人物。
+// 値の四区分: 属性（札と仕様。更新は書かない）、状態、関係（心象）、資源（釣り合う量）。
+// 法則は事物の種類ではなく属性（札）の組で相手を選ぶ。札は属性の名の有無で表し、値が仕様になる。
+//   自然: sink（受け皿）、grows（育てる）。  木: bears=fruit（実をつける）。
+//   実:   edible=plant（食べられる、植物性）、perishable（腐る）。 人: eats=plant（植物を食べる）、picks（採る）、sight・reach・smell（範囲）。
+// 札は資源の有無では代用しない。鮮度の受け皿である自然も資源 freshness を持つので、資源の有無で「腐る物」を選ぶと自然自身に腐敗が当たる。
 // 数値はすべて仮の比較条件であり、校正値ではない。
 
-import type { Effect, Knowledge, Law, Mind, Sense, ThingId, ThingSnapshot, WorldView } from './types.js';
+import type { Effect, Law, Mind, Relation, Sense, ThingId, ThingSnapshot, WorldView } from './types.js';
 import { World } from './world.js';
 
 export const MINUTE = 1;
@@ -12,40 +15,49 @@ export const HOUR = 60;
 export const DAY = 24 * HOUR;
 export const DT = 10 * MINUTE;
 
-const num = (t: ThingSnapshot | undefined, a: string): number => {
-  const v = t?.attrs[a];
+const attr = (t: ThingSnapshot | undefined, a: string): number => {
+  const v = t?.attr[a];
   return typeof v === 'number' ? v : 0;
 };
-const str = (t: ThingSnapshot | undefined, a: string): string => {
-  const v = t?.attrs[a];
+const has = (t: ThingSnapshot | undefined, a: string): boolean => t !== undefined && a in t.attr;
+const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
+const state = (t: ThingSnapshot | undefined, s: string): string => {
+  const v = t?.state[s];
   return typeof v === 'string' ? v : '';
 };
-const alive = (t: ThingSnapshot | undefined): boolean => str(t, 'alive') === 'yes';
-const isPerson = (t: ThingSnapshot): boolean => t.kind === 'person' && alive(t);
-const fruitsOn = (w: WorldView, holder: ThingId) => w.query((t) => t.kind === 'fruit' && str(t, 'attachedTo') === holder);
+const stateNum = (t: ThingSnapshot | undefined, s: string): number => {
+  const v = t?.state[s];
+  return typeof v === 'number' ? v : 0;
+};
+/** 生きて行為する事物。状態 alive を持ち、yes であること。 */
+const alive = (t: ThingSnapshot | undefined): boolean => state(t, 'alive') === 'yes';
+/** 食べられる物（札 edible）で、holder に付いているもの。 */
+export const edibleOn = (w: WorldView, holder: ThingId) => w.query((t) => has(t, 'edible') && state(t, 'attachedTo') === holder);
 
-// ---- 物理層の法則。組 (a, b) の両者の属性と距離から流れを決める ----
+// ---- 物理層の法則。組 (a, b) の札で当たるかを決め、状態・資源・距離で流れを決める ----
 
-/** (自然, 木): 実る。育ちが自然から木へ移り、1 たまるごとに、上限まで、実という事物が木に生まれる。実の量は自然の蓄えから引く。 */
+/** (育てる, 実をつける): 実る。育ちが自然から木へ移り、1 たまるごとに、上限まで、実という事物が木に生まれる。実の量は自然の蓄えから引く。 */
 export const ripen: Law = {
   id: 'ripen',
-  version: 'pair-1',
+  version: 'kinds-1',
   pair: (a, b, dt, w) => {
-    if (a.kind !== 'nature' || b.kind !== 'tree') return [];
-    const rate = num(b, 'ripenPerHour') / HOUR; // 実/分
-    const effects: Effect[] = [{ kind: 'transfer', attr: 'growth', from: a.id, to: b.id, amount: rate * dt }];
-    const growth = num(b, 'growth') + rate * dt;
-    const room = Math.max(0, num(b, 'cap') - fruitsOn(w, b.id).length);
+    if (!has(a, 'grows') || b.attr['bears'] !== 'fruit') return [];
+    const rate = attr(b, 'ripenPerHour') / HOUR; // 実/分
+    const effects: Effect[] = [{ kind: 'transfer', res: 'growth', from: a.id, to: b.id, amount: rate * dt }];
+    const growth = res(b, 'growth') + rate * dt;
+    const room = Math.max(0, attr(b, 'cap') - edibleOn(w, b.id).length);
     const whole = Math.min(Math.floor(growth), room);
     for (let i = 0; i < whole; i++) {
-      effects.push({ kind: 'convert', from: b.id, fromAttr: 'growth', amount: 1, to: a.id, toAttr: 'growthSpent', produced: 1, lossTo: a.id, lossAttr: 'growthSpent' });
+      effects.push({ kind: 'convert', from: b.id, fromRes: 'growth', amount: 1, to: a.id, toRes: 'growthSpent', produced: 1, lossTo: a.id, lossRes: 'growthSpent' });
       effects.push({
         kind: 'spawn',
         id: (w as World).nextSpawnId('fruit'),
         thingKind: 'fruit',
-        attrs: { attachedTo: b.id, freshness: num(b, 'fruitFreshness'), visibility: num(b, 'fruitVisibility'), odor: num(b, 'fruitOdor') },
+        attr: { edible: 'plant', perishable: true, visibility: attr(b, 'fruitVisibility'), odor: attr(b, 'fruitOdor') },
+        state: { attachedTo: b.id },
+        res: { freshness: attr(b, 'fruitFreshness') },
         from: a.id,
-        fromAttr: 'fruitStock',
+        fromRes: 'fruitStock',
         amount: 1,
       });
     }
@@ -53,91 +65,91 @@ export const ripen: Law = {
   },
 };
 
-/** (実, 自然): 腐る。鮮度が速度で自然へ移り、尽きた実は廃棄になる。木に付いていても人が持っていても同じ。 */
+/** (腐る物, 受け皿): 腐る。鮮度が速度で自然へ移り、尽きた物は廃棄になる。木に付いていても人が持っていても同じ。 */
 export const rot: Law = {
   id: 'rot',
-  version: 'pair-1',
+  version: 'kinds-1',
   pair: (a, b, dt) => {
-    if (a.kind !== 'fruit' || b.kind !== 'nature') return [];
-    const rate = num(b, 'rotPerHour') / HOUR;
-    if (num(a, 'freshness') - rate * dt <= 1e-9) {
-      return [{ kind: 'despawn', thing: a.id, to: b.id, toAttr: 'waste', produced: num(a, 'quantity'), lossTo: b.id, lossAttr: 'waste' }];
+    if (!has(a, 'perishable') || !has(b, 'sink')) return [];
+    const rate = attr(b, 'rotPerHour') / HOUR;
+    if (res(a, 'freshness') - rate * dt <= 1e-9) {
+      return [{ kind: 'despawn', thing: a.id, to: b.id, toRes: 'waste', produced: res(a, 'quantity'), lossTo: b.id, lossRes: 'waste' }];
     }
-    return [{ kind: 'transfer', attr: 'freshness', from: a.id, to: b.id, amount: rate * dt }];
+    return [{ kind: 'transfer', res: 'freshness', from: a.id, to: b.id, amount: rate * dt }];
   },
 };
 
-/** (人, 自然): 移動。意図した目標へ、残っている時間 × 速度だけ進む。動いた分の栄養が熱として自然へ移る。 */
+/** (歩ける, 受け皿): 移動。意図した目標へ、残っている時間 × 速度だけ進む。動いた分の栄養が熱として自然へ移る。 */
 export const walk: Law = {
   id: 'walk',
-  version: 'pair-1',
+  version: 'kinds-1',
   pair: (a, b, _dt, w) => {
-    if (!isPerson(a) || b.kind !== 'nature' || str(a, 'intent') !== 'move') return [];
+    if (!alive(a) || !has(a, 'speedPerHour') || !has(b, 'sink') || state(a, 'intent') !== 'move') return [];
     const pos = w.positionOf(a.id)!;
-    const dist = Math.hypot(num(a, 'targetX') - pos.x, num(a, 'targetY') - pos.y);
-    const speed = num(a, 'speedPerHour') / HOUR; // m/分
+    const dist = Math.hypot(stateNum(a, 'targetX') - pos.x, stateNum(a, 'targetY') - pos.y);
+    const speed = attr(a, 'speedPerHour') / HOUR; // m/分
     const time = w.timeLeft(a.id);
     if (dist < 1e-9 || time <= 0 || speed <= 0) return [];
     const step = Math.min(dist, speed * time);
-    const dx = ((num(a, 'targetX') - pos.x) / dist) * step;
-    const dy = ((num(a, 'targetY') - pos.y) / dist) * step;
+    const dx = ((stateNum(a, 'targetX') - pos.x) / dist) * step;
+    const dy = ((stateNum(a, 'targetY') - pos.y) / dist) * step;
     return [
-      { kind: 'move', thing: a.id, dx, dy, costFrom: a.id, costAttr: 'nutrition', costTo: b.id, cost: num(a, 'walkCostPerMeter') * step },
+      { kind: 'move', thing: a.id, dx, dy, costFrom: a.id, costRes: 'nutrition', costTo: b.id, cost: attr(a, 'walkCostPerMeter') * step },
       { kind: 'spend', thing: a.id, minutes: step / speed },
     ];
   },
 };
 
-/** (人, 実): 採る。意図した木に付いた実が手の届く範囲にあり、時間が残っていれば、実が人へ付け替わる。二人なら順に、無くなれば止まる。 */
+/** (採る, 付属する物): 採る。意図した相手に付いた物が手の届く範囲にあり、時間が残っていれば、人へ付け替わる。二人なら順に、無くなれば止まる。 */
 export const pick: Law = {
   id: 'pick',
-  version: 'pair-1',
+  version: 'kinds-1',
   pair: (a, b, _dt, w) => {
-    if (!isPerson(a) || b.kind !== 'fruit' || str(a, 'intent') !== 'pick') return [];
-    const tree = str(a, 'target');
-    if (str(b, 'attachedTo') !== tree || w.distance(a.id, b.id) > num(a, 'reach')) return [];
-    const cost = HOUR / num(a, 'pickPerHour'); // 分/個
+    if (!alive(a) || !has(a, 'picks') || state(a, 'intent') !== 'pick' || !('attachedTo' in b.state)) return [];
+    const holder = state(a, 'target');
+    if (state(b, 'attachedTo') !== holder || w.distance(a.id, b.id) > attr(a, 'reach')) return [];
+    const cost = HOUR / attr(a, 'pickPerHour'); // 分/個
     if (w.timeLeft(a.id) + 1e-9 < cost) return [];
     return [
-      { kind: 'reassign', thing: b.id, attr: 'attachedTo', from: tree, to: a.id },
+      { kind: 'reassign', thing: b.id, from: holder, to: a.id },
       { kind: 'spend', thing: a.id, minutes: cost },
     ];
   },
 };
 
-/** (人, 自分の実): 食べる。意図が eat で、その実を持っていて、時間が残っていれば、実は胃の内容になる。 */
+/** (食べる, 食べられる): 食べる。札の値が合い（植物を食べる × 植物性）、自分に付いていて、意図が eat で、時間が残っていれば、胃の内容になる。 */
 export const eat: Law = {
   id: 'eat',
-  version: 'pair-1',
+  version: 'kinds-1',
   pair: (a, b, _dt, w) => {
-    if (!isPerson(a) || b.kind !== 'fruit' || str(a, 'intent') !== 'eat' || str(b, 'attachedTo') !== a.id) return [];
-    const cost = HOUR / num(a, 'eatPerHour');
+    if (!alive(a) || !has(a, 'eats') || a.attr['eats'] !== b.attr['edible'] || state(a, 'intent') !== 'eat' || state(b, 'attachedTo') !== a.id) return [];
+    const cost = HOUR / attr(a, 'eatPerHour');
     if (w.timeLeft(a.id) + 1e-9 < cost) return [];
     return [
-      { kind: 'despawn', thing: b.id, to: a.id, toAttr: 'stomach', produced: num(b, 'quantity'), lossTo: a.id, lossAttr: 'stomach' },
+      { kind: 'despawn', thing: b.id, to: a.id, toRes: 'stomach', produced: res(b, 'quantity'), lossTo: a.id, lossRes: 'stomach' },
       { kind: 'spend', thing: a.id, minutes: cost },
     ];
   },
 };
 
-/** (人, 自然): 消化。胃の内容が速度で栄養になり、一部は排出として自然へ。 */
+/** (消化する, 受け皿): 消化。胃の内容が速度で栄養になり、一部は排出として自然へ。 */
 export const digest: Law = {
   id: 'digest',
-  version: 'pair-1',
+  version: 'kinds-1',
   pair: (a, b, dt) => {
-    if (!isPerson(a) || b.kind !== 'nature' || num(a, 'stomach') <= 0) return [];
-    const amount = (num(a, 'digestPerHour') / HOUR) * dt;
-    return [{ kind: 'convert', from: a.id, fromAttr: 'stomach', amount, to: a.id, toAttr: 'nutrition', produced: amount * num(a, 'digestYield'), lossTo: b.id, lossAttr: 'waste' }];
+    if (!alive(a) || !has(a, 'digestPerHour') || !has(b, 'sink') || res(a, 'stomach') <= 0) return [];
+    const amount = (attr(a, 'digestPerHour') / HOUR) * dt;
+    return [{ kind: 'convert', from: a.id, fromRes: 'stomach', amount, to: a.id, toRes: 'nutrition', produced: amount * attr(a, 'digestYield'), lossTo: b.id, lossRes: 'waste' }];
   },
 };
 
-/** (人, 自然): 消耗。栄養が速度で熱として自然へ移る。 */
+/** (消耗する, 受け皿): 消耗。栄養が速度で熱として自然へ移る。 */
 export const wear: Law = {
   id: 'wear',
-  version: 'pair-1',
+  version: 'kinds-1',
   pair: (a, b, dt) => {
-    if (!isPerson(a) || b.kind !== 'nature') return [];
-    return [{ kind: 'transfer', attr: 'nutrition', from: a.id, to: b.id, amount: (num(a, 'wearPerHour') / HOUR) * dt }];
+    if (!alive(a) || !has(a, 'wearPerHour') || !has(b, 'sink')) return [];
+    return [{ kind: 'transfer', res: 'nutrition', from: a.id, to: b.id, amount: (attr(a, 'wearPerHour') / HOUR) * dt }];
   },
 };
 
@@ -146,34 +158,34 @@ export const fruitLaws: Law[] = [walk, pick, eat, digest, wear, ripen, rot];
 
 // ---- 情報層の感覚 ----
 
-/** 心象に写す属性。見える範囲（visibility）を写すのは、覚えている物が見えるはずかを後で判定するため。 */
-const SEEN_ATTRS = ['attachedTo', 'freshness', 'cap', 'ripenPerHour', 'visibility'];
+/** 心象に写す値の名。属性（札）、状態、資源から。見える範囲を写すのは、覚えている物が見えるはずかを後で判定するため。 */
+const SEEN_FIELDS = ['edible', 'bears', 'visibility', 'attachedTo', 'freshness'];
 
-/** 視界。観測者の sight と対象の visibility の小さい方の内側なら見える。自分に付いた物は常に分かる。自然は見る対象ではない。 */
+/** 視界。観測者の sight と対象の visibility の小さい方の内側なら見える。自分に付いた物は常に分かる。位置の無い物（自然）は見る対象ではない。 */
 export const sight: Sense = {
   id: 'sight',
-  version: 'event-1',
+  version: 'kinds-1',
   observe: (observer, object, w) => {
-    if (object.kind === 'nature') return null;
-    if (str(object, 'attachedTo') === observer.id || w.inRange('sight', observer.id, object.id)) return SEEN_ATTRS;
+    if (!has(observer, 'sight') || !w.positionOf(object.id)) return null;
+    if (state(object, 'attachedTo') === observer.id || w.inRange('sight', observer.id, object.id)) return SEEN_FIELDS;
     return null;
   },
   expected: (observer, remembered, w) => {
     const pos = w.positionOf(observer.id)!;
-    const d = Math.hypot(remembered.x - pos.x, remembered.y - pos.y);
-    const vis = typeof remembered.attrs['visibility'] === 'number' ? remembered.attrs['visibility'] : Number.POSITIVE_INFINITY;
-    return remembered.attrs['attachedTo'] === observer.id || d <= Math.min(num(observer, 'sight'), vis);
+    const rx = typeof remembered['x'] === 'number' ? remembered['x'] : Number.NaN;
+    const ry = typeof remembered['y'] === 'number' ? remembered['y'] : Number.NaN;
+    const d = Math.hypot(rx - pos.x, ry - pos.y);
+    const vis = typeof remembered['visibility'] === 'number' ? remembered['visibility'] : Number.POSITIVE_INFINITY;
+    return remembered['attachedTo'] === observer.id || d <= Math.min(attr(observer, 'sight'), vis);
   },
 };
 
 // ---- 心 ----
 
-function known(self: ThingSnapshot): Knowledge {
-  return (self.attrs['knowledge'] as Knowledge | undefined) ?? {};
-}
+const relNum = (e: Relation, k: string): number => (typeof e[k] === 'number' ? (e[k] as number) : 0);
 
 /**
- * 採取者: 木の場所は知らない。視界に入って心象に書かれた木と実から、実の付いた木を選ぶ。
+ * 採取者: 木の場所は知らない。視界に入って心象（関係）に写った木と実から、実の付いた木を選ぶ。
  * 空腹で実を持っていれば食べ、手持ちが目標未満なら実の付いた木へ行って採り、足りれば家へ戻る。
  */
 export class ForagerMind implements Mind {
@@ -183,33 +195,34 @@ export class ForagerMind implements Mind {
   ) {}
   decide(self: ThingSnapshot, _now: number) {
     const me = self.id;
-    const k = known(self);
-    const holding = Object.values(k).filter((e) => e.kind === 'fruit' && e.attrs['attachedTo'] === me).length;
-    const hungry = num(self, 'stomach') < 1 && num(self, 'nutrition') < this.eatBelow;
+    const k = self.rel;
+    const holding = Object.values(k).filter((e) => 'edible' in e && e['attachedTo'] === me).length;
+    const hungry = res(self, 'stomach') < 1 && res(self, 'nutrition') < this.eatBelow;
     if (hungry && holding >= 1) return { intent: 'eat' };
     if (holding < this.target) {
-      const x = num(self, 'x');
-      const y = num(self, 'y');
-      const byDistance = (a: { e: { x: number; y: number } }, b: { e: { x: number; y: number } }) => Math.hypot(a.e.x - x, a.e.y - y) - Math.hypot(b.e.x - x, b.e.y - y);
-      // 知っている木と、その木に付いていると知っている実の数。実は木より見える範囲が狭いので、遠くからは木しか見えない。
+      const x = stateNum(self, 'x');
+      const y = stateNum(self, 'y');
+      const byDistance = (p: { e: Relation }, q: { e: Relation }) =>
+        Math.hypot(relNum(p.e, 'x') - x, relNum(p.e, 'y') - y) - Math.hypot(relNum(q.e, 'x') - x, relNum(q.e, 'y') - y);
+      // 知っている木（実をつける札）と、その木に付いていると知っている実の数。実は木より見える範囲が狭いので、遠くからは木しか見えない。
       const trees = Object.entries(k)
-        .filter(([, e]) => e.kind === 'tree')
-        .map(([id, e]) => ({ id, e, fruits: Object.values(k).filter((f) => f.kind === 'fruit' && f.attrs['attachedTo'] === id).length }))
+        .filter(([, e]) => 'bears' in e)
+        .map(([id, e]) => ({ id, e, fruits: Object.values(k).filter((f) => 'edible' in f && f['attachedTo'] === id).length }))
         .sort(byDistance);
       const withFruit = trees.find((t) => t.fruits >= 1);
       if (withFruit) {
-        const d = Math.hypot(withFruit.e.x - x, withFruit.e.y - y);
-        if (d <= num(self, 'reach')) return { intent: 'pick', target: withFruit.id };
-        return { intent: 'move', target: withFruit.id, targetX: withFruit.e.x, targetY: withFruit.e.y };
+        const d = Math.hypot(relNum(withFruit.e, 'x') - x, relNum(withFruit.e, 'y') - y);
+        if (d <= attr(self, 'reach')) return { intent: 'pick', target: withFruit.id };
+        return { intent: 'move', target: withFruit.id, targetX: relNum(withFruit.e, 'x'), targetY: relNum(withFruit.e, 'y') };
       }
       // 実が見えていない木へ近づいて確かめる（木を辿る）。手の届く所まで来ても実が無ければ待つ。
-      const unknown = trees.find((t) => Math.hypot(t.e.x - x, t.e.y - y) > num(self, 'reach'));
-      if (unknown) return { intent: 'move', target: unknown.id, targetX: unknown.e.x, targetY: unknown.e.y };
+      const unknown = trees.find((t) => Math.hypot(relNum(t.e, 'x') - x, relNum(t.e, 'y') - y) > attr(self, 'reach'));
+      if (unknown) return { intent: 'move', target: unknown.id, targetX: relNum(unknown.e, 'x'), targetY: relNum(unknown.e, 'y') };
       return { intent: 'idle' }; // 木を知らなければ探索が要るが、未実装。
     }
-    const hx = num(self, 'homeX');
-    const hy = num(self, 'homeY');
-    if (Math.hypot(hx - num(self, 'x'), hy - num(self, 'y')) > 1) return { intent: 'move', target: 'home', targetX: hx, targetY: hy };
+    const hx = attr(self, 'homeX');
+    const hy = attr(self, 'homeY');
+    if (Math.hypot(hx - stateNum(self, 'x'), hy - stateNum(self, 'y')) > 1) return { intent: 'move', target: 'home', targetX: hx, targetY: hy };
     return { intent: 'idle' };
   }
 }
@@ -238,43 +251,36 @@ export function buildFruitScenario(options: FruitOptions = {}): Scenario {
   const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], allPairs: options.allPairs ?? false });
   const n = options.persons ?? 1;
   const ids = Array.from({ length: n }, (_, i) => `P${i + 1}`);
-  w.addThing('nature', 'nature', { fruitStock: 100000, growth: 100000, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0, rotPerHour: 1 / 16 });
+  w.addThing('nature', 'nature', {
+    attr: { sink: true, grows: true, rotPerHour: 1 / 16 },
+    res: { fruitStock: 100000, growth: 100000, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0 },
+  });
   w.addThing('tree', 'tree', {
-    x: options.treeDistance ?? 40,
-    y: 0,
-    visibility: 300,
-    cap: 12,
-    growth: 0,
-    ripenPerHour: options.ripenPerHour ?? 0.25,
-    fruitFreshness: 2,
-    fruitVisibility: 30,
-    fruitOdor: 5,
+    attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: options.ripenPerHour ?? 0.25, fruitFreshness: 2, fruitVisibility: 30, fruitOdor: 5 },
+    state: { x: options.treeDistance ?? 40, y: 0 },
+    res: { growth: 0 },
   });
   for (const id of ids) {
     w.addThing(id, 'person', {
-      alive: 'yes',
-      x: 0,
-      y: 0,
-      homeX: 0,
-      homeY: 0,
-      visibility: 100,
-      sight: options.sight ?? 60,
-      reach: 1.5,
-      smell: 3,
-      speedPerHour: 60,
-      walkCostPerMeter: 0.0005,
-      pickPerHour: 6,
-      eatPerHour: 12,
-      digestPerHour: 0.5,
-      digestYield: 0.8,
-      wearPerHour: 0.1,
-      nutrition: 6,
-      stomach: 0,
-      intent: 'idle',
-      target: '',
-      targetX: 0,
-      targetY: 0,
-      knowledge: {},
+      attr: {
+        eats: 'plant',
+        picks: true,
+        visibility: 100,
+        sight: options.sight ?? 60,
+        reach: 1.5,
+        smell: 3,
+        speedPerHour: 60,
+        walkCostPerMeter: 0.0005,
+        pickPerHour: 6,
+        eatPerHour: 12,
+        digestPerHour: 0.5,
+        digestYield: 0.8,
+        wearPerHour: 0.1,
+        homeX: 0,
+        homeY: 0,
+      },
+      state: { alive: 'yes', x: 0, y: 0, intent: 'idle', target: '', targetX: 0, targetY: 0 },
+      res: { nutrition: 6, stomach: 0 },
     });
     w.addMind(id, new ForagerMind());
   }
@@ -284,9 +290,11 @@ export function buildFruitScenario(options: FruitOptions = {}): Scenario {
       kind: 'spawn',
       id: w.nextSpawnId('fruit'),
       thingKind: 'fruit',
-      attrs: { attachedTo: 'tree', freshness: 2, visibility: 30, odor: 5 },
+      attr: { edible: 'plant', perishable: true, visibility: 30, odor: 5 },
+      state: { attachedTo: 'tree' },
+      res: { freshness: 2 },
       from: 'nature',
-      fromAttr: 'fruitStock',
+      fromRes: 'fruitStock',
       amount: 1,
     });
   }
@@ -299,14 +307,14 @@ export function summarize(w: World, persons: ThingId[]): Record<string, number |
   const out: Record<string, number | string> = { day: Math.round(w.now / DAY) };
   for (const p of persons) {
     const t = w.thing(p)!;
-    out[`${p}.alive`] = str(t, 'alive');
-    out[`${p}.pos`] = `${num(t, 'x').toFixed(0)},${num(t, 'y').toFixed(0)}`;
-    out[`${p}.nutrition`] = Number(num(t, 'nutrition').toFixed(2));
-    out[`${p}.holding`] = fruitsOn(w, p).length;
-    out[`${p}.intent`] = str(t, 'intent');
+    out[`${p}.alive`] = state(t, 'alive');
+    out[`${p}.pos`] = `${stateNum(t, 'x').toFixed(0)},${stateNum(t, 'y').toFixed(0)}`;
+    out[`${p}.nutrition`] = Number(res(t, 'nutrition').toFixed(2));
+    out[`${p}.holding`] = edibleOn(w, p).length;
+    out[`${p}.intent`] = state(t, 'intent');
   }
-  out['tree.fruits'] = fruitsOn(w, 'tree').length;
-  out['nature.waste'] = Number(num(w.thing('nature'), 'waste').toFixed(2));
+  out['tree.fruits'] = edibleOn(w, 'tree').length;
+  out['nature.waste'] = Number(res(w.thing('nature'), 'waste').toFixed(2));
   out['things'] = w.thingCount;
   out['ledger'] = w.ledger.length;
   return out;
@@ -322,7 +330,7 @@ export function runFruitDays(days: number, options: FruitOptions = {}): { scenar
   return { scenario, daily };
 }
 
-/** 保存則の検査に使う総量: 自然の実の蓄え＋付いている実＋胃＋栄養＋廃棄＋自然へ移った栄養。 */
+/** 保存則の検査に使う資源の総量: 自然の実の蓄え＋付いている実の量＋胃＋栄養＋廃棄＋自然へ移った栄養。 */
 export function massTotal(w: World): number {
-  return w.total('fruitStock') + w.total('quantity', (t) => t.kind === 'fruit') + w.total('stomach') + w.total('nutrition') + w.total('waste');
+  return w.total('fruitStock') + w.total('quantity', (t) => has(t, 'edible')) + w.total('stomach') + w.total('nutrition') + w.total('waste');
 }
