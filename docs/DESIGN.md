@@ -46,13 +46,16 @@
 
 ### 中核の三つ
 
+事物、属性、作用。属性は事物に属し、作用の性質を決める。作用には、属性ごとに決まる型と、二つの事物の間で起こる実例の二面がある。
+
 | 中核 | 何であるか | 対応する既存の語 |
 |---|---|---|
-| 事物 | 属性の束。状態を持ち、作用を受ける。それ自身は何もしない。穀物のロット、パン、水、薪、通貨、畑、棚、荷車、身体、人物の知識 | REA の経済資源、BFO の継続体、Valueflows の EconomicResource、Petri net のトークンと店、ECS の Entity と Component |
-| 作用の型 | 属性ごとに決まる作用の規則。どの属性の組に対して、どちらがどれだけ増減するか（釣り合い）、どの速さで、どの条件で起こるか。版を持ち、実例の状態を持たない | REA の知識レベル（資源タイプ、過程仕様、action 効果表）、Hruby の交換の双対と変換の双対、Laurier・Poels の不変条件、物理法則、ECS の System |
-| 作用の実例 | 二つの事物の間で双方向に起こる、時間を持つ一回の出来事。開始、予定された完了、条件の再評価、中断、部分結果、完了を持つ。両側の属性を一度に変え、記録を残す | REA の経済事象と duality、hREA の DecrementIncrement、Petri net の遷移、BFO の過程、Valueflows の EconomicEvent と Process |
+| 事物 | 属性の束。状態を持ち、作用を受ける。それ自身は何もしない。穀物のロット、パン、水、薪、通貨、畑、棚、荷車、身体、人物 | REA の経済資源、BFO の継続体、Valueflows の EconomicResource、Petri net のトークン、ECS の Entity、Unreal の Actor |
+| 属性 | 事物に属する値。量、鮮度、所在、保管者、栄養、余力、知識、意図。どの作用が起こり得るか、どう進むかを決める | REA の資源の数量と custody、BFO の性質と傾向性、Petri net のトークンの色、ECS の Component、Unreal の Attribute と AttributeSet |
+| 作用（型） | 属性ごとに決まる作用の規則。どの属性の組に対して、どちらがどれだけ増減するか（釣り合い）、どの速さで、どの条件で起こるか。版を持ち、実例の状態を持たない | REA の知識レベル（資源タイプ、過程仕様、action 効果表）、Hruby の交換の双対と変換の双対、Laurier・Poels の不変条件、物理法則、CPN のガードと弧の式、ECS の System、Unreal の Gameplay Effect |
+| 作用（実例） | 二つの事物の間で双方向に起こる、時間を持つ一回の出来事。開始、予定された完了、条件の再評価、中断、部分結果、完了を持つ。両側の属性を一度に変え、記録を残す | REA の経済事象と duality、hREA の DecrementIncrement、Petri net の遷移の発火、BFO の過程、Valueflows の EconomicEvent と Process、Unreal の Effect Spec |
 
-図1はこの三つの関係である。作用の型が実例を定め、実例が二つの事物の属性を同時に変え、事物の属性が実例の成立条件になる。
+図1はこの関係である。作用の型が実例を定め、実例が二つの事物の属性を同時に変え、事物の属性が実例の成立条件になる。
 
 ```mermaid
 flowchart LR
@@ -71,15 +74,15 @@ flowchart LR
 
 ### 三つから導かれるもの
 
-| 派生 | 三つからどう出るか | 対応する既存の語 |
-|---|---|---|
-| 主体 | 作用に参加する事物のうち、意図という属性を持つ人物と、意図を持たない自然。人物は身体という事物を通じて作用に参加する | REA の経済主体、Valueflows の Person と EcologicalAgent |
-| 単位と境界 | 事物の「保管者」という属性。同じ保管者の事物の集まりが単位。作用の両側の保管者が異なるとき、その作用が境界である | REAU の経済単位、ISO 15944-4 の協調空間、Williamson の「技術的に分離可能な接面」、REA の custody |
-| 取引 | 保管者が異なる二つの事物の間で、量または保管者の属性が双方向に変わる作用。両保管者にとっての流入と流出を同じ実例で確定する | REA の交換の双対（give と take）、Valueflows の transfer と Exchange |
-| 物理現象 | 自然が参加者となる作用。再生、腐敗、消耗、消化。属性ごとの型と速度で決まり、人物の需要に合わせて補正されない | Hruby の変換の双対（use・consume と produce）、Valueflows の produce・consume・use |
-| 知覚・伝達 | 対象の可視属性と人物の知識属性の間の作用。対象側の変化がほぼゼロの双方向。時刻・出所つきで、古く、誤り得る | 情報の非対称（経済理論）、Valueflows の Observation 層の本人用の写し |
-| 心象・予測・配分 | 人物という事物の属性（知識、期待、意図、手段の見積り）と、それを変える作用（知覚、想起、判断）。判断方式はここに差し替える。試みは、意図という属性から世界の事物への作用を求めること | Valueflows の Knowledge 層と Plan 層（Intent・Commitment・Plan）、Laurier・Poels の在庫方針 |
-| 記録 | 所有、利用権、約束、価格、役割は、保管者とは別の社会的な属性と、それを変える作用（合意、履行、違反）。物理的な効力を持たない | REA の経済コミットメント・契約、Valueflows の Agreement・Claim |
+| 派生 | 元の三つの何から | どう出るか | 対応する既存の語 |
+|---|---|---|---|
+| 主体 | 事物＋属性（意図） | 作用に参加する事物のうち、意図という属性を持つ人物と、意図を持たない自然。人物は身体という事物を通じて作用に参加する | REA の経済主体、Valueflows の Person と EcologicalAgent |
+| 単位と境界 | 属性（保管者） | 事物の「保管者」という属性。同じ保管者の事物の集まりが単位。作用の両側の保管者が異なるとき、その作用が境界である | REAU の経済単位、ISO 15944-4 の協調空間、Williamson の「技術的に分離可能な接面」、REA の custody |
+| 取引 | 作用（保管者が異なる二つの事物の間） | 量または保管者の属性が双方向に変わる作用。両保管者にとっての流入と流出を同じ実例で確定する | REA の交換の双対（give と take）、Valueflows の transfer と Exchange |
+| 物理現象 | 作用（自然が参加者） | 再生、腐敗、消耗、消化。属性ごとの型と速度で決まり、人物の需要に合わせて補正されない | Hruby の変換の双対（use・consume と produce）、Valueflows の produce・consume・use |
+| 知覚・伝達 | 作用（可視属性と知識属性の間） | 対象側の変化がほぼゼロの双方向の作用。時刻・出所つきで、古く、誤り得る | 情報の非対称（経済理論）、Valueflows の Observation 層の本人用の写し |
+| 心象・予測・配分 | 属性（人物の知識・期待・意図・手段の見積り）＋作用（知覚・想起・判断） | 人物という事物の属性と、それを変える作用。判断方式はここに差し替える。試みは、意図という属性から世界の事物への作用を求めること | Valueflows の Knowledge 層と Plan 層（Intent・Commitment・Plan）、Laurier・Poels の在庫方針 |
+| 記録 | 属性（社会的属性）＋作用（合意・履行・違反） | 所有、利用権、約束、価格、役割は、保管者とは別の社会的な属性と、それを変える作用。物理的な効力を持たない | REA の経済コミットメント・契約、Valueflows の Agreement・Claim |
 
 ### 世界の進行
 
@@ -108,7 +111,9 @@ flowchart TD
 
 ### 実装に渡す語彙
 
-語彙と型は Valueflows（`@valueflows/vf-graphql` の TypeScript 型定義の部分集合）、action 効果表は hREA の組込み定義、不変条件は Laurier・Poels の表1、最小の予測・配分規則は同論文の在庫方針を採る（[流用範囲](RESEARCH.md#rea-reuse)、[実装のヒント](RESEARCH.md#allocation-hints)）。事物は EconomicResource に身体を加えたもの、作用の型は ResourceSpecification・ProcessSpecification・action 効果表・Recipe に速度と条件を加えたもの、作用の実例は EconomicEvent と Process に予定時刻・再評価・中断を加えたもの、保管者は primaryAccountable（custody）、主体は Agent、意図と約束は Intent と Commitment、記録は Agreement と Claim にあたる。実装上の分かれ目である「両側を一つの作用で確定するか、予約を挟む二段にするか」は、前者を採る。
+語彙と型は Valueflows（`@valueflows/vf-graphql` の TypeScript 型定義の部分集合）、action 効果表は hREA の組込み定義、不変条件は Laurier・Poels の表1、最小の予測・配分規則は同論文の在庫方針を採る（[流用範囲](RESEARCH.md#rea-reuse)、[実装のヒント](RESEARCH.md#allocation-hints)）。事物は EconomicResource に身体を加えたもの、属性は EconomicResource の数量と custody に鮮度・栄養・知識などを加えたもの、作用の型は ResourceSpecification・ProcessSpecification・action 効果表・Recipe に速度と条件を加えたもの、作用の実例は EconomicEvent と Process に予定時刻・再評価・中断を加えたもの、保管者は primaryAccountable（custody）、主体は Agent、意図と約束は Intent と Commitment、記録は Agreement と Claim にあたる。実装上の分かれ目である「両側を一つの作用で確定するか、予約を挟む二段にするか」は、前者を採る。
+
+基本のオブジェクトの形は、ゲームエンジンの設計を参考にする（[属性が作用を決める実装の確認](RESEARCH.md#attribute-driven-impl)）。事物は ECS の Entity や Unreal の Actor、属性は Component や AttributeSet、作用の型は Unreal の Gameplay Effect（属性をどう変えるかだけを記したデータ資産）に色付き Petri net のガードと REA の釣り合いを加えたもの、作用の実例は Effect Spec や遷移の発火に時刻・期間・再評価を加えたものにあたる。調査の範囲では、属性が作用を決めること、両側を釣り合いをもって一度に変えること、型と時間を持つ実例を分けることの三つを一つに持つ既存実装は無かったので、既存の語で組み立てる。
 
 Laurier・Poels の不変条件は骨格の検査に使う。各事物に流入と流出の作用があり識別できる実物に作用する。消費する作用は生産する作用と対になり、対にならない流入・流出はモデル境界（外部供給・散逸）として明示する。各作用に責任を持つ参加者がいる。交換には二者がいる。「資源は永久に貯蔵されない」「企業は報われる」という健全な代謝の前提は採らない。
 
