@@ -218,6 +218,8 @@ export class ForagerMind implements Mind {
 
 export interface FruitOptions {
   persons?: number;
+  /** true なら影響範囲で飛ばさず、すべての組に法則を当てる（比較用）。 */
+  allPairs?: boolean;
   /** 木が実をつける速さ（実/時）。 */
   ripenPerHour?: number;
   /** 人物の視界（m）。家から木が見えるかを決める。 */
@@ -233,7 +235,7 @@ export interface Scenario {
 
 /** 果樹一本と家一軒。採取者は家にいて、視界に入る木を知覚し、往復して果実で生きる。 */
 export function buildFruitScenario(options: FruitOptions = {}): Scenario {
-  const w = new World();
+  const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], allPairs: options.allPairs ?? false });
   const n = options.persons ?? 1;
   const ids = Array.from({ length: n }, (_, i) => `P${i + 1}`);
   w.addThing('nature', 'nature', { fruitStock: 100000, growth: 100000, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0, rotPerHour: 1 / 16 });

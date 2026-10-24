@@ -62,10 +62,19 @@ describe('skeleton: 果実を採って食べて生きる', () => {
 });
 
 describe('skeleton: 物理層はすべての事物の組に法則を当てる', () => {
-  it('法則は刻みごとに（事物の数）² × 法則の数だけ当てられ、影響範囲の絞り込みはしない', () => {
-    const { world } = buildFruitScenario(); // 自然、木、人、実6 = 9 事物、法則 7
+  it('刻みごとに（事物の数）² の組を調べ、絞り込みを切れば法則はその全組に当てられる', () => {
+    const { world } = buildFruitScenario({ allPairs: true }); // 自然、木、人、実6 = 9 事物、法則 7
     world.tick(DT);
+    expect(world.stats.pairChecks).toBe(9 * 9);
     expect(world.stats.pairEvaluations).toBe(9 * 9 * fruitLaws.length);
+  });
+
+  it('影響範囲にある組だけに法則を当てても、記録は全組に当てたときと同一になる（結果を変えない最適化）', () => {
+    const filtered = runFruitDays(5, { persons: 2 });
+    const all = runFruitDays(5, { persons: 2, allPairs: true });
+    expect(JSON.stringify(filtered.scenario.world.ledger)).toBe(JSON.stringify(all.scenario.world.ledger));
+    expect(filtered.scenario.world.stats.pairEvaluations).toBeLessThan(all.scenario.world.stats.pairEvaluations);
+    expect(filtered.scenario.world.stats.pairChecks).toBe(all.scenario.world.stats.pairChecks);
   });
 
   it('法則の効果は組の二つの事物（と組から生まれた事物）にしか触れられない', () => {

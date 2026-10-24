@@ -11,9 +11,21 @@ interface ThingRecord {
   attrs: Record<string, AttrValue>;
 }
 
+export interface WorldOptions {
+  /**
+   * 範囲の属性。組 (a, b) は、a === b か、どちらかが位置を持たないか、距離がこれらの属性の最大値以下なら影響範囲にある。
+   * 影響範囲にない組は法則を当てずに飛ばす。法則は範囲の内側でしか流れを返さないので、結果は変わらない（計算が減るだけ）。
+   */
+  rangeAttrs?: string[];
+  /** true なら影響範囲で飛ばさず、すべての組に法則を当てる（比較用）。 */
+  allPairs?: boolean;
+}
+
 export class World implements WorldView {
   now = 0;
   private dt = 0;
+  private readonly rangeAttrs: string[];
+  private readonly allPairs: boolean;
   private readonly things = new Map<ThingId, ThingRecord>();
   private readonly laws: Law[] = [];
   private readonly senses: Sense[] = [];
@@ -22,8 +34,13 @@ export class World implements WorldView {
   private touched = new Set<ThingId>();
   private spawnSeq = 0;
   readonly ledger: LedgerEntry[] = [];
-  /** 計測: 法則を当てた組の数、観測を試みた組の数。 */
-  readonly stats = { pairEvaluations: 0, observations: 0, ticks: 0 };
+  /** 計測: 調べた組の数（n²）、影響範囲にあった組の数、法則を当てた回数、観測を試みた組の数。 */
+  readonly stats = { pairChecks: 0, activePairs: 0, pairEvaluations: 0, observations: 0, ticks: 0 };
+
+  constructor(options: WorldOptions = {}) {
+    this.rangeAttrs = options.rangeAttrs ?? ['sight', 'reach', 'smell'];
+    this.allPairs = options.allPairs ?? false;
+  }
 
   // ---- 事物 ----
 
@@ -99,6 +116,27 @@ export class World implements WorldView {
     return Math.max(0, this.dt - (this.spent.get(id) ?? 0));
   }
 
+  /**
+   * 影響範囲にあるか。自分自身との組、位置を持たない事物（自然）との組は常にある。
+   * 位置を持つ二つの事物は、距離が両者の範囲の属性の最大値以下なら影響範囲にある。
+   * 物理エンジンの broad phase にあたり、結果を変えずに法則を当てる組を減らす。
+   */
+  private active(a: ThingRecord, b: ThingRecord): boolean {
+    if (a === b) return true;
+    const pa = this.positionOf(a.id);
+    const pb = this.positionOf(b.id);
+    if (!pa || !pb) return true;
+    const d = Math.hypot(pa.x - pb.x, pa.y - pb.y);
+    let r = 0;
+    for (const t of [a, b]) {
+      for (const attr of this.rangeAttrs) {
+        const v = t.attrs[attr];
+        if (typeof v === 'number' && v > r) r = v;
+      }
+    }
+    return d <= r + 1e-9;
+  }
+
   // ---- 法則・感覚・心 ----
 
   addLaw(law: Law): void {
@@ -120,7 +158,7 @@ export class World implements WorldView {
 
   /**
    * 一刻み。
-   * 1. 物理層: 法則の順に、すべての事物の組（a, b。a === b を含む）へ法則を当て、流れを適用する。
+   * 1. 物理層: すべての事物の組（a, b。a === b を含む）のうち影響範囲にある組へ、法則の順に法則を当て、流れを適用する。
    * 2. 情報層: 観測を集め、心象との差を事象にする。心が意図を定める。死亡を確定する。
    * 3. 時刻を Δt 進める。
    */
@@ -129,22 +167,29 @@ export class World implements WorldView {
     this.spent.clear();
     this.stats.ticks += 1;
 
-    // 1. 物理層。刻みの始めにある事物の全組。途中で生まれた事物は次の刻みから組に入る。
+    // 1. 物理層。刻みの始めにある事物の全組（n²）を調べ、影響範囲にある組を求める。途中で生まれた事物は次の刻みから組に入る。
     const ids = this.sortedIds();
+    const pairs: [ThingId, ThingId][] = [];
+    for (const aId of ids) {
+      for (const bId of ids) {
+        this.stats.pairChecks += 1;
+        if (this.allPairs || this.active(this.things.get(aId)!, this.things.get(bId)!)) pairs.push([aId, bId]);
+      }
+    }
+    this.stats.activePairs += pairs.length;
+    // 影響範囲にある組へ、法則の順に法則を当てる。
     for (const law of this.laws) {
-      for (const aId of ids) {
-        for (const bId of ids) {
-          const a = this.things.get(aId);
-          const b = this.things.get(bId);
-          if (!a || !b) continue; // 途中で消えた事物
-          this.stats.pairEvaluations += 1;
-          const effects = law.pair({ id: a.id, kind: a.kind, attrs: a.attrs }, { id: b.id, kind: b.kind, attrs: b.attrs }, dt, this);
-          for (const effect of effects) {
-            this.touched = new Set();
-            const applied = this.apply(effect);
-            this.assertWithinPair(law, aId, bId, effect);
-            if (applied !== 0 && effect.kind !== 'spend') this.ledger.push({ at: this.now, law: law.id, a: aId, b: bId, effect, applied });
-          }
+      for (const [aId, bId] of pairs) {
+        const a = this.things.get(aId);
+        const b = this.things.get(bId);
+        if (!a || !b) continue; // 途中で消えた事物
+        this.stats.pairEvaluations += 1;
+        const effects = law.pair({ id: a.id, kind: a.kind, attrs: a.attrs }, { id: b.id, kind: b.kind, attrs: b.attrs }, dt, this);
+        for (const effect of effects) {
+          this.touched = new Set();
+          const applied = this.apply(effect);
+          this.assertWithinPair(law, aId, bId, effect);
+          if (applied !== 0 && effect.kind !== 'spend') this.ledger.push({ at: this.now, law: law.id, a: aId, b: bId, effect, applied });
         }
       }
     }
