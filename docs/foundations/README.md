@@ -1,23 +1,20 @@
-# 基盤設計・研究の参照範囲
+# 旧詳細設計・研究・企画の参照アーカイブ
 
-ここは人格・物体・作用の契約、研究の参考、長期設計・初版企画を保存する場所。設計書に機能があることは実装の証明ではない。現在の実装は [STATUS](../STATUS.md)、採用条件は [DECISIONS](../DECISIONS.md)、直近の作業は [NEXT_SESSION](../NEXT_SESSION.md) で確認する。
+2026-10-24から、このディレクトリは**パスを保った参照アーカイブ**とする。新しい正本は[背景調査](../RESEARCH.md)と[設計原則](../DESIGN.md)。この索引を含め、旧資料を再開時の必読一式にしない。
 
-| 目的 | 文書 |
+本文と既存参照を保存するため、個別文書は移動せず冒頭に区分を付けた。本文中の「正本」「採用」「現行」「次」は当時の文脈に属する。旧原則・API・数式・将来計画は自動継承しない。再利用するときに新原則と比較し、実装済みかどうかは[STATUS](../STATUS.md)と対象版の証拠で確かめる。
+
+| 調べる目的 | 当時の資料 |
 |---|---|
-| 世界と人物という最上位の責任・身体・認識・行為の境界 | [WORLD_AND_PERSON_DESIGN](WORLD_AND_PERSON_DESIGN.md)。2026-10-24の合意と現行コードの対応。既存実装の維持は制約ではない |
-| コロニー系実装の構成と、採用できる部分・異なる部分 | [COLONY_SIM_ARCHITECTURE_REVIEW](COLONY_SIM_ARCHITECTURE_REVIEW.md)。Mountaincore・Rust版COLONY等の限定的なコード調査。外部実装は実行未検証 |
-| 人格の外側の境界・認識・行動の契約 | [AUTONOMY_INTERFACE_CONTRACT](AUTONOMY_INTERFACE_CONTRACT.md)、[AGENT_INTERFACES_v2](AGENT_INTERFACES_v2.md) |
-| 現行ruleの階層モデルへの分割と共用を検討する | [HMOSAIC_MODULE_DESIGN](HMOSAIC_MODULE_DESIGN.md)。2026-10-04のコード調査に基づく分割案。予測と制御の独立、基本要素の共用、入出力、利得・学習の不足。2026-10-23に実装上の責務を下記オブジェクト設計へ接続 |
-| 目的・責務・抽象化の現状を図で確認する | [HMOSAIC_OBJECT_DESIGN](HMOSAIC_OBJECT_DESIGN.md)。2026-10-23の現行コードレビューと採用する実装構造。役割別の多態性、合成、登録定義／個人の学習／呼出しの分離、構成変更の版、7対照へ追加する抽象化の検証。v25の共用・差し替えの土台は実装済み。`ca885a2`の構造・状態・フィードバックの3図と、封じ込め・依存制限の未達を追記。計測と未決は[試作結果](../baseline/HMOSAIC_CONNECTION_V25_RESULT.md) |
-| 目的の成果と行程終了、状態更新の権限を分ける | [HMOSAIC_GOAL_OUTCOME_CONTRACT](HMOSAIC_GOAL_OUTCOME_CONTRACT.md)。2026-10-24。食品・回復・睡眠の観測条件、未知、比較期間の採用条件。実行所有者・凍結した読取・改訂照合・モデル呼出し窓口は実装、生活への成果判定の接続は未実装 |
-| 未経験の行程を既知の子から評価し、各層へ誤差を戻す | [HMOSAIC_VALUE_AND_FEEDBACK_DESIGN](HMOSAIC_VALUE_AND_FEEDBACK_DESIGN.md)。2026-10-04の未採用の補足案。部分適用、利得予測と実結果の差、親子の学習接続、BPとの関係、更新則の候補 |
-| 設計案を実装する前の不足と計算上の問題を確認する | [HMOSAIC_IMPLEMENTATION_READINESS_REVIEW](HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md)。2026-10-04のレビュー。12項目の不足、制御更新の反例、観測・死亡・保存との接続、必要な契約と実装順序 |
-| 登録・行程・委譲・観測・保存・予算の運用契約を実装前に定める | [HMOSAIC_RUNTIME_CONTRACT](HMOSAIC_RUNTIME_CONTRACT.md)。2026-10-06の採用案と未決。R04・R05・R06・R10・R11の接続仕様、型例、接続試作で確認する対照 |
-| 予測・適合度・評価・行動決定を数式で定める | [HMOSAIC_FORMAL_SPEC](HMOSAIC_FORMAL_SPEC.md)。2026-10-06の主案・代替・未決。R01・R02・R03とR08の一部。クレダル集合、参照モデル付きの適合度、生存の区間優越、二段階の方策と更新、B1のhour32の再計算例、式にすると残る問題 |
-| 物の所在・所有・包含・容量 | [PHYSICAL_OBJECT_MODEL](PHYSICAL_OBJECT_MODEL.md) |
-| 動機・行動の理論を調べる | [RESEARCH_MOTIVATION_ACTION](RESEARCH_MOTIVATION_ACTION.md) |
-| 将来の作用・実行・能力・動力・物流 | [ACTION_PROCESS_DESIGN](ACTION_PROCESS_DESIGN.md)、[ACTOR_EXECUTION_DESIGN](ACTOR_EXECUTION_DESIGN.md)、[CAPABILITY_AGENTS_DESIGN](CAPABILITY_AGENTS_DESIGN.md)、[WORK_ENERGY_DESIGN](WORK_ENERGY_DESIGN.md)、[COMMON_LOGISTICS_DESIGN](COMMON_LOGISTICS_DESIGN.md) |
-| 生活の慣行・ルーティンの構想 | [SOCIAL_PRACTICES](SOCIAL_PRACTICES.md)、[DAILY_LIFE_ROUTINES](DAILY_LIFE_ROUTINES.md)、[DATA_DRIVEN_ROUTINES](DATA_DRIVEN_ROUTINES.md) |
-| 初版の企画・成立経緯 | [ORIGINAL_GAME_DESIGN](ORIGINAL_GAME_DESIGN.md)、[concept-original](concept-original.md) |
+| 世界・人物の整理と旧コードへの対応 | [WORLD_AND_PERSON_DESIGN](WORLD_AND_PERSON_DESIGN.md)、[WORLD_PERSON_MEAL_CONTRACT](WORLD_PERSON_MEAL_CONTRACT.md) |
+| 外部のコロニー系実装の限定調査 | [COLONY_SIM_ARCHITECTURE_REVIEW](COLONY_SIM_ARCHITECTURE_REVIEW.md)。追加探索用。新調査の要点はRESEARCHへ統合 |
+| 人物との旧境界・入出力 | [AUTONOMY_INTERFACE_CONTRACT](AUTONOMY_INTERFACE_CONTRACT.md)、[AGENT_INTERFACES_v2](AGENT_INTERFACES_v2.md) |
+| HMOSAICの旧構成・状態管理・成果判定 | [MODULE_DESIGN](HMOSAIC_MODULE_DESIGN.md)、[OBJECT_DESIGN](HMOSAIC_OBJECT_DESIGN.md)、[GOAL_OUTCOME_CONTRACT](HMOSAIC_GOAL_OUTCOME_CONTRACT.md) |
+| HMOSAICの旧計算法・運用・未決 | [FORMAL_SPEC](HMOSAIC_FORMAL_SPEC.md)、[RUNTIME_CONTRACT](HMOSAIC_RUNTIME_CONTRACT.md)、[VALUE_AND_FEEDBACK_DESIGN](HMOSAIC_VALUE_AND_FEEDBACK_DESIGN.md)、[IMPLEMENTATION_READINESS_REVIEW](HMOSAIC_IMPLEMENTATION_READINESS_REVIEW.md) |
+| 所在・包含・所有・容量 | [PHYSICAL_OBJECT_MODEL](PHYSICAL_OBJECT_MODEL.md) |
+| 動機と行動の旧調査 | [RESEARCH_MOTIVATION_ACTION](RESEARCH_MOTIVATION_ACTION.md) |
+| 作用・実行・能力・動力・物流の旧構想 | [ACTION_PROCESS_DESIGN](ACTION_PROCESS_DESIGN.md)、[ACTOR_EXECUTION_DESIGN](ACTOR_EXECUTION_DESIGN.md)、[CAPABILITY_AGENTS_DESIGN](CAPABILITY_AGENTS_DESIGN.md)、[WORK_ENERGY_DESIGN](WORK_ENERGY_DESIGN.md)、[COMMON_LOGISTICS_DESIGN](COMMON_LOGISTICS_DESIGN.md) |
+| 慣行・ルーティンの旧構想 | [SOCIAL_PRACTICES](SOCIAL_PRACTICES.md)、[DAILY_LIFE_ROUTINES](DAILY_LIFE_ROUTINES.md)、[DATA_DRIVEN_ROUTINES](DATA_DRIVEN_ROUTINES.md) |
+| 初版企画と成立経緯 | [ORIGINAL_GAME_DESIGN](ORIGINAL_GAME_DESIGN.md)、[concept-original](concept-original.md) |
 
-再開時は今回のコードや境界に必要な文書だけを読む。初版企画の政治・軍事・UIの受入や、汎用ActionProcess等の将来設計を、現行食品経済の次の作業へ自動的に追加しない。
+新設計を旧文書の構造へ合わせるためには読まない。対応する資源・法則・責任・相互作用が新原則を満たすかを確かめ、必要な部分だけ利用する。物理的な整理・統合・削除は、参照と旧版の再現手段を確認してから行う。

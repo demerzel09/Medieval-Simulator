@@ -71,7 +71,7 @@ F5の「自律: デバッグ画面（最新 v23）」は現在、[体力0で死�
 
 ## 実装と検証
 
-M0〜M2の機構受入とM3の自動シナリオは検証済みです。M3の正式受入に必要な3〜5人の人間試遊は未実施です。企画書全細目の完成版ではなく、共同市場などの簡略化があります。[状態と未実装範囲](docs/STATUS.md)、[判断記録](docs/DECISIONS.md)を参照してください。
+M0〜M2の機構受入とM3の自動シナリオは検証済みです。M3の正式受入に必要な3〜5人の人間試遊は未実施です。企画書全細目の完成版ではなく、共同市場などの簡略化があります。[状態と未実装範囲](docs/STATUS.md)、[旧版の判断記録](docs/DECISIONS.md)を参照してください。
 
 | 段階 | 現在の状態 |
 |---|---|
@@ -107,7 +107,7 @@ npm run bench -- --profile world-1000 --days 100 --warmup-days 10
 
 `packages/sim` はDOM/UI/ネットワーク非依存、`contracts` は入力契約、`content` は固定設定、`ai` はObservationを受け取る通常AIとMock、`apps/web` はReact/Canvas/Workerです。世界状態の更新は検証されたCommandとシミュレーション内処理のみで行います。
 
-設計と実測の入口は [docsの案内](docs/README.md) です。[現行設計](docs/DESIGN.md)、[現在の状態](docs/STATUS.md)、[採用中の判断](docs/DECISIONS.md)を参照してください。初版企画書、人格・物体・行動の設計基盤、過去の監査は案内から辿れます。別系列の本編M3で未実施の人間試遊は[記録票](docs/baseline/PLAYTEST.md)を使用します。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
+設計と実測の入口は [docsの案内](docs/README.md) です。設計は[背景調査](docs/RESEARCH.md)と[設計原則](docs/DESIGN.md)の2本を正本とし、実装済みの範囲は[現在の状態](docs/STATUS.md)で区別します。以前の詳細設計・企画・判断・実測は参照資料として案内から辿れます。別系列の本編M3で未実施の人間試遊は[記録票](docs/baseline/PLAYTEST.md)を使用します。Noto Sans JPはFontsource経由でローカル配信しています（SIL Open Font License、依存パッケージ内LICENSE参照）。
 
 **A1小fixture:** ブラウザの`/?a1=debug`、またはVS Code「自律 A1: 作業場デバッグ画面」で、二人と共有道具の6分間を再生できます。人物・道具を選ぶと利用権、体力、仕事の進捗、因果Eventを確認できます。`npm run autonomy:a1`（VS Code「自律 A1: 二人と一つの道具」）は同じ結果のテキスト表示です。A1のコードは[autonomy-a1.ts](packages/sim/autonomy-a1.ts)。A1自体は独立した小世界で、90日安定の検証ではありません。
 
