@@ -247,11 +247,24 @@ function knownOthersBread(self: ThingSnapshot, location: string): { lot: ThingId
  * 農夫: 発注点型の規則。家のパンの見込みが発注点を下回れば、穀物があれば焼き、無ければ畑へ行って
  * 目標量まで収穫し、家へ戻る。収穫の止め時は自分の手段（運べる量、焼く時間）から決める。
  */
+export interface FarmerOptions {
+  /** 家のパンがこれを下回れば補充に動く。 */
+  reorderPoint?: number;
+  /** 一度の畑行きで持ち帰る穀物の目標。 */
+  grainTarget?: number;
+  /** 栄養の見込み（ここでは自分の栄養属性を感覚として読む）がこれ以上なら食べない。Infinity なら空腹感だけで食べる。 */
+  eatBelow?: number;
+}
+
 export class FarmerMind implements Mind {
-  constructor(
-    private readonly reorderPoint = 2,
-    private readonly grainTarget = 6,
-  ) {}
+  private readonly reorderPoint: number;
+  private readonly grainTarget: number;
+  private readonly eatBelow: number;
+  constructor(options: FarmerOptions = {}) {
+    this.reorderPoint = options.reorderPoint ?? 2;
+    this.grainTarget = options.grainTarget ?? 6;
+    this.eatBelow = options.eatBelow ?? Number.POSITIVE_INFINITY;
+  }
   nextWake(_self: ThingSnapshot, now: number): number {
     return now + 2 * HOUR;
   }
@@ -263,7 +276,8 @@ export class FarmerMind implements Mind {
     const here = str(self, 'location');
     const home = str(self, 'home');
     const attempts: Attempt[] = [];
-    if (num(self, 'stomach') < 1 && knownLotQuantity(self, 'bread', me, here) >= 1) attempts.push({ type: 'eat', binding: { person: me } });
+    const hungry = num(self, 'stomach') < 1 && num(self, 'nutrition') < this.eatBelow;
+    if (hungry && knownLotQuantity(self, 'bread', me, here) >= 1) attempts.push({ type: 'eat', binding: { person: me } });
     const breadHere = knownLotQuantity(self, 'bread', me, here);
     const grainHere = knownLotQuantity(self, 'grain', me, here);
     if (here === home) {
@@ -319,15 +333,21 @@ export interface Scenario {
   persons: ThingId[];
 }
 
+export interface ScenarioOptions {
+  farmer?: FarmerOptions;
+  /** 農夫が手元に残すパンの数（引き渡しの方針）。 */
+  farmerKeep?: number;
+}
+
 /** 最小の場面: 畑一つ、家二軒、農夫Aと訪問者B。 */
-export function buildMealScenario(): Scenario {
+export function buildMealScenario(options: ScenarioOptions = {}): Scenario {
   const w = new World();
   w.addThing('nature', 'nature', { crop: 1000, waste: 0, freshness: 1000, nutrition: 0, quantity: 0 });
   w.addThing('field', 'field', { location: 'field', crop: 10, occupants: 0 });
   w.addThing('homeA', 'place', { occupants: 1 });
   w.addThing('homeB', 'place', { occupants: 1 });
   // 初期栄養 6 は仮の比較条件（消耗 0.1/時なので、食べなければ 60 時間で尽きる）。
-  w.addThing('A', 'person', { alive: 'yes', location: 'homeA', home: 'homeA', nutrition: 6, stomach: 0, keep: 1, knowledge: {} });
+  w.addThing('A', 'person', { alive: 'yes', location: 'homeA', home: 'homeA', nutrition: 6, stomach: 0, keep: options.farmerKeep ?? 1, knowledge: {} });
   w.addThing('B', 'person', { alive: 'yes', location: 'homeB', home: 'homeB', nutrition: 6, stomach: 0, keep: 0, knowledge: {} });
   // ロットは保管者と場所の組ごとに一つ用意する（量 0 でも存在する）。移動で所在が変わる。
   for (const person of PERSONS) {
@@ -337,7 +357,7 @@ export function buildMealScenario(): Scenario {
     }
   }
   for (const t of mealTypes) w.addType(t);
-  w.addMind('A', new FarmerMind(2));
+  w.addMind('A', new FarmerMind(options.farmer));
   w.addMind('B', new VisitorMind('homeA'));
   return { world: w, persons: [...PERSONS] };
 }
@@ -387,8 +407,8 @@ export function summarize(w: World, persons: ThingId[]): Record<string, number |
   return out;
 }
 
-export function runDays(days: number): { scenario: Scenario; daily: Record<string, number | string>[] } {
-  const scenario = buildMealScenario();
+export function runDays(days: number, options: ScenarioOptions = {}): { scenario: Scenario; daily: Record<string, number | string>[] } {
+  const scenario = buildMealScenario(options);
   const { world, persons } = scenario;
   scheduleNature(world, 0, days);
   const daily: Record<string, number | string>[] = [];

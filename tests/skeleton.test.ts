@@ -125,6 +125,21 @@ describe('skeleton: 条件7・8 自然の作用は補正されず、同じ初期
   });
 });
 
+describe('skeleton: 対照 配分の規則だけを変え、世界側は変えない', () => {
+  it('基準では訪問者が10日以内に餓死し、農夫が栄養4未満でだけ食べる対照では二人とも生きる。食物の総量はどちらも保存される', () => {
+    const base = runDays(10);
+    const contrast = runDays(10, { farmer: { eatBelow: 4 } });
+    const last = (r: typeof base) => r.daily[r.daily.length - 1]!;
+    expect(last(base)['A.alive']).toBe('yes');
+    expect(last(base)['B.alive']).toBe('no');
+    expect(last(contrast)['A.alive']).toBe('yes');
+    expect(last(contrast)['B.alive']).toBe('yes');
+    const fresh = buildMealScenario().world;
+    expect(foodTotal(base.scenario.world)).toBeCloseTo(foodTotal(fresh), 6);
+    expect(foodTotal(contrast.scenario.world)).toBeCloseTo(foodTotal(fresh), 6);
+  });
+});
+
 describe('skeleton: 条件9 影響範囲は実例を作る前に決まり、完了時に再評価される', () => {
   it('開始後に対象が失われた実例は取り消され、部分的に成功しない', () => {
     const { world } = buildMealScenario();
