@@ -88,12 +88,12 @@ export const ripen: Law = {
     if (!has(a, 'grows') || typeof b.attr['bears'] !== 'string') return [];
     const rate = attr(b, 'ripenPerHour') / HOUR; // 実/分
     const effects: Effect[] = [{ kind: 'transfer', res: 'growth', from: a.id, to: b.id, amount: rate * dt }];
-    const growth = res(b, 'growth') + rate * dt;
+    // 刻みの始めにたまっている育ちで生むかを決める。この刻みの流入は次の刻みに効く（同期更新）。
     const room = Math.max(0, attr(b, 'cap') - edibleOn(w, b.id).length);
-    const whole = Math.min(Math.floor(growth), room);
+    const whole = Math.min(Math.floor(res(b, 'growth') + 1e-9), room);
     for (let i = 0; i < whole; i++) {
       effects.push({ kind: 'convert', from: b.id, fromRes: 'growth', amount: 1, to: a.id, toRes: 'growthSpent', produced: 1, lossTo: a.id, lossRes: 'growthSpent' });
-      effects.push({ kind: 'spawn', id: (w as World).nextSpawnId(b.attr['bears'] as string), def: b.attr['bears'] as string, state: { attachedTo: b.id }, from: a.id, fromRes: 'fruitStock', amount: 1 });
+      effects.push({ kind: 'spawn', id: (w as World).nextSpawnId(`${b.id}/${b.attr['bears'] as string}`), def: b.attr['bears'] as string, state: { attachedTo: b.id }, from: a.id, fromRes: 'fruitStock', amount: 1 });
     }
     return effects;
   },
@@ -187,7 +187,7 @@ export const wear: Law = {
   },
 };
 
-/** 法則の順。行為（移動・採る・食べる）→ 身体（消化・消耗）→ 自然（実る・腐る）。 */
+/** 法則の一覧。同期更新なので順序は結果に関わらない（記録の並びの正規順にだけ使う）。 */
 export const fruitLaws: Law[] = [walk, pick, eat, digest, wear, ripen, rot];
 
 // ---- 情報層の感覚 ----
@@ -267,6 +267,8 @@ export interface FruitOptions {
   persons?: number;
   /** true なら影響範囲で飛ばさず、すべての組に法則を当てる（比較用）。 */
   allPairs?: boolean;
+  /** 組を数える順（比較用）。結果は変わらない。 */
+  pairOrder?: 'sorted' | 'reverse' | 'shuffle';
   /** 木が実をつける速さ（実/時）。 */
   ripenPerHour?: number;
   /** 人物の視界（m）。家から木が見えるかを決める。 */
@@ -282,7 +284,7 @@ export interface Scenario {
 
 /** 果樹一本と家一軒。採取者は家にいて、視界に入る木を知覚し、往復して果実で生きる。 */
 export function buildFruitScenario(options: FruitOptions = {}): Scenario {
-  const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], allPairs: options.allPairs ?? false });
+  const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], allPairs: options.allPairs ?? false, pairOrder: options.pairOrder ?? 'sorted' });
   const n = options.persons ?? 1;
   const ids = Array.from({ length: n }, (_, i) => `P${i + 1}`);
   for (const d of fruitDefs) w.addDef(d);

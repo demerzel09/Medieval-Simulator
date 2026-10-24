@@ -180,7 +180,7 @@ function kindTable(title: string, rows: [string, unknown][]): string {
 function drawKinds() {
   const w = scenario.world;
   const sel = $<HTMLSelectElement>('thing');
-  const ids = w.query(() => true).map((t) => t.id).filter((id) => !id.startsWith('fruit#')).concat(edibleOn(w, 'tree').slice(0, 3).map((f) => f.id));
+  const ids = w.query((t) => !('edible' in t.attr)).map((t) => t.id).concat(edibleOn(w, 'tree').slice(0, 3).map((f) => f.id));
   if (!ids.includes(selected)) selected = ids[0] ?? '';
   sel.innerHTML = ids.map((id) => `<option value="${id}"${id === selected ? ' selected' : ''}>${id}</option>`).join('');
   const t: ThingSnapshot | undefined = w.thing(selected);

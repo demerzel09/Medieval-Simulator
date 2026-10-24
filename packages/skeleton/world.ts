@@ -1,7 +1,9 @@
 // 最小の骨格: 世界の進行。
-// 物理層: 刻み Δt ごとに、すべての事物の組（自分自身を含む）のうち影響範囲にある組へ、法則の順に法則を当て、返った流れを順に適用する。
+// 物理層は同期更新「要求 → 解決 → 適用」。刻みの始めの状態から、影響範囲にあるすべての組 (a, b) について法則が流れの要求を出し
+// （a が切っ掛けを出す側、b が受ける側）、要求を資源の持ち主ごとに局所で解決し（出せる分だけに縮める。不可分な物は持ち主に閉じた
+// 決定的な優先で一人に）、一斉に適用する。組をどの順に数えても、並列に計算しても、同じ結果になる。同じ刻みの中の連鎖は次の刻みへ送られる。
 // 情報層: 観測を集め、関係（心象）との差を事象（現れた・消えた）にし、心が意図を定め、死亡を確定する。
-// 値を変える経路はこのファイルの apply だけである。属性には書く経路が無い。足りなければその効果だけ縮める。
+// 値を変える経路はこのファイルの apply だけである。属性には書く経路が無い。
 
 import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingDef, ThingId, ThingSnapshot, WorldView } from './types.js';
 
@@ -31,28 +33,63 @@ export interface WorldOptions {
   rangeAttrs?: string[];
   /** true なら影響範囲で飛ばさず、すべての組に法則を当てる（比較用）。 */
   allPairs?: boolean;
+  /** 組を数える順（比較用）。結果は変わらないことを検査するために使う。 */
+  pairOrder?: 'sorted' | 'reverse' | 'shuffle';
+  /**
+   * 不可分な物の取り合いの優先。持ち主 owner が要求者 requester をどれだけ優先するか。大きいほど先。
+   * 既定は、持ち主の関係 rel[requester].favor、無ければ要求者の属性 priority、無ければ 0（同点は要求者の id 順）。
+   */
+  priority?: (owner: ThingSnapshot, requester: ThingSnapshot) => number;
 }
+
+/** 一つの法則が一つの組に出した要求の束。不可分な効果を含めば全か無か。 */
+interface Bundle {
+  lawIndex: number;
+  law: Law;
+  a: ThingId;
+  b: ThingId;
+  effects: Effect[];
+}
+
+/** 要求が持ち主の資源に掛ける負荷。 */
+interface Claim {
+  bundle: Bundle;
+  owner: ThingId;
+  key: string;
+  amount: number;
+  indivisible: boolean;
+}
+
+const defaultPriority = (owner: ThingSnapshot, requester: ThingSnapshot): number => {
+  const favor = owner.rel[requester.id]?.['favor'];
+  if (typeof favor === 'number') return favor;
+  const p = requester.attr['priority'];
+  return typeof p === 'number' ? p : 0;
+};
 
 export class World implements WorldView {
   now = 0;
   private dt = 0;
   private readonly rangeAttrs: string[];
   private readonly allPairs: boolean;
+  private readonly pairOrder: 'sorted' | 'reverse' | 'shuffle';
+  private readonly priority: (owner: ThingSnapshot, requester: ThingSnapshot) => number;
   private readonly things = new Map<ThingId, ThingRecord>();
   private readonly defs = new Map<string, ThingDef>();
   private readonly laws: Law[] = [];
   private readonly senses: Sense[] = [];
   private readonly minds = new Map<ThingId, Mind>();
-  private readonly spent = new Map<ThingId, number>();
   private touched = new Set<ThingId>();
-  private spawnSeq = 0;
+  private readonly spawnSeq = new Map<string, number>();
   readonly ledger: LedgerEntry[] = [];
-  /** 計測: 調べた組の数（n²）、影響範囲にあった組の数、法則を当てた回数、観測を試みた組の数。 */
-  readonly stats = { pairChecks: 0, activePairs: 0, pairEvaluations: 0, observations: 0, ticks: 0 };
+  /** 計測: 調べた組の数（n²）、影響範囲にあった組の数、法則を当てた回数、要求の束の数、縮めた束の数、観測を試みた組の数。 */
+  readonly stats = { pairChecks: 0, activePairs: 0, pairEvaluations: 0, bundles: 0, limited: 0, observations: 0, ticks: 0 };
 
   constructor(options: WorldOptions = {}) {
     this.rangeAttrs = options.rangeAttrs ?? ['sight', 'reach', 'smell'];
     this.allPairs = options.allPairs ?? false;
+    this.pairOrder = options.pairOrder ?? 'sorted';
+    this.priority = options.priority ?? defaultPriority;
   }
 
   // ---- 事物 ----
@@ -70,7 +107,7 @@ export class World implements WorldView {
     });
   }
 
-  // ---- 種類の定義と生成（Factory） ----
+  // ---- 種類の定義と生成 ----
 
   /** 種類の定義を登録する。親は先に登録されていること。 */
   addDef(def: ThingDef): void {
@@ -87,7 +124,7 @@ export class World implements WorldView {
     return { attr: { ...base.attr, ...(d.attr ?? {}) }, state: { ...base.state, ...(d.state ?? {}) }, res: { ...base.res, ...(d.res ?? {}) } };
   }
 
-  /** 定義から事物を作る。overrides は生成時だけの上書きで、属性もここでなら決められる（以後は凍結）。 */
+  /** 定義から事物を作る（初期配置）。overrides は生成時だけの上書きで、属性もここでなら決められる（以後は凍結）。 */
   addFromDef(id: ThingId, name: string, overrides: ThingParts = {}): void {
     const d = this.def(name);
     this.addThing(id, name, {
@@ -164,8 +201,9 @@ export class World implements WorldView {
     }
   }
 
-  timeLeft(id: ThingId): number {
-    return Math.max(0, this.dt - (this.spent.get(id) ?? 0));
+  /** 刻みの時間の予算。要求の段階では誰も使っていないので Δt。実際の配分は解決の段で持ち主が行う。 */
+  timeLeft(_id: ThingId): number {
+    return this.dt;
   }
 
   /**
@@ -205,17 +243,16 @@ export class World implements WorldView {
 
   /**
    * 一刻み。
-   * 1. 物理層: すべての事物の組（a, b。a === b を含む）のうち影響範囲にある組へ、法則の順に法則を当て、流れを適用する。
+   * 1. 物理層: 要求（全組に法則。刻みの始めの状態だけを読む）→ 解決（持ち主ごとに局所で縮める）→ 適用（一斉に書く）。
    * 2. 情報層: 観測を集め、関係（心象）との差を事象にする。心が意図を定める。死亡を確定する。
    * 3. 時刻を Δt 進める。
    */
   tick(dt: number): void {
     this.dt = dt;
-    this.spent.clear();
     this.stats.ticks += 1;
 
-    // 1. 物理層。刻みの始めにある事物の全組（n²）を調べ、影響範囲にある組を求める。途中で生まれた事物は次の刻みから組に入る。
-    const ids = this.sortedIds();
+    // 1a. 要求。刻みの始めにある事物の全組（n²）を調べ、影響範囲にある組へ法則を当てる。法則は読むだけで、何も書かない。
+    const ids = this.orderedIds();
     const pairs: [ThingId, ThingId][] = [];
     for (const aId of ids) {
       for (const bId of ids) {
@@ -224,19 +261,34 @@ export class World implements WorldView {
       }
     }
     this.stats.activePairs += pairs.length;
-    for (const law of this.laws) {
+    const bundles: Bundle[] = [];
+    this.laws.forEach((law, lawIndex) => {
       for (const [aId, bId] of pairs) {
-        const a = this.things.get(aId);
-        const b = this.things.get(bId);
-        if (!a || !b) continue; // 途中で消えた事物
+        const a = this.things.get(aId)!;
+        const b = this.things.get(bId)!;
         this.stats.pairEvaluations += 1;
         const effects = law.pair(snapshot(a), snapshot(b), dt, this);
-        for (const effect of effects) {
-          this.touched = new Set();
-          const applied = this.apply(effect);
-          this.assertWithinPair(law, aId, bId, effect);
-          if (applied !== 0 && effect.kind !== 'spend') this.ledger.push({ at: this.now, law: law.id, a: aId, b: bId, effect, applied });
-        }
+        if (effects.length > 0) bundles.push({ lawIndex, law, a: aId, b: bId, effects });
+      }
+    });
+    this.stats.bundles += bundles.length;
+
+    // 1b. 解決。要求を持ち主の資源ごとに集め、持ち主が局所で縮める。
+    const factor = this.resolve(bundles);
+
+    // 1c. 適用。束を正規の順（法則、a、b）に並べて一斉に書く。順序は結果を変えない（量は解決で決まっている）。
+    bundles.sort((p, q) => p.lawIndex - q.lawIndex || (p.a < q.a ? -1 : p.a > q.a ? 1 : 0) || (p.b < q.b ? -1 : p.b > q.b ? 1 : 0));
+    for (const bundle of bundles) {
+      const f = factor.get(bundle) ?? 1;
+      if (f <= 0) continue;
+      if (f < 1 - 1e-9) this.stats.limited += 1;
+      for (const effect of bundle.effects) {
+        const scaled = scaleEffect(effect, f);
+        if (!scaled) continue;
+        this.touched = new Set();
+        const applied = this.apply(scaled);
+        this.assertWithinPair(bundle.law, bundle.a, bundle.b, scaled);
+        if (applied !== 0 && scaled.kind !== 'spend') this.ledger.push({ at: this.now, law: bundle.law.id, a: bundle.a, b: bundle.b, effect: scaled, applied });
       }
     }
 
@@ -265,8 +317,104 @@ export class World implements WorldView {
       }
     }
 
-    // 3. 時刻。使い残した時間は捨てる。
+    // 3. 時刻。
     this.now += dt;
+  }
+
+  /** 組を数える順。結果は変わらない（検査用に逆順・乱順を選べる）。 */
+  private orderedIds(): ThingId[] {
+    const ids = this.sortedIds();
+    if (this.pairOrder === 'reverse') return ids.reverse();
+    if (this.pairOrder === 'shuffle') {
+      let seed = 2463534242 + this.stats.ticks;
+      for (let i = ids.length - 1; i > 0; i--) {
+        seed = (seed * 1664525 + 1013904223) >>> 0;
+        const j = seed % (i + 1);
+        [ids[i], ids[j]] = [ids[j]!, ids[i]!];
+      }
+    }
+    return ids;
+  }
+
+  /**
+   * 解決。各要求が持ち主の資源に掛ける負荷を集め、持ち主ごとに局所で決める。
+   * 不可分な負荷（付け替え、生む、消す、時間）は優先順に全か無かで配り、可分な負荷（移す、変える、費用）は残りを比例で分ける。
+   * 束の係数は、その束の負荷の係数の最小。優先は持ち主が要求者をどう見るか（関係・札）、同点は要求者の id、法則、相手の順。
+   */
+  private resolve(bundles: Bundle[]): Map<Bundle, number> {
+    const factor = new Map<Bundle, number>();
+    const byKey = new Map<string, Claim[]>();
+    for (const bundle of bundles) {
+      factor.set(bundle, 1);
+      for (const e of bundle.effects) {
+        const c = this.claimOf(bundle, e);
+        if (!c) continue;
+        const list = byKey.get(c.key) ?? [];
+        list.push(c);
+        byKey.set(c.key, list);
+      }
+    }
+    for (const [key, claims] of [...byKey.entries()].sort(([k1], [k2]) => (k1 < k2 ? -1 : 1))) {
+      const owner = this.things.get(claims[0]!.owner);
+      if (!owner) continue;
+      const res = key.slice(key.indexOf('|') + 1);
+      let remaining = res === 'time' ? this.dt : res === 'attachedTo' ? 1 : this.resOf(owner.id, res);
+      const ownerSnap = snapshot(owner);
+      const rank = (c: Claim): [number, ThingId, number, ThingId] => {
+        const requester = this.things.get(c.bundle.a);
+        return [requester ? -this.priority(ownerSnap, snapshot(requester)) : 0, c.bundle.a, c.bundle.lawIndex, c.bundle.b];
+      };
+      const ordered = [...claims].sort((p, q) => {
+        const [p0, p1, p2, p3] = rank(p);
+        const [q0, q1, q2, q3] = rank(q);
+        return p0 - q0 || (p1 < q1 ? -1 : p1 > q1 ? 1 : 0) || p2 - q2 || (p3 < q3 ? -1 : p3 > q3 ? 1 : 0);
+      });
+      // 不可分: 優先順に全か無か。
+      for (const c of ordered) {
+        if (!c.indivisible) continue;
+        if (c.amount <= remaining + 1e-9) remaining -= c.amount;
+        else factor.set(c.bundle, 0);
+      }
+      // 可分: 残りを比例で分ける。
+      const divisible = ordered.filter((c) => !c.indivisible && (factor.get(c.bundle) ?? 1) > 0);
+      const demand = divisible.reduce((s, c) => s + c.amount, 0);
+      if (demand > remaining + 1e-9 && demand > 0) {
+        const f = Math.max(0, remaining) / demand;
+        for (const c of divisible) factor.set(c.bundle, Math.min(factor.get(c.bundle) ?? 1, f));
+      }
+    }
+    // 消える事物（消す要求が通ったもの）に触れる他の束は落とす。消す側が勝ち、順序に依らない。
+    const gone = new Set<ThingId>();
+    for (const b of bundles) if ((factor.get(b) ?? 0) >= 1 - 1e-9) for (const e of b.effects) if (e.kind === 'despawn') gone.add(e.thing);
+    if (gone.size > 0) {
+      for (const b of bundles) {
+        if (b.effects.some((e) => e.kind === 'despawn' && gone.has(e.thing))) continue;
+        if (b.effects.some((e) => participants(e).some((id) => gone.has(id)))) factor.set(b, 0);
+      }
+    }
+    return factor;
+  }
+
+  /** 効果が持ち主の資源に掛ける負荷。負荷の無い効果（情報層）は無し。 */
+  private claimOf(bundle: Bundle, e: Effect): Claim | undefined {
+    switch (e.kind) {
+      case 'transfer':
+        return { bundle, owner: e.from, key: `${e.from}|${e.res}`, amount: e.amount, indivisible: false };
+      case 'convert':
+        return { bundle, owner: e.from, key: `${e.from}|${e.fromRes}`, amount: e.amount, indivisible: false };
+      case 'move':
+        return e.cost > 0 ? { bundle, owner: e.costFrom, key: `${e.costFrom}|${e.costRes}`, amount: e.cost, indivisible: false } : undefined;
+      case 'spend':
+        return { bundle, owner: e.thing, key: `${e.thing}|time`, amount: e.minutes, indivisible: true };
+      case 'reassign':
+        return { bundle, owner: e.thing, key: `${e.thing}|attachedTo`, amount: 1, indivisible: true };
+      case 'spawn':
+        return { bundle, owner: e.from, key: `${e.from}|${e.fromRes}`, amount: e.amount, indivisible: true };
+      case 'despawn': {
+        const q = this.things.get(e.thing)?.res['quantity'] ?? 1;
+        return { bundle, owner: e.thing, key: `${e.thing}|quantity`, amount: q, indivisible: true };
+      }
+    }
   }
 
   /**
@@ -394,13 +542,8 @@ export class World implements WorldView {
         }
         return Math.hypot(e.dx * ratio, e.dy * ratio);
       }
-      case 'spend': {
-        const left = this.timeLeft(e.thing);
-        const minutes = Math.min(e.minutes, left);
-        if (minutes <= 0) return 0;
-        this.spent.set(e.thing, (this.spent.get(e.thing) ?? 0) + minutes);
-        return minutes;
-      }
+      case 'spend':
+        return e.minutes; // 時間は解決の段で配り終えている。帳簿には残さない。
       case 'inform': {
         const observer = this.things.get(e.observer);
         const about = this.things.get(e.about);
@@ -456,10 +599,11 @@ export class World implements WorldView {
     this.touched.add(id);
   }
 
-  /** 生成する事物の id を決定的に採番する。 */
+  /** 生成する事物の id を、生む側ごとに決定的に採番する。組を数える順に依らない。 */
   nextSpawnId(prefix: string): ThingId {
-    this.spawnSeq += 1;
-    return `${prefix}#${this.spawnSeq}`;
+    const n = (this.spawnSeq.get(prefix) ?? 0) + 1;
+    this.spawnSeq.set(prefix, n);
+    return `${prefix}#${n}`;
   }
 
   // ---- 検査 ----
@@ -476,5 +620,43 @@ export class World implements WorldView {
 
   get thingCount(): number {
     return this.things.size;
+  }
+}
+
+/** 効果が触れる事物の id。 */
+function participants(e: Effect): ThingId[] {
+  switch (e.kind) {
+    case 'transfer':
+      return [e.from, e.to];
+    case 'convert':
+      return [e.from, e.to, e.lossTo];
+    case 'reassign':
+      return [e.thing, e.to];
+    case 'spawn':
+      return [e.from];
+    case 'despawn':
+      return [e.thing, e.to, e.lossTo];
+    case 'move':
+      return [e.thing, e.costFrom, e.costTo];
+    case 'spend':
+      return [e.thing];
+  }
+}
+
+/** 効果を束の係数で縮める。不可分な効果は係数 1 のときだけ残る。 */
+function scaleEffect(e: Effect, f: number): Effect | undefined {
+  if (f >= 1 - 1e-9) return e;
+  switch (e.kind) {
+    case 'transfer':
+      return { ...e, amount: e.amount * f };
+    case 'convert':
+      return { ...e, amount: e.amount * f, produced: e.produced * f };
+    case 'move':
+      return { ...e, dx: e.dx * f, dy: e.dy * f, cost: e.cost * f };
+    case 'spend':
+    case 'reassign':
+    case 'spawn':
+    case 'despawn':
+      return undefined;
   }
 }

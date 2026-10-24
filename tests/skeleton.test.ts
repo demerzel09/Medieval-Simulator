@@ -121,9 +121,11 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
 
   it('生成は定義から行い、木が生む実の種類は木の札 bears が指す定義で決まる', () => {
     const { world } = buildFruitScenario({ ripenPerHour: 6 }); // 10 分ごとに 1 個
-    world.tick(DT);
+    world.tick(DT); // 育ちがたまる
+    world.tick(DT); // 刻みの始めの育ちで生む（同期更新なので一刻み遅れる）
     const fruits = world.query((t) => 'edible' in t.attr);
     expect(fruits.length).toBe(7);
+    expect(fruits.some((f) => f.id === 'tree/fruit#1')).toBe(true); // 生む側ごとの採番
     for (const f of fruits) {
       expect(f.kind).toBe('fruit');
       expect(f.attr['perishable']).toBe(true);
@@ -156,6 +158,56 @@ describe('skeleton: 物理層はすべての事物の組に法則を当てる', 
     expect(JSON.stringify(filtered.scenario.world.ledger)).toBe(JSON.stringify(all.scenario.world.ledger));
     expect(filtered.scenario.world.stats.pairEvaluations).toBeLessThan(all.scenario.world.stats.pairEvaluations);
     expect(filtered.scenario.world.stats.pairChecks).toBe(all.scenario.world.stats.pairChecks);
+  });
+
+  it('組をどの順に数えても結果は同じ（逆順・乱順で最終状態と記録の集合が一致）', () => {
+    const final = (order: 'sorted' | 'reverse' | 'shuffle') => {
+      const { scenario } = runFruitDays(5, { persons: 2, pairOrder: order });
+      const things = scenario.world.query(() => true).map((t) => ({ id: t.id, state: t.state, res: t.res, rel: t.rel }));
+      const entries = scenario.world.ledger.map((e) => JSON.stringify(e)).sort();
+      return { things: JSON.stringify(things), entries };
+    };
+    const a = final('sorted');
+    const b = final('reverse');
+    const c = final('shuffle');
+    expect(b.things).toBe(a.things);
+    expect(c.things).toBe(a.things);
+    expect(b.entries).toEqual(a.entries);
+    expect(c.entries).toEqual(a.entries);
+  });
+
+  it('同じ資源への要求が手持ちを超えると、持ち主が比例で縮める（取り消しではなく細る）', () => {
+    const w = new World();
+    w.addThing('a', 'x', { res: { v: 1 } });
+    w.addThing('b', 'x', { res: { v: 0 } });
+    w.addThing('c', 'x', { res: { v: 0 } });
+    w.addLaw({ id: 'drain', version: 't', pair: (a, b) => (a.id === 'a' && b.id !== 'a' ? [{ kind: 'transfer', res: 'v', from: 'a', to: b.id, amount: 0.8 }] : []) });
+    w.tick(1); // b と c がそれぞれ 0.8 を求め、合計 1.6 > 1
+    expect(res(w.thing('a'), 'v')).toBeCloseTo(0, 9);
+    expect(res(w.thing('b'), 'v')).toBeCloseTo(0.5, 9);
+    expect(res(w.thing('c'), 'v')).toBeCloseTo(0.5, 9);
+    expect(w.stats.limited).toBe(2);
+  });
+
+  it('不可分な物の取り合いは、持ち主の関係（favor）か要求者の札（priority）で優先が決まり、無ければ id 順', () => {
+    const w = twoPickersOneFruit(); // A と B が同じ最後の実を狙う。既定では id 順で A
+    w.tick(DT);
+    expect(edibleOn(w, 'A').length).toBe(1);
+    const w2 = twoPickersOneFruit();
+    w2.addThing('nature2', 'x', {}); // 変更なし。優先は B の札で付ける
+    const B = w2.thing('B')!;
+    void B;
+    const w3 = new World();
+    for (const d of fruitDefs) w3.addDef(d);
+    w3.addThing('nature', 'nature', { attr: { sink: true, grows: true, rotPerHour: 0 }, res: { fruitStock: 100, growth: 100, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0 } });
+    w3.addThing('tree', 'tree', { attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: 0 }, state: { x: 0, y: 0 }, res: { growth: 0 } });
+    w3.addThing('A', 'person', { attr: PERSON_ATTR, state: { alive: 'yes', x: 1, y: 0, intent: 'pick', target: 'tree', targetX: 0, targetY: 0 }, res: { nutrition: 6, stomach: 0 } });
+    w3.addThing('B', 'person', { attr: { ...PERSON_ATTR, priority: 1 }, state: { alive: 'yes', x: 1, y: 0, intent: 'pick', target: 'tree', targetX: 0, targetY: 0 }, res: { nutrition: 6, stomach: 0 } });
+    w3.seed(FRUIT('fruit#1'));
+    for (const law of fruitLaws) w3.addLaw(law);
+    w3.tick(DT);
+    expect(edibleOn(w3, 'B').length).toBe(1); // 札 priority で B が先
+    expect(edibleOn(w3, 'A').length).toBe(0);
   });
 
   it('法則の効果は組の二つの事物（と組から生まれた事物）にしか触れられない', () => {
@@ -250,7 +302,9 @@ describe('skeleton: 範囲は属性と距離で決まり、知識は情報層の
     expect(edibleOn(w, holder).length).toBe(0);
     expect(w.thing(holder)!.rel['fruit#1']).toBeUndefined();
     expect(events(w, 'vanish').some((e) => 'about' in e && e.about === 'fruit#1')).toBe(true);
-    // 実 1 が胃に入り、一刻みぶん消化が進んでいる（0.5/時 × 10 分）。
+    // 同期更新: 消化はこの刻みの始めの胃（空）を見るので、食べた実の消化は次の刻みから（連鎖は一刻み遅れる）。
+    expect(res(w.thing(holder), 'stomach')).toBeCloseTo(1, 9);
+    w.tick(DT);
     expect(res(w.thing(holder), 'stomach')).toBeCloseTo(1 - (0.5 / 60) * 10, 6);
   });
 
