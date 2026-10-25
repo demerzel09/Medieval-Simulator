@@ -68,7 +68,7 @@ root.innerHTML = `
   <div class="grid">
     <div>
       <canvas id="map" width="640" height="420"></canvas>
-      <p class="note">地図: 木（緑）と実（橙。木の周りと、持つ人の脇）、人（黄。破線の円は視界、小さな円は手の届く範囲）、家（白）。実の見える範囲（30m）は薄い円。1 目盛 10m。</p>
+      <p class="note">地図: 木（緑）と実（橙。木の周りと、持つ人の脇）、人（黄。破線の円は視界、小さな円は手の届く範囲）、家（白。周りの点は家に置いた実）。実の見える範囲（30m）は薄い円。1 目盛 10m。</p>
     </div>
     <div class="panel">
       <h2>事物の値の四区分 <select id="thing"></select></h2>
@@ -119,13 +119,23 @@ function drawMap() {
     const [, y] = px(0, gy);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
   }
-  // 家
-  for (const p of scenario.persons) {
-    const t = w.thing(p);
-    if (!t) continue;
-    const [hx, hy] = px(Number(t.attr['homeX'] ?? 0), Number(t.attr['homeY'] ?? 0));
+  // 家（事物。札 stores）と、家に置いた実
+  for (const h of w.query((t) => 'stores' in t.attr)) {
+    const pos = w.positionOf(h.id);
+    if (!pos) continue;
+    const [hx, hy] = px(pos.x, pos.y);
     ctx.fillStyle = '#e6e3d5';
     ctx.fillRect(hx - 5, hy - 5, 10, 10);
+    const stored = edibleOn(w, h.id);
+    stored.forEach((f, i) => {
+      const a = (i / Math.max(1, stored.length)) * Math.PI * 2;
+      const fr = Number(f.res['freshness'] ?? 0) / Number(fruitDef.res?.['freshness'] ?? 2);
+      ctx.fillStyle = `rgba(230,140,60,${0.35 + 0.65 * Math.max(0, Math.min(1, fr))})`;
+      ctx.beginPath(); ctx.arc(hx + Math.cos(a) * 12, hy + Math.sin(a) * 12, 3, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.fillStyle = '#e6e3d5';
+    ctx.font = '12px "Noto Sans JP", sans-serif';
+    ctx.fillText(`${h.id} 実${stored.length}`, hx - 16, hy + 30);
   }
   // 木と実
   if (tree) {

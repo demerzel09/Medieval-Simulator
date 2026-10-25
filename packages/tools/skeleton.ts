@@ -6,8 +6,9 @@
 //         --all-pairs で影響範囲の絞り込みを切る（比較用）
 //         --order reverse|shuffle で組を数える順を変える（結果は変わらない。比較用）
 //         --ledger で記録の先頭 200 件も表示
+//         --replay で、初期状態と記録から再生した世界が走らせた世界と同じかを確かめる（法則と心を使わない再生）
 
-import { runFruitDays } from '../skeleton/index.js';
+import { runFruitDays, replayFruit } from '../skeleton/index.js';
 
 const args = process.argv.slice(2);
 const days = Number(args.find((a) => /^\d+$/.test(a)) ?? '3');
@@ -22,7 +23,7 @@ const allPairs = args.includes('--all-pairs');
 const pairOrder = (valueOf('order') ?? 'sorted') as 'sorted' | 'reverse' | 'shuffle';
 
 const started = performance.now();
-const { scenario, daily } = runFruitDays(days, { persons, ripenPerHour, sight, allPairs, pairOrder });
+const { scenario, daily, initial } = runFruitDays(days, { persons, ripenPerHour, sight, allPairs, pairOrder });
 const elapsed = performance.now() - started;
 console.log(`# fruit: ${persons} forager(s), ripen ${ripenPerHour}/h, sight ${sight}m, dt 10min`);
 for (const row of daily) console.log(JSON.stringify(row));
@@ -38,3 +39,11 @@ console.log(
   `pairs: things ${scenario.world.thingCount}, ticks ${s.ticks}, pair checks ${s.pairChecks} (${(s.pairChecks / s.ticks).toFixed(0)}/tick), active pairs ${s.activePairs} (${(s.activePairs / s.ticks).toFixed(0)}/tick), law evaluations ${s.pairEvaluations} (${(s.pairEvaluations / s.ticks).toFixed(0)}/tick), bundles ${s.bundles}, limited ${s.limited}, observations ${s.observations}, elapsed ${elapsed.toFixed(0)} ms`,
 );
 if (args.includes('--ledger')) for (const e of scenario.world.ledger.slice(0, 200)) console.log(JSON.stringify(e));
+if (args.includes('--replay')) {
+  const t0 = performance.now();
+  const replayed = replayFruit(initial, scenario.world.ledger, scenario.world.now);
+  const dump = (w: typeof replayed) => JSON.stringify(w.query(() => true));
+  const same = dump(replayed) === dump(scenario.world);
+  const sameLedger = JSON.stringify(replayed.ledger) === JSON.stringify(scenario.world.ledger.filter((e) => !('law' in e && e.law === 'seed')));
+  console.log(`replay: state ${same ? 'identical' : 'DIFFERENT'}, ledger ${sameLedger ? 'identical' : 'DIFFERENT'} (${replayed.ledger.length} entries), elapsed ${(performance.now() - t0).toFixed(0)} ms`);
+}

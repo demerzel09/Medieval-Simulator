@@ -1,13 +1,14 @@
 // いちばん小さな生活の環: 果実を採って食べる。採取だけの経済。
-// 事物: 自然、木、木に付いた実（一つずつが事物）、人物。
+// 事物: 自然、木、木に付いた実（一つずつが事物）、人物、家（持ち物を付け替えて蓄える場所）。
 // 値の四区分: 属性（札と仕様。更新は書かない）、状態、関係（心象）、資源（釣り合う量）。
 // 法則は事物の種類ではなく属性（札）の組で相手を選ぶ。札は属性の名の有無で表し、値が仕様になる。
 //   自然: sink（受け皿）、grows（育てる）。  木: bears=fruit（実をつける）。
 //   実:   edible=plant（食べられる、植物性）、perishable（腐る）。 人: eats=plant（植物を食べる）、picks（採る）、sight・reach・smell（範囲）。
+//   家:   stores（物を置ける）。どの家が自分の家かは人の関係（rel[家].home）で、位置は知覚で写る。
 // 札は資源の有無では代用しない。鮮度の受け皿である自然も資源 freshness を持つので、資源の有無で「腐る物」を選ぶと自然自身に腐敗が当たる。
 // 数値はすべて仮の比較条件であり、校正値ではない。
 
-import type { Effect, Law, Mind, Relation, Sense, ThingDef, ThingId, ThingSnapshot, WorldView } from './types.js';
+import type { Effect, Law, LedgerEntry, Mind, Relation, Sense, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
 import { World } from './world.js';
 
 export const MINUTE = 1;
@@ -70,13 +71,17 @@ export const personDef: ThingDef = {
     digestPerHour: 0.5,
     digestYield: 0.8,
     wearPerHour: 0.1,
-    homeX: 0,
-    homeY: 0,
   },
   state: { alive: 'yes', x: 0, y: 0, intent: 'idle', target: '', targetX: 0, targetY: 0 },
   res: { nutrition: 6, stomach: 0 },
 };
-export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, personDef];
+/** 家。札 stores は、人が持ち物を付け替えて置ける場所であること。位置を持つ事物で、法則の組の相手にはならず、付け替えの行き先になる。 */
+export const homeDef: ThingDef = {
+  name: 'home',
+  attr: { stores: true, visibility: 100 },
+  state: { x: 0, y: 0 },
+};
+export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, personDef, homeDef];
 
 // ---- 物理層の法則。組 (a, b) の札で当たるかを決め、状態・資源・距離で流れを決める ----
 
@@ -130,18 +135,32 @@ export const walk: Law = {
   },
 };
 
-/** (採る, 付属する物): 採る。意図した相手に付いた物が手の届く範囲にあれば、人へ付け替わる。一刻みに採れる数は能力 × Δt。二人なら優先順に、無くなれば止まる。 */
+/** 付け替えの要求。人 a が、from に付いた物 b を to へ付け替える。物と行き先が手の届く範囲にあること。一刻みの数は能力 × Δt。 */
+const handOver = (a: ThingSnapshot, b: ThingSnapshot, from: ThingId, to: ThingId, dt: number, w: WorldView): Effect[] => {
+  if (state(b, 'attachedTo') !== from || w.distance(a.id, b.id) > attr(a, 'reach') || w.distance(a.id, to) > attr(a, 'reach')) return [];
+  return [
+    { kind: 'reassign', thing: b.id, from, to },
+    { kind: 'use', thing: a.id, capacity: 'pick', available: (attr(a, 'pickPerHour') / HOUR) * dt, amount: 1 },
+  ];
+};
+
+/** (採る, 付属する物): 採る。意図した相手（木でも家でも）に付いた物が手の届く範囲にあれば、人へ付け替わる。二人なら優先順に、無くなれば止まる。 */
 export const pick: Law = {
   id: 'pick',
   version: 'kinds-1',
   pair: (a, b, dt, w) => {
     if (!alive(a) || !has(a, 'picks') || state(a, 'intent') !== 'pick' || !('attachedTo' in b.state)) return [];
-    const holder = state(a, 'target');
-    if (state(b, 'attachedTo') !== holder || w.distance(a.id, b.id) > attr(a, 'reach')) return [];
-    return [
-      { kind: 'reassign', thing: b.id, from: holder, to: a.id },
-      { kind: 'use', thing: a.id, capacity: 'pick', available: (attr(a, 'pickPerHour') / HOUR) * dt, amount: 1 },
-    ];
+    return handOver(a, b, state(a, 'target'), a.id, dt, w);
+  },
+};
+
+/** (採る, 付属する物): しまう。自分に付いた物を、意図した置ける相手（札 stores）へ付け替える。採るの逆向き。 */
+export const stow: Law = {
+  id: 'stow',
+  version: 'kinds-1',
+  pair: (a, b, dt, w) => {
+    if (!alive(a) || !has(a, 'picks') || state(a, 'intent') !== 'stow' || !('attachedTo' in b.state) || !has(w.thing(state(a, 'target')), 'stores')) return [];
+    return handOver(a, b, a.id, state(a, 'target'), dt, w);
   },
 };
 
@@ -180,7 +199,7 @@ export const wear: Law = {
 };
 
 /** 法則の一覧。同期更新なので順序は結果に関わらない（記録の並びの正規順にだけ使う）。 */
-export const fruitLaws: Law[] = [walk, pick, eat, digest, wear, ripen, rot];
+export const fruitLaws: Law[] = [walk, pick, stow, eat, digest, wear, ripen, rot];
 
 // ---- 情報層の感覚 ----
 
@@ -212,7 +231,9 @@ const relNum = (e: Relation, k: string): number => (typeof e[k] === 'number' ? (
 
 /**
  * 採取者: 木の場所は知らない。視界に入って心象（関係）に写った木と実から、実の付いた木を選ぶ。
- * 空腹で実を持っていれば食べ、手持ちが目標未満なら実の付いた木へ行って採り、足りれば家へ戻る。
+ * 自分の家は関係の印（home）で知り、位置は知覚で写る。
+ * 空腹で実を持っていれば食べ、手持ちが目標未満なら実の付いた木へ行って採り、足りれば家へ戻る。実は手に持ったままで、家にはしまわない
+ * （しまう心にすると、二人で一本の木では先の一人の蓄えが循環から外れ、もう一人が 19 日目に死んだ。DESIGN「骨格を動かして分かったこと」）。
  */
 export class ForagerMind implements Mind {
   constructor(
@@ -222,33 +243,31 @@ export class ForagerMind implements Mind {
   decide(self: ThingSnapshot, _now: number) {
     const me = self.id;
     const k = self.rel;
-    const holding = Object.values(k).filter((e) => 'edible' in e && e['attachedTo'] === me).length;
+    const x = stateNum(self, 'x');
+    const y = stateNum(self, 'y');
+    const dist = (e: Relation) => Math.hypot(relNum(e, 'x') - x, relNum(e, 'y') - y);
+    const near = (e: Relation) => dist(e) <= attr(self, 'reach');
+    const goTo = (id: ThingId, e: Relation) => ({ intent: 'move', target: id, targetX: relNum(e, 'x'), targetY: relNum(e, 'y') });
+    const fruitsOn = (holder: ThingId) => Object.values(k).filter((f) => 'edible' in f && f['attachedTo'] === holder).length;
+    const holding = fruitsOn(me);
     const hungry = res(self, 'stomach') < 1 && res(self, 'nutrition') < this.eatBelow;
     if (hungry && holding >= 1) return { intent: 'eat' };
     if (holding < this.target) {
-      const x = stateNum(self, 'x');
-      const y = stateNum(self, 'y');
-      const byDistance = (p: { e: Relation }, q: { e: Relation }) =>
-        Math.hypot(relNum(p.e, 'x') - x, relNum(p.e, 'y') - y) - Math.hypot(relNum(q.e, 'x') - x, relNum(q.e, 'y') - y);
       // 知っている木（実をつける札）と、その木に付いていると知っている実の数。実は木より見える範囲が狭いので、遠くからは木しか見えない。
       const trees = Object.entries(k)
         .filter(([, e]) => 'bears' in e)
-        .map(([id, e]) => ({ id, e, fruits: Object.values(k).filter((f) => 'edible' in f && f['attachedTo'] === id).length }))
-        .sort(byDistance);
+        .map(([id, e]) => ({ id, e, fruits: fruitsOn(id) }))
+        .sort((p, q) => dist(p.e) - dist(q.e));
       const withFruit = trees.find((t) => t.fruits >= 1);
-      if (withFruit) {
-        const d = Math.hypot(relNum(withFruit.e, 'x') - x, relNum(withFruit.e, 'y') - y);
-        if (d <= attr(self, 'reach')) return { intent: 'pick', target: withFruit.id };
-        return { intent: 'move', target: withFruit.id, targetX: relNum(withFruit.e, 'x'), targetY: relNum(withFruit.e, 'y') };
-      }
+      if (withFruit) return near(withFruit.e) ? { intent: 'pick', target: withFruit.id } : goTo(withFruit.id, withFruit.e);
       // 実が見えていない木へ近づいて確かめる（木を辿る）。手の届く所まで来ても実が無ければ待つ。
-      const unknown = trees.find((t) => Math.hypot(relNum(t.e, 'x') - x, relNum(t.e, 'y') - y) > attr(self, 'reach'));
-      if (unknown) return { intent: 'move', target: unknown.id, targetX: relNum(unknown.e, 'x'), targetY: relNum(unknown.e, 'y') };
+      const unknown = trees.find((t) => !near(t.e));
+      if (unknown) return goTo(unknown.id, unknown.e);
       return { intent: 'idle' }; // 木を知らなければ探索が要るが、未実装。
     }
-    const hx = attr(self, 'homeX');
-    const hy = attr(self, 'homeY');
-    if (Math.hypot(hx - stateNum(self, 'x'), hy - stateNum(self, 'y')) > 1) return { intent: 'move', target: 'home', targetX: hx, targetY: hy };
+    // 足りている。家に着いていなければ戻る。
+    const home = Object.entries(k).find(([, e]) => e['home'] === true && 'x' in e);
+    if (home && !near(home[1])) return goTo(home[0], home[1]);
     return { intent: 'idle' };
   }
 }
@@ -274,7 +293,7 @@ export interface Scenario {
   persons: ThingId[];
 }
 
-/** 果樹一本と家一軒。採取者は家にいて、視界に入る木を知覚し、往復して果実で生きる。 */
+/** 果樹一本と家一軒（事物）。採取者は家にいて、視界に入る木を知覚し、往復して果実で生きる。家は全員の家で、関係 rel[home].home で結ぶ。 */
 export function buildFruitScenario(options: FruitOptions = {}): Scenario {
   const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], allPairs: options.allPairs ?? false, pairOrder: options.pairOrder ?? 'sorted' });
   const n = options.persons ?? 1;
@@ -282,8 +301,9 @@ export function buildFruitScenario(options: FruitOptions = {}): Scenario {
   for (const d of fruitDefs) w.addDef(d);
   w.addFromDef('nature', 'nature');
   w.addFromDef('tree', 'tree', { attr: { ripenPerHour: options.ripenPerHour ?? 0.25 }, state: { x: options.treeDistance ?? 40 } });
+  w.addFromDef('home', 'home');
   for (const id of ids) {
-    w.addFromDef(id, 'person', { attr: { sight: options.sight ?? 60 } });
+    w.addFromDef(id, 'person', { attr: { sight: options.sight ?? 60 }, rel: { home: { home: true } } });
     w.addMind(id, new ForagerMind());
   }
   // 初期の実 6 個を木に付ける（自然の蓄えから）。
@@ -306,20 +326,31 @@ export function summarize(w: World, persons: ThingId[]): Record<string, number |
     out[`${p}.intent`] = state(t, 'intent');
   }
   out['tree.fruits'] = edibleOn(w, 'tree').length;
+  out['home.fruits'] = edibleOn(w, 'home').length;
   out['nature.waste'] = Number(res(w.thing('nature'), 'waste').toFixed(2));
   out['things'] = w.thingCount;
   out['ledger'] = w.ledger.length;
   return out;
 }
 
-export function runFruitDays(days: number, options: FruitOptions = {}): { scenario: Scenario; daily: Record<string, number | string>[] } {
+/** 走らせる。initial は走る前の写し（録画の初期状態）で、記録と合わせて replayFruit で再生できる。 */
+export function runFruitDays(days: number, options: FruitOptions = {}): { scenario: Scenario; daily: Record<string, number | string>[]; initial: WorldState } {
   const scenario = buildFruitScenario(options);
+  const initial = scenario.world.save();
   const daily: Record<string, number | string>[] = [];
   for (let day = 0; day < days; day++) {
     scenario.world.run((day + 1) * DAY, DT);
     daily.push(summarize(scenario.world, scenario.persons));
   }
-  return { scenario, daily };
+  return { scenario, daily, initial };
+}
+
+/** 録画の再生。初期状態と記録から時刻 until の世界を作る。法則と心は要らず、感覚（視界）だけ登録する。 */
+export function replayFruit(initial: WorldState, ledger: LedgerEntry[], until: number): World {
+  const w = World.load(initial);
+  w.addSense(sight);
+  w.replay(ledger, DT, until);
+  return w;
 }
 
 /** 保存則の検査に使う資源の総量: 自然の実の蓄え＋付いている実の量＋胃＋栄養＋廃棄＋自然へ移った栄養。 */

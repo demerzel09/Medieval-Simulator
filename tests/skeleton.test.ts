@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, buildFruitScenario, runFruitDays, massTotal, fruitLaws, fruitDefs, sight, edibleOn, DAY, DT, HOUR } from '../packages/skeleton/index.js';
+import { World, buildFruitScenario, runFruitDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, DAY, DT, HOUR } from '../packages/skeleton/index.js';
 import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
@@ -12,7 +12,7 @@ const flows = (w: World, law: string) => w.ledger.filter((e) => 'law' in e && e.
 
 const PERSON_ATTR = {
   eats: 'plant', picks: true, visibility: 100, sight: 60, reach: 1.5, smell: 3, speedPerHour: 60, walkCostPerMeter: 0,
-  pickPerHour: 6, eatPerHour: 12, digestPerHour: 0.5, digestYield: 0.8, wearPerHour: 0, homeX: 1, homeY: 0,
+  pickPerHour: 6, eatPerHour: 12, digestPerHour: 0.5, digestYield: 0.8, wearPerHour: 0,
 };
 const FRUIT = (id: string) => ({ kind: 'spawn' as const, id, def: 'fruit', state: { attachedTo: 'tree' }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
 
@@ -51,7 +51,7 @@ describe('skeleton: 果実を採って食べて生きる', () => {
       expect(row['P2.alive']).toBe('yes');
     }
     for (const f of scenario.world.query((t) => 'edible' in t.attr)) {
-      expect(['tree', 'P1', 'P2']).toContain(state(f, 'attachedTo'));
+      expect(['tree', 'home', 'P1', 'P2']).toContain(state(f, 'attachedTo'));
     }
   });
 
@@ -142,14 +142,57 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
     expect(rel['tree']!['x']).toBe(40);
     expect(rel['tree']!['at']).toBe(0);
   });
+
+  it('家は事物で、自分の家は関係の印。持ち物は家へしまえ、家から採るのは木から採るのと同じ法則', () => {
+    const { world } = buildFruitScenario();
+    expect(world.thing('home')!.attr['stores']).toBe(true);
+    expect('homeX' in world.thing('P1')!.attr).toBe(false);
+    world.run(6 * HOUR, DT); // 木へ行って 3 個採り、家へ戻る
+    const p = world.thing('P1')!;
+    expect(p.rel['home']!['home']).toBe(true); // 印は知覚の写し直しで消えない
+    expect(p.rel['home']!['x']).toBe(0); // 位置は知覚で写る
+    expect(stateNum(p, 'x')).toBeLessThan(2);
+    expect(edibleOn(world, 'P1').length).toBe(3);
+    world.seed({ kind: 'intend', person: 'P1', intent: 'stow', target: 'home' }); // しまう（一刻みに 1 個）
+    world.tick(DT);
+    expect(edibleOn(world, 'home').length).toBe(1);
+    expect(edibleOn(world, 'P1').length).toBe(2);
+    expect(flows(world, 'stow').length).toBe(1);
+    world.seed({ kind: 'intend', person: 'P1', intent: 'pick', target: 'home' }); // 家から採るのは木から採るのと同じ法則
+    world.tick(DT);
+    expect(edibleOn(world, 'home').length).toBe(0);
+    expect(edibleOn(world, 'P1').length).toBe(3);
+    expect(flows(world, 'pick').some((e) => 'effect' in e && e.effect.kind === 'reassign' && e.effect.from === 'home')).toBe(true);
+    // 置ける札（stores）の無い相手にはしまえない
+    const w = twoPickersOneFruit();
+    w.tick(DT); // A が採る
+    w.seed({ kind: 'intend', person: 'A', intent: 'stow', target: 'tree' });
+    w.tick(DT);
+    expect(edibleOn(w, 'A').length).toBe(1);
+    expect(flows(w, 'stow').length).toBe(0);
+  });
+
+  it('録画: 初期状態と記録から再生した世界は、走らせた世界と同じ状態・同じ記録になる。法則と心は要らない', () => {
+    const { scenario, initial } = runFruitDays(5, { persons: 2 });
+    const live = scenario.world;
+    const replayed = replayFruit(initial, live.ledger, live.now);
+    const dump = (w: World) => JSON.stringify(w.query(() => true));
+    expect(dump(replayed)).toBe(dump(live));
+    expect(replayed.now).toBe(live.now);
+    const withoutSeed = live.ledger.filter((e) => !('law' in e && e.law === 'seed'));
+    expect(JSON.stringify(replayed.ledger)).toBe(JSON.stringify(withoutSeed));
+    // 途中の時刻 t で止めれば、そこまで走らせた世界と同じ
+    const mid = replayFruit(initial, live.ledger, 2 * DAY);
+    expect(dump(mid)).toBe(dump(runFruitDays(2, { persons: 2 }).scenario.world));
+  });
 });
 
 describe('skeleton: 物理層はすべての事物の組に法則を当てる', () => {
   it('刻みごとに（事物の数）² の組を調べ、絞り込みを切れば法則はその全組に当てられる', () => {
-    const { world } = buildFruitScenario({ allPairs: true }); // 自然、木、人、実6 = 9 事物、法則 7
+    const { world } = buildFruitScenario({ allPairs: true }); // 自然、木、家、人、実6 = 10 事物、法則 8
     world.tick(DT);
-    expect(world.stats.pairChecks).toBe(9 * 9);
-    expect(world.stats.pairEvaluations).toBe(9 * 9 * fruitLaws.length);
+    expect(world.stats.pairChecks).toBe(10 * 10);
+    expect(world.stats.pairEvaluations).toBe(10 * 10 * fruitLaws.length);
   });
 
   it('影響範囲にある組だけに法則を当てても、記録は全組に当てたときと同一になる（結果を変えない最適化）', () => {

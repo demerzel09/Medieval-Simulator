@@ -5,7 +5,7 @@
 // 情報層: 観測を集め、関係（心象）との差を事象（現れた・消えた）にし、心が意図を定め、死亡を確定する。
 // 値を変える経路はこのファイルの apply だけである。属性には書く経路が無い。
 
-import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingDef, ThingId, ThingSnapshot, WorldView } from './types.js';
+import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
 
 interface ThingRecord {
   id: ThingId;
@@ -301,19 +301,21 @@ export class World implements WorldView {
         self.state['targetY'] !== (intent.targetY ?? 0);
       if (!changed) continue;
       this.apply({ kind: 'intend', person, ...intent });
-      this.ledger.push({ at: this.now, event: 'intend', person, intent: intent.intent, target: intent.target });
+      this.ledger.push({ at: this.now, event: 'intend', person, intent: intent.intent, target: intent.target, targetX: intent.targetX, targetY: intent.targetY });
     }
     // 死亡の確定: 生きている（状態 alive）事物の栄養（資源）が尽きたら、世界が確定する。
     for (const t of this.things.values()) {
-      if (t.state['alive'] === 'yes' && typeof t.res['nutrition'] === 'number' && t.res['nutrition'] <= 1e-9) {
-        this.setState(t.id, 'alive', 'no');
-        this.setState(t.id, 'intent', 'none');
-        this.ledger.push({ at: this.now, event: 'death', person: t.id });
-      }
+      if (t.state['alive'] === 'yes' && typeof t.res['nutrition'] === 'number' && t.res['nutrition'] <= 1e-9) this.die(t.id);
     }
 
     // 3. 時刻。
     this.now += dt;
+  }
+
+  private die(id: ThingId): void {
+    this.setState(id, 'alive', 'no');
+    this.setState(id, 'intent', 'none');
+    this.ledger.push({ at: this.now, event: 'death', person: id });
   }
 
   /** 組を数える順。結果は変わらない（検査用に逆順・乱順を選べる）。 */
@@ -460,6 +462,58 @@ export class World implements WorldView {
     while (this.now + 1e-9 < until) this.tick(Math.min(dt, until - this.now));
   }
 
+  // ---- 録画と再生 ----
+
+  /** 世界の写し（録画の初期状態）。定義と事物の値の深い複製。場面を組み立てた直後に取る。 */
+  save(): WorldState {
+    return JSON.parse(JSON.stringify({ now: this.now, defs: [...this.defs.values()], things: [...this.things.values()], spawnSeq: Object.fromEntries(this.spawnSeq) }));
+  }
+
+  /** 写しから世界を作る。法則・感覚・心は入らない（コードなので、要るものを登録し直す）。 */
+  static load(s: WorldState, options: WorldOptions = {}): World {
+    const w = new World(options);
+    w.now = s.now;
+    for (const d of s.defs) w.addDef(d);
+    for (const t of s.things) w.addThing(t.id, t.kind, t);
+    for (const [k, n] of Object.entries(s.spawnSeq)) w.spawnSeq.set(k, n);
+    return w;
+  }
+
+  /**
+   * 再生。初期状態から load した世界に、記録を刻みごとに適用し直して時刻 until の状態を再現する。
+   * 法則と心は要らない。流れ（物理層）と意図（心の選択）は記録にあるので、そのまま適用する。
+   * 感覚は要る。心象の刻みごとの写し直し（いつ見たか、位置、鮮度）は事象ではなく記録に無いので、知覚は世界の真実から計算し直す。
+   * 現れた・消えた・死亡は、その結果として同じに出る。初期状態より前の記録と seed（初期状態に含まれる）は飛ばす。
+   */
+  replay(ledger: LedgerEntry[], dt: number, until: number): void {
+    let i = 0;
+    while (i < ledger.length && ledger[i]!.at < this.now - 1e-9) i++;
+    while (this.now + 1e-9 < until) {
+      this.stats.ticks += 1;
+      let j = i;
+      while (j < ledger.length && ledger[j]!.at <= this.now + 1e-9) j++;
+      const entries = ledger.slice(i, j);
+      i = j;
+      // 1. 物理層: 記録の流れを記録の順に適用する（正規の順で記録されているので、同じ結果になる）。
+      for (const e of entries) {
+        if (!('law' in e) || e.law === 'seed') continue;
+        const applied = this.apply(e.effect);
+        if (applied !== 0) this.ledger.push({ at: this.now, law: e.law, a: e.a, b: e.b, effect: e.effect, applied });
+      }
+      // 2. 情報層: 知覚を計算し直し、記録の意図と死亡を適用する。
+      this.perceive();
+      for (const e of entries) {
+        if (!('event' in e)) continue;
+        if (e.event === 'intend') {
+          this.apply({ kind: 'intend', person: e.person, intent: e.intent, target: e.target, targetX: e.targetX, targetY: e.targetY });
+          this.ledger.push({ ...e, at: this.now });
+        } else if (e.event === 'death') this.die(e.person);
+      }
+      // 3. 時刻。
+      this.now += Math.min(dt, until - this.now);
+    }
+  }
+
   /** 初期状態を作る。場面の構築時だけに使い、記録に残す。 */
   seed(effect: Effect | InfoEffect): number {
     const applied = this.apply(effect);
@@ -545,7 +599,8 @@ export class World implements WorldView {
         if (!observer || !about) return 0;
         const pos = this.positionOf(e.about);
         if (!pos) return 0;
-        const entry: Relation = { at: this.now, x: pos.x, y: pos.y };
+        // 写す値は上書きし、知覚が写さない値（自分の家の印、相手への favor）は残す。
+        const entry: Relation = { ...observer.rel[e.about], at: this.now, x: pos.x, y: pos.y };
         for (const f of e.fields) {
           const v = about.attr[f] ?? about.state[f] ?? about.res[f];
           if (v !== undefined) entry[f] = v;

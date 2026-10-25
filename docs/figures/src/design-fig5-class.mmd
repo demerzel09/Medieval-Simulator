@@ -9,6 +9,9 @@ classDiagram
     ledger: LedgerEntry[]
     tick(dt)
     apply(effect)
+    save() WorldState
+    load(state) World
+    replay(ledger, dt, until)
   }
   class ThingRecord {
     id, kind

@@ -126,8 +126,20 @@ export type LedgerEntry =
   | { at: number; law: string; a: ThingId; b: ThingId; effect: Effect; applied: number }
   | { at: number; event: 'appear'; person: ThingId; about: ThingId; kind: string }
   | { at: number; event: 'vanish'; person: ThingId; about: ThingId }
-  | { at: number; event: 'intend'; person: ThingId; intent: string; target?: ThingId }
+  | { at: number; event: 'intend'; person: ThingId; intent: string; target?: ThingId; targetX?: number; targetY?: number }
   | { at: number; event: 'death'; person: ThingId };
+
+/**
+ * 世界の写し（録画の初期状態）。定義と事物の値をそのまま持つ。World.save が作り、World.load が世界に戻す。
+ * 録画は、この写しと、その時刻以後の記録（LedgerEntry の列）の組である。
+ */
+export interface WorldState {
+  now: number;
+  defs: ThingDef[];
+  things: { id: ThingId; kind: string; attr: Record<string, Scalar>; state: State; rel: Relations; res: Resources }[];
+  /** 生む側ごとの採番の続き。再生のあとに走らせ続けるときに要る。 */
+  spawnSeq: Record<string, number>;
+}
 
 /** 心: 自分の写し（関係＝心象を含む）だけから、自分の意図を返す。世界の真実は見ない。 */
 export interface Mind {
