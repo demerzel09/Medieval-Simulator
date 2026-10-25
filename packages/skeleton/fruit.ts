@@ -4,7 +4,7 @@
 // 法則は事物の種類ではなく属性（札）の組で相手を選ぶ。札は属性の名の有無で表し、値が仕様になる。
 //   自然: sink（受け皿）、grows（育てる）。  木: bears=fruit（実をつける）。
 //   実:   edible=plant（食べられる、植物性）、perishable（腐る）、bond（結びつきの強さ。採るのに要る力）。
-//   人:   eats=plant（植物を食べる）、picks（採る）、grip（握る力）、dwells（住む）、mortal（死ぬ）、mind=forager（心の種類）、sight・reach・smell（範囲）。
+//   人:   eats=plant（植物を食べる）、picks（採る）、grip（握る力）、workPerHour（加工する速さ。grain.ts）、dwells（住む）、mortal（死ぬ）、mind=forager（心の種類）、sight・reach・smell（範囲）。
 //   家:   stores（物を置ける）。 刃物: cuts（切る力。人に付けると握る力に足される）。
 // 行為の成否は物理が決める。願望と予測は心象、提供した運動は意図と身体の能力、結果は法則と解決、結果の知覚で心象が更新される。
 // 場面の構築は、定義・法則・感覚・心の種類を登録して事物を置くだけで、事物ごとの設定はしない。どの家が自分の家かは人が法則 settle で得る関係
@@ -12,7 +12,7 @@
 // 札は資源の有無では代用しない。鮮度の受け皿である自然も資源 freshness を持つので、資源の有無で「腐る物」を選ぶと自然自身に腐敗が当たる。
 // 数値はすべて仮の比較条件であり、校正値ではない。
 
-import type { Effect, Law, LedgerEntry, Mind, Relation, Scalar, Sense, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
+import type { Effect, Law, LedgerEntry, Mind, Relation, Relations, Scalar, Sense, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
 import { World, type WorldOptions } from './world.js';
 
 export const MINUTE = 1;
@@ -82,6 +82,7 @@ export const personDef: ThingDef = {
     digestPerHour: 0.5,
     digestYield: 0.8,
     wearPerHour: 0.1,
+    workPerHour: 1,
     dwells: true,
     mortal: true,
     mind: 'forager',
@@ -102,13 +103,14 @@ export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, knifeDef, pe
 /** (育てる, 実をつける): 実る。育ちが自然から木へ移り、1 たまるごとに、上限まで、bears が指す定義の事物が木に生まれる。量は自然の蓄えから引く。 */
 export const ripen: Law = {
   id: 'ripen',
-  version: 'defs-1',
+  version: 'defs-2',
   pair: (a, b, dt, w) => {
     if (!has(a, 'grows') || typeof b.attr['bears'] !== 'string') return [];
     const rate = attr(b, 'ripenPerHour') / HOUR; // 実/分
     const effects: Effect[] = [{ kind: 'transfer', res: 'growth', from: a.id, to: b.id, amount: rate * dt }];
     // 刻みの始めにたまっている育ちで生むかを決める。この刻みの流入は次の刻みに効く（同期更新）。
-    const room = Math.max(0, attr(b, 'cap') - edibleOn(w, b.id).length);
+    // 上限は付いている物すべてで数える（食べられる物だけで数えると、穀物のように食べられない物を生む畑は上限なく生む）。
+    const room = Math.max(0, attr(b, 'cap') - w.query((t) => state(t, 'attachedTo') === b.id).length);
     const whole = Math.min(Math.floor(res(b, 'growth') + 1e-9), room);
     for (let i = 0; i < whole; i++) {
       effects.push({ kind: 'convert', from: b.id, fromRes: 'growth', amount: 1, to: a.id, toRes: 'growthSpent', produced: 1, lossTo: a.id, lossRes: 'growthSpent' });
@@ -258,8 +260,11 @@ export const fruitLaws: Law[] = [walk, pick, stow, give, eat, digest, wear, star
 
 // ---- 情報層の感覚 ----
 
-/** 心象に写す値の名。属性（札）、状態、資源から。見える範囲を写すのは、覚えている物が見えるはずかを後で判定するため。 */
-const SEEN_FIELDS = ['edible', 'bears', 'stores', 'visibility', 'attachedTo', 'freshness'];
+/**
+ * 心象に写す値の名。種類の名（kind）、属性（札）、状態、資源から。見える範囲を写すのは、覚えている物が見えるはずかを後で判定するため。
+ * 種類の名を見分けても、それが何に変わるかは見えない（心象の種類の知識 `kind:名` による）。
+ */
+const SEEN_FIELDS = ['kind', 'edible', 'bears', 'stores', 'hearth', 'visibility', 'attachedTo', 'freshness'];
 
 /** 視界。観測者の sight と対象の visibility の小さい方の内側なら見える。自分に付いた物は常に分かる。位置の無い物（自然）は見る対象ではない。 */
 export const sight: Sense = {
@@ -284,12 +289,22 @@ export const sight: Sense = {
 
 const relNum = (e: Relation, k: string): number => (typeof e[k] === 'number' ? (e[k] as number) : 0);
 
+/** 種類についての知識の関係の名の頭。`kind:grain` は「穀物という種類」についての心象。 */
+export const KIND = 'kind:';
+/** 心象の種類の知識で、種類 kind が加工の先で食べ物（札 edible）になるか。そのまま食べられる物は含めない。 */
+const becomesFood = (k: Relations, kind: Scalar | undefined, depth = 0): boolean => {
+  const next = typeof kind === 'string' && depth < 8 ? k[KIND + kind]?.['becomes'] : undefined;
+  return typeof next === 'string' && ('edible' in (k[KIND + next] ?? {}) || becomesFood(k, next, depth + 1));
+};
+
 /**
  * 採取者: 木の場所も家の場所も知らない。視界に入って心象（関係）に写った物から選ぶ。
  * 家が無ければ、知っている置ける物（札 stores）のうち最も近いものに住む（意図 settle。法則が関係 home を書く）。
  * 空腹で実を持っていれば食べ、手持ちが目標未満なら実の付いた木へ行って採り、足りれば家へ戻る。実は手に持ったままで、家にはしまわない
  * （しまう心にすると、二人で一本の木では先の一人の蓄えが循環から外れ、もう一人が 19 日目に死んだ。DESIGN「骨格を動かして分かったこと」）。
- * 入力は自分の写し、出力は有限の行為（idle・move・settle・pick・stow・eat）の一つ。細かい行動原理は後に学習で探す。
+ * 実が見つからなければ、心象の種類の知識（`kind:名`）で加工すれば食べ物になると分かる物を採り、知識が示す場所（札）で加工する。
+ * 知識が無ければ、その物はただの物で、心は選ばない（同じ心で、心象の違いだけが行動を分ける）。
+ * 入力は自分の写し、出力は有限の行為（idle・move・settle・pick・stow・eat・process）の一つ。細かい行動原理は後に学習で探す。
  */
 export class ForagerMind implements Mind {
   constructor(
@@ -322,8 +337,18 @@ export class ForagerMind implements Mind {
         .sort((p, q) => dist(p.e) - dist(q.e));
       const withFruit = trees.find((t) => t.fruits >= 1);
       if (withFruit) return near(withFruit.e) ? { intent: 'pick', target: withFruit.id } : goTo(withFruit.id, withFruit.e);
-      // 実が見えていない木へ近づいて確かめる（木を辿る）。手の届く所まで来ても実が無ければ待つ。
-      const unknown = trees.find((t) => !near(t.e));
+      // 加工すれば食べ物になると知っている物。手持ちと合わせて目標未満なら採り、持っていれば知識が示す場所で一つずつ加工する。
+      const raw = (holder: ThingId) => Object.entries(k).filter(([, e]) => e['attachedTo'] === holder && becomesFood(k, e['kind']));
+      const rawHeld = raw(me);
+      const source = holding + rawHeld.length < this.target ? trees.find((t) => raw(t.id).length >= 1) : undefined;
+      if (source) return near(source.e) ? { intent: 'pick', target: source.id } : goTo(source.id, source.e);
+      const [item, itemSeen] = rawHeld[0] ?? [];
+      const at = itemSeen ? k[KIND + String(itemSeen['kind'])]?.['at'] : undefined;
+      const station = typeof at === 'string' ? Object.entries(k).filter(([, e]) => at in e && 'x' in e).sort(([, p], [, q]) => dist(p) - dist(q))[0] : undefined;
+      if (item && station) return near(station[1]) ? { intent: 'process', target: item } : goTo(station[0], station[1]);
+      // 実が見えていない木へ近づいて確かめる（木を辿る）。確かめに向かっている木は着くまで替えない（刻みごとに最寄りを選び直すと、
+      // 二つの木の中間で向きを変え続けて動けなくなる）。手の届く所まで来ても実が無ければ待つ。
+      const unknown = trees.find((t) => state(self, 'intent') === 'move' && state(self, 'target') === t.id && !near(t.e)) ?? trees.find((t) => !near(t.e));
       if (unknown) return goTo(unknown.id, unknown.e);
       return { intent: 'idle' }; // 木を知らなければ探索が要るが、未実装。
     }
@@ -463,7 +488,7 @@ export function replayFruit(initial: WorldState, ledger: LedgerEntry[], until: n
   return w;
 }
 
-/** 保存則の検査に使う資源の総量: 自然の実の蓄え＋付いている実の量＋胃＋栄養＋廃棄＋自然へ移った栄養。 */
+/** 保存則の検査に使う資源の総量: 自然の実の蓄え＋生まれた物の量（実、穀物、粥）と加工済みの量＋胃＋栄養＋廃棄＋自然へ移った栄養。 */
 export function massTotal(w: World): number {
-  return w.total('fruitStock') + w.total('quantity', (t) => has(t, 'edible')) + w.total('stomach') + w.total('nutrition') + w.total('waste');
+  return w.total('fruitStock') + w.total('quantity') + w.total('processed') + w.total('stomach') + w.total('nutrition') + w.total('waste');
 }

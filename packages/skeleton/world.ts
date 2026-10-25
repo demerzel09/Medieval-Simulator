@@ -117,11 +117,11 @@ export class World implements WorldView {
   }
 
   /** 定義を解決する。親の既定値の上に自分の値を重ねる（属性・状態・資源それぞれ名ごとに上書き）。 */
-  def(name: string): { attr: Record<string, Scalar>; state: State; res: Resources } {
+  def(name: string): { attr: Record<string, Scalar>; state: State; res: Resources; rel: Relations } {
     const d = this.defs.get(name);
     if (!d) throw new Error(`unknown def ${name}`);
-    const base = d.parent !== undefined ? this.def(d.parent) : { attr: {}, state: {}, res: {} };
-    return { attr: { ...base.attr, ...(d.attr ?? {}) }, state: { ...base.state, ...(d.state ?? {}) }, res: { ...base.res, ...(d.res ?? {}) } };
+    const base = d.parent !== undefined ? this.def(d.parent) : { attr: {}, state: {}, res: {}, rel: {} };
+    return { attr: { ...base.attr, ...(d.attr ?? {}) }, state: { ...base.state, ...(d.state ?? {}) }, res: { ...base.res, ...(d.res ?? {}) }, rel: { ...base.rel, ...(d.rel ?? {}) } };
   }
 
   /** 定義から事物を作る（初期配置）。overrides は生成時だけの上書きで、属性もここでなら決められる（以後は凍結）。 */
@@ -130,7 +130,7 @@ export class World implements WorldView {
     this.addThing(id, name, {
       attr: { ...d.attr, ...(overrides.attr ?? {}) },
       state: { ...d.state, ...(overrides.state ?? {}) },
-      rel: { ...(overrides.rel ?? {}) },
+      rel: { ...d.rel, ...(overrides.rel ?? {}) },
       res: { ...d.res, ...(overrides.res ?? {}) },
     });
   }
@@ -548,7 +548,7 @@ export class World implements WorldView {
         if (have < e.amount) return 0;
         const d = this.def(e.def);
         this.setRes(e.from, e.fromRes, have - e.amount);
-        this.things.set(e.id, { id: e.id, kind: e.def, attr: Object.freeze({ ...d.attr }), state: { ...d.state, ...(e.state ?? {}) }, rel: {}, res: { ...d.res, quantity: e.amount } });
+        this.things.set(e.id, { id: e.id, kind: e.def, attr: Object.freeze({ ...d.attr }), state: { ...d.state, ...(e.state ?? {}) }, rel: { ...d.rel }, res: { ...d.res, quantity: e.amount } });
         this.touched.add(e.id);
         this.attachMind(e.id);
         return e.amount;
@@ -605,7 +605,8 @@ export class World implements WorldView {
         // 写す値は上書きし、知覚が写さない値（自分の家の印など、相互作用で得た関係）は残す。
         const entry: Relation = { ...observer.rel[e.about], at: this.now, x: pos.x, y: pos.y };
         for (const f of e.fields) {
-          const v = about.attr[f] ?? about.state[f] ?? about.res[f];
+          // kind は種類の名（定義の名）。見分けることも知覚に含める。法則は読まない。
+          const v = f === 'kind' ? about.kind : (about.attr[f] ?? about.state[f] ?? about.res[f]);
           if (v !== undefined) entry[f] = v;
         }
         this.setRel(e.observer, { ...observer.rel, [e.about]: entry });

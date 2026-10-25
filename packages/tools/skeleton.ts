@@ -8,8 +8,9 @@
 //         --ledger で記録の先頭 200 件も表示
 //         --replay で、初期状態と記録から再生した世界が走らせた世界と同じかを確かめる（法則と心を使わない再生）
 //         --placed で、置くだけの村（家 3・木 3・採取者 5 を任意の座標に。構築関数の配置によらない）を走らせる
+//         --grain で、実の足りない木と穀物の畑と炉（間接さの段 2）。--knows を足すと、穀物が炉で粥になると知っている人（違いは心象の知識だけ）
 
-import { runFruitDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
+import { runFruitDays, runGrainDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
 
 const args = process.argv.slice(2);
 const days = Number(args.find((a) => /^\d+$/.test(a)) ?? '3');
@@ -25,10 +26,22 @@ const pairOrder = (valueOf('order') ?? 'sorted') as 'sorted' | 'reverse' | 'shuf
 
 const started = performance.now();
 const placed = args.includes('--placed');
-const run = placed ? runPlaced(days) : runFruitDays(days, { persons, ripenPerHour, sight, allPairs, pairOrder });
+const grain = args.includes('--grain');
+const knows = args.includes('--knows');
+const run = placed
+  ? runPlaced(days)
+  : grain
+    ? runGrainDays(days, { knows, treeRipenPerHour: valueOf('ripen') !== undefined ? ripenPerHour : undefined })
+    : runFruitDays(days, { persons, ripenPerHour, sight, allPairs, pairOrder });
 const { scenario, daily, initial } = run;
 const elapsed = performance.now() - started;
-console.log(placed ? `# placed village: 3 homes, 3 trees, 5 foragers, dt 10min` : `# fruit: ${persons} forager(s), ripen ${ripenPerHour}/h, sight ${sight}m, dt 10min`);
+console.log(
+  placed
+    ? `# placed village: 3 homes, 3 trees, 5 foragers, dt 10min`
+    : grain
+      ? `# grain: scarce tree, field, hearth, 1 ${knows ? 'farmer (knows grain becomes gruel at a hearth)' : 'forager (no knowledge of grain)'}, dt 10min`
+      : `# fruit: ${persons} forager(s), ripen ${ripenPerHour}/h, sight ${sight}m, dt 10min`,
+);
 for (const row of daily) console.log(JSON.stringify(row));
 if (placed) {
   for (const p of scenario.persons) {

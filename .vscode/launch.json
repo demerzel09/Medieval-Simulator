@@ -56,6 +56,17 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npx vitest run tests/skeleton.test.ts"
     },
     {
+      "name": "骨格: 穀物の段（CLI、知らない人と知っている人）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "00 骨格（現在）",
+        "order": 5
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run skeleton -- 30 --grain && PATH=\"$HOME/.local/node/bin:$PATH\" npm run skeleton -- 30 --grain --knows"
+    },
+    {
       "name": "自律: デバッグ画面（最新 v24）",
       "type": "node-terminal",
       "request": "launch",

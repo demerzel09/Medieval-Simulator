@@ -35,6 +35,11 @@ export interface ThingDef {
   attr?: Record<string, Scalar>;
   state?: State;
   res?: Resources;
+  /**
+   * 生まれたときに持つ関係。相手は事物でなく種類のときもあり、その場合の名は `kind:種類の名`（種類についての知識。例: 穀物は炉で粥になる）。
+   * 知識を生まれつき持たせるか、教わるか、経験で得るかは未決で、いまは定義に置く（学習で探す対象）。
+   */
+  rel?: Relations;
 }
 
 /** 事物の読み取り専用の写し。 */
@@ -83,7 +88,7 @@ export type Effect =
  * 情報層の効果: 関係（心象）と状態（意図）を変える。世界の事象の処理と心だけが使い、法則は返さない。
  */
 export type InfoEffect =
-  /** 知覚: 対象の値（属性・状態・資源のうち fields の名）と位置を、観測者の関係 rel[about] に写す。対象側の変化はゼロ。 */
+  /** 知覚: 対象の値（属性・状態・資源のうち fields の名。kind は種類の名）と位置を、観測者の関係 rel[about] に写す。対象側の変化はゼロ。 */
   | { kind: 'inform'; observer: ThingId; about: ThingId; fields: string[] }
   /** 消えた: 見えるはずの場所に無いと確かめた事物を関係から消す。 */
   | { kind: 'forget'; observer: ThingId; about: ThingId }
@@ -101,7 +106,7 @@ export interface WorldView {
   /** 範囲の種類ごとの判定。sight は観測者の視界と対象の見える範囲、reach は手の届く範囲、smell は匂い。属性で決まる。 */
   inRange(kind: 'sight' | 'reach' | 'smell', subject: ThingId, object: ThingId): boolean;
   /** 種類の定義を、親の既定値を継いで解決した形で返す。 */
-  def(name: string): { attr: Record<string, Scalar>; state: State; res: Resources };
+  def(name: string): { attr: Record<string, Scalar>; state: State; res: Resources; rel: Relations };
 }
 
 /**

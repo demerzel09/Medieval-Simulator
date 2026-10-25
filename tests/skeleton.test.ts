@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, buildFruitScenario, buildPlacedScenario, runFruitDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, DAY, DT, HOUR } from '../packages/skeleton/index.js';
+import { World, buildFruitScenario, buildPlacedScenario, buildGrainScenario, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
 import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
@@ -176,7 +176,7 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
     }
     const dead = persons.filter((p) => state(world.thing(p), 'alive') === 'no');
     expect(flows(world, 'starve').length).toBe(dead.length); // 死亡はすべて法則 starve の効果
-    expect(persons.length - dead.length).toBeGreaterThanOrEqual(1); // 生存者数は比較条件（2026-10-25 は 2 人）で、心を変えれば変わる
+    expect(persons.length - dead.length).toBeGreaterThanOrEqual(1); // 生存者数は比較条件で、心を変えれば変わる（2026-10-25 は 2 人、確かめに向かう木を着くまで替えない心にして 4 人）
     const fresh = buildPlacedScenario().world;
     expect(massTotal(world)).toBeCloseTo(massTotal(fresh), 6); // 保存則は配置によらない
   });
@@ -445,5 +445,67 @@ describe('skeleton: 心は意図だけを定め、死亡は法則が決める', 
     expect(state(w.thing('I'), 'alive')).toBe('yes');
     w.tick(DT);
     expect(flows(w, 'wear').filter((e) => 'a' in e && e.a === 'P').length).toBe(1); // 死後は消耗しない
+  });
+});
+
+describe('skeleton: 間接さの段 2（穀物を自分で加工して食べる）', () => {
+  it('加工: 炉の手の届く所で手に持った穀物は、量 × 札 work の時間で粥になる。炉が遠ければ進まない。穀物は食べられず、量は保存される', () => {
+    const w = grainWorld();
+    place(w, [
+      { id: 'hearth', def: 'hearth', x: 0, y: 1 },
+      { id: 'field', def: 'field', x: 5, y: 0, attr: { ripenPerHour: 0 } },
+      { id: 'P', def: 'person', x: 0, y: 0 },
+      { id: 'Q', def: 'person', x: 50, y: 0 },
+    ]);
+    for (const id of ['g#1', 'g#2']) w.seed({ kind: 'spawn', id, def: 'grain', state: { attachedTo: id === 'g#1' ? 'P' : 'Q' }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
+    const before = massTotal(w);
+    const hold = (person: string, intent: string) => w.seed({ kind: 'intend', person, intent, target: person === 'P' ? 'g#1' : 'g#2' });
+    hold('P', 'eat');
+    w.tick(DT);
+    expect(w.thing('g#1')).toBeDefined(); // 札 edible が無いので食べられない
+    for (let i = 0; i < 7; i++) {
+      hold('P', 'process');
+      hold('Q', 'process'); // 炉が手の届く範囲に無い
+      w.tick(DT);
+    }
+    // 1 時間（6 刻み）で量が加工済みへ移り、次の刻みに粥が生まれて穀物が消える
+    expect(w.thing('g#1')).toBeUndefined();
+    const gruel = w.query((t) => t.kind === 'gruel' && t.state['attachedTo'] === 'P');
+    expect(gruel.length).toBe(1);
+    expect(gruel[0]!.res['quantity']).toBeCloseTo(1, 9);
+    expect(edibleOn(w, 'P').length).toBe(1);
+    expect(res(w.thing('g#2'), 'quantity')).toBe(1);
+    expect(massTotal(w)).toBeCloseTo(before, 9);
+  });
+
+  it('畑は木と同じ法則で穀物を生み、上限は付いている物すべてで数える（食べられない物でも上限で止まる）', () => {
+    const w = grainWorld();
+    place(w, [{ id: 'field', def: 'field', x: 0, y: 0 }]);
+    w.run(10 * DAY, DT);
+    expect(w.query((t) => t.state['attachedTo'] === 'field').length).toBe(12);
+  });
+
+  it('同じ心で、穀物が炉で粥になると知らない人は実が足りずに死に、知っている人は穀物を加工して 30 日生きる。差は心象の種類の知識だけ', () => {
+    const naive = buildGrainScenario({ knows: false });
+    const farmer = buildGrainScenario({ knows: true });
+    const p0 = naive.world.thing('P1')!;
+    const p1 = farmer.world.thing('P1')!;
+    expect(p1.attr).toEqual(p0.attr); // 札・仕様・心の種類は同じ
+    expect(p0.rel).toEqual({});
+    expect(p1.rel[`${KIND}grain`]).toEqual({ becomes: 'gruel', at: 'hearth' }); // 違いは定義が与える種類の知識だけ
+    const initial = farmer.world.save();
+    naive.world.run(15 * DAY, DT);
+    farmer.world.run(30 * DAY, DT);
+    const processed = (w: World) => flows(w, 'process').filter((e) => 'effect' in e && e.effect.kind === 'spawn').length;
+    expect(state(naive.world.thing('P1'), 'alive')).toBe('no');
+    expect(processed(naive.world)).toBe(0);
+    expect(naive.world.query((t) => t.kind === 'grain').length).toBeGreaterThan(0); // 穀物は畑にあった
+    expect(Object.values(naive.world.thing('P1')!.rel).some((e) => e['kind'] === 'grain')).toBe(true); // 見てはいた
+    expect(state(farmer.world.thing('P1'), 'alive')).toBe('yes');
+    expect(processed(farmer.world)).toBeGreaterThan(60);
+    expect(massTotal(farmer.world)).toBeCloseTo(massTotal(buildGrainScenario({ knows: true }).world), 6);
+    // 加工（生む・消す）も記録から同じに再生できる
+    const replayed = replayFruit(initial, farmer.world.ledger, 3 * DAY);
+    expect(JSON.stringify(replayed.query(() => true))).toBe(JSON.stringify(runGrainDays(3, { knows: true }).scenario.world.query(() => true)));
   });
 });
