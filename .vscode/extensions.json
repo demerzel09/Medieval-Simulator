@@ -1,0 +1,6 @@
+{
+  // Mermaid をプレビューに描画する拡張は一つにする。複数入っていると同じブロックを取り合い、プレビューが空白になる。
+  // 設計文書の図は描画済みの SVG 画像（docs/figures/*.svg）なので、Mermaid 拡張が無くても見える。
+  "recommendations": ["bierner.markdown-mermaid"],
+  "unwantedRecommendations": ["mermaidchart.vscode-mermaid-chart", "vstirbu.vscode-mermaid-preview"]
+}

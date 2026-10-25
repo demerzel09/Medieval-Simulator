@@ -44,19 +44,8 @@
 
 図1はこの構造の更新である。刻み Δt ごとに、すべての事物の組（自分自身を含む）のうち影響範囲にある組へ法則を当て、両者の札（属性）で当たるかを決め、状態・資源・距離から流れを決め、速度 × Δt だけ両者の状態と資源を同時に変える。Unity の「毎フレーム、各 GameObject の Update(Δt)」の、「各 GameObject」を「影響範囲にある事物の組」に、「Update」を「法則」に置き換えた形である。資源のやり取りはすべてこの更新に収まり、物理層はこれで担保される。n 個の事物で n² の組があるが、影響範囲にない組は流れゼロなので、影響範囲にある組を求める段が結果を変えずに計算を減らす。
 
-```mermaid
-flowchart TD
-  C["時計: 刻み Δt ごとに<br/>World.tick(dt)"] --> O["すべての事物 O1 ... On<br/>ThingRecord: attr（凍結）, state, rel, res<br/>法則に渡すのは読み取り専用の写し ThingSnapshot"]
-  O --> P["すべての組 Oi と Oj<br/>i = j を含む。n × n 組<br/>tick の中の二重ループ orderedIds()"]
-  P --> S["影響範囲にあるか<br/>active(a, b): 距離と範囲の属性 rangeAttrs<br/>自分自身と、位置を持たない事物は常にある"]
-  S -->|"いいえ"| Z["流れゼロ。何も起きない"]
-  S -->|"はい"| L["要求: Law.pair(a, b, dt) が<br/>札の組で当たるかを決め、流れの要求 Effect を返す<br/>束 Bundle に集める"]
-  L --> F["解決と適用: resolve(bundles) が持ち主ごとに縮め<br/>可分は比例、不可分は優先 priority(owner, requester)<br/>scaleEffect → apply(effect) が一斉に書く。ledger に記録"]
-  F --> I["情報層: perceive() が Sense.observe / expected で<br/>現れた・消えた を関係 rel に写す<br/>Mind.decide(self) が意図（状態 intent）を返す。死亡の確定"]
-  Z --> I
-  I --> T["時刻を Δt 進める<br/>now += dt"]
-  T --> C
-```
+![図1　すべての事物の更新](figures/design-fig1-update.svg)
+<!-- 図の正本は figures/src/design-fig1-update.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 **問題の本質。** 世界は資源を供給する構造であり、供給は有限で、場所と時間に偏り、腐る。人物はその中に身体を持つ個体で、身体が生む需要を満たすために、限られた手段を不完全な心象に基づく予測で取得の作用へ配分して生きる。世界の資源の配分とは、どの事物のどの属性がどの値で、誰が保管しているかの分布であり、全人物と自然の作用の総和がそれを変える。不足・競合・死亡はそこから生じる。適応とは、実結果で心象を更新し、配分を変えることである。政治・戦争は、この配分を集団の規模で行う形にすぎない。
 
@@ -76,18 +65,8 @@ flowchart TD
 
 図2はこの関係である。作用の型が実例を定め、実例が二つの事物の状態と資源を同時に変え、事物の属性（札）と状態が実例の成立条件になる。
 
-```mermaid
-flowchart TD
-  T["作用の型<br/>属性ごとに決まる規則<br/>釣り合い・速度・条件・版<br/>REA 知識レベル、物理法則、ECS System"]
-  E["作用の実例<br/>二つの事物の間で双方向に起こる<br/>刻み Δt ごとの流れ、速度 × Δt<br/>REA 経済事象と duality<br/>Petri net の遷移、BFO の過程"]
-  X1["事物 A<br/>属性の束<br/>REA 経済資源、BFO 継続体"]
-  X2["事物 B<br/>属性の束"]
-  T -->|"実例を定める"| E
-  E -->|"資源を増やす"| X1
-  E -->|"資源を減らす"| X2
-  X1 -->|"札と状態が成立条件になる"| E
-  X2 -->|"札と状態が成立条件になる"| E
-```
+![図2　三つの中核の関係](figures/design-fig2-core.svg)
+<!-- 図の正本は figures/src/design-fig2-core.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 既存モデルの図は RESEARCH の[図A（REA の基本図）と図B（経済単位と協調空間）](RESEARCH.md#rea-figure)を使う。本書では再掲しない。
 
@@ -151,29 +130,8 @@ flowchart TD
 
 図1の各箱の最下行は、その段を担う実装の名である。図4は実装の構造で、クラス・データ・関数の関連を示す。場面と入口が `World` を組み立て、`World` が刻みごとに `tick` を回し、`tick` が `Law.pair`・`Sense.observe`・`Mind.decide` を呼び、法則は要求 `Effect` を返し、感覚と心は `inform`・`forget`・`intend` を返し、`apply` が `ThingRecord` の状態・関係・資源だけを書く。`ThingDef` は初期配置と `spawn` の雛形である。クラスは `World` と心の実装だけで、事物・定義・効果はデータ、法則・感覚はインターフェースを満たすオブジェクトである。
 
-```mermaid
-flowchart TD
-  SC["場面と入口<br/>fruit.ts: fruitDefs, fruitLaws, sight, ForagerMind, buildFruitScenario, runFruitDays<br/>tools/skeleton.ts（CLI）、apps/skeleton/main.ts（ブラウザ）"]
-  WD["World（クラス）<br/>持つ: things（ThingRecord の表）, defs（ThingDef の表）, laws, senses, minds, ledger, stats<br/>addDef / def / addFromDef / addLaw / addSense / addMind / seed"]
-  TK["tick(dt)（唯一の進行）<br/>orderedIds → active → Law.pair → Bundle<br/>resolve → Claim → 係数 → scaleEffect → apply → ledger<br/>perceive → Mind.decide → 死亡の確定 → now += dt"]
-  LW["Law（インターフェース）<br/>id, version, pair(a, b, dt, w): Effect の列<br/>実装: walk, pick, eat, digest, wear, ripen, rot"]
-  SN["Sense（インターフェース）<br/>observe(observer, object, w): 写す値の名<br/>expected(observer, remembered, w)<br/>実装: sight"]
-  MD["Mind（インターフェース）<br/>decide(self, now): 意図<br/>実装クラス: ForagerMind（rule）。NN・LLM・人間に替えられる"]
-  EF["Effect（データ）<br/>transfer, convert, reassign, spawn, despawn, move, use<br/>InfoEffect: inform, forget, intend"]
-  DF["ThingDef（データ）<br/>name, parent, attr, state, res<br/>実装: natureDef, treeDef, fruitDef, personDef"]
-  TR["ThingRecord（データ）<br/>id, kind, attr（凍結）, state, rel, res<br/>法則・感覚・心には写し ThingSnapshot を渡す"]
-  SC -->|"組み立てる"| WD
-  WD -->|"刻みごとに"| TK
-  TK -->|"組 (a, b) を渡す"| LW
-  TK -->|"観測を頼む"| SN
-  TK -->|"意図を頼む"| MD
-  LW -->|"要求として返す"| EF
-  SN -->|"inform / forget"| EF
-  MD -->|"intend"| EF
-  EF -->|"apply が書く（状態・関係・資源だけ）"| TR
-  DF -->|"初期配置と spawn の雛形"| TR
-  TK -->|"読む（写し）"| TR
-```
+![図4　実装の構造](figures/design-fig4-impl.svg)
+<!-- 図の正本は figures/src/design-fig4-impl.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 ### 世界の構造を示す三つの図（UML）
 
@@ -181,119 +139,18 @@ flowchart TD
 
 **図5 クラス図（何が何を持つか）。** 黒いひし形は所有（World が事物の表と定義の表を持つ）、白いひし形は登録（World が法則・感覚・心を持つが、それらは World の一部ではない）、実線の矢印は参照（事物が付属先の事物を指す、事物が相手ごとの関係＝心象を持つ）、点線は依存（法則は事物の写しを読んで要求を返す。心は自分の写しだけ読む）。心象は World の部品ではなく、各事物が相手ごとに持つ関係 `rel` である。
 
-```mermaid
-classDiagram
-  direction TB
-  class World {
-    things: Map~id, ThingRecord~
-    defs: Map~name, ThingDef~
-    laws: Law[]
-    senses: Sense[]
-    minds: Map~id, Mind~
-    ledger: LedgerEntry[]
-    tick(dt)
-    apply(effect)
-  }
-  class ThingRecord {
-    id, kind
-    attr 属性 凍結の札と仕様
-    state 状態
-    rel 関係 相手ごとの状態 心象
-    res 資源
-  }
-  class ThingDef {
-    name, parent
-    attr, state, res
-  }
-  class Law {
-    <<interface>>
-    id, version
-    pair(a, b, dt, w) Effect[]
-  }
-  class Sense {
-    <<interface>>
-    observe(observer, object, w)
-    expected(observer, remembered, w)
-  }
-  class Mind {
-    <<interface>>
-    decide(self, now) 意図
-  }
-  class ForagerMind
-  class Effect {
-    transfer, convert, reassign
-    spawn, despawn, move, use
-  }
-  World *-- "n" ThingRecord : things　持つ
-  World *-- "n" ThingDef : defs　持つ
-  World o-- "n" Law : laws　登録
-  World o-- "n" Sense : senses　登録
-  World o-- "n" Mind : minds　人物ごと
-  ThingRecord --> ThingRecord : state.attachedTo　付属。実→木、実→人
-  ThingRecord --> ThingRecord : rel　心象。相手ごとの状態
-  ThingDef --> ThingDef : parent　既定値を継ぐ
-  ThingDef ..> ThingRecord : 雛形　初期配置と spawn
-  Law ..> ThingRecord : 写しを読む
-  Law ..> Effect : 要求を返す
-  World ..> Effect : apply が状態・関係・資源に書く
-  Mind ..> ThingRecord : 自分の写しだけ読む
-  ForagerMind ..|> Mind
-```
+![図5　クラス図](figures/design-fig5-class.svg)
+<!-- 図の正本は figures/src/design-fig5-class.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 **図6 オブジェクト図（ある刻みの世界の実例）。** 二人の場面の 2 時間 10 分後（13 刻み目）の実際の値。世界は自然・木・二人・六つの実を持ち、実は付属先（attachedTo）で人に付き、人の関係 `rel` には見た木・相手・実が時刻と位置つきで写っている。心象は人の中にあり、世界の真実（左の箱）とは別の写しである。
 
-```mermaid
-flowchart LR
-  W["世界 World　時刻 2:10（13 刻み目）<br/>定義: nature, tree, fruit, person<br/>法則: walk, pick, eat, digest, wear, ripen, rot<br/>感覚: sight　心: P1, P2 に ForagerMind"]
-  N["nature（自然）<br/>属性 sink, grows, rotPerHour 1/16<br/>資源 fruitStock 99994, nutrition 0.5, freshness 0.81, waste 0"]
-  T["tree（木）<br/>属性 bears=fruit, visibility 300, cap 12, ripenPerHour 0.25<br/>状態 x 40, y 0<br/>資源 growth 0.54"]
-  F1["fruit#1, #2, #3（実）<br/>属性 edible=plant, perishable, visibility 30, odor 5<br/>状態 attachedTo = P1<br/>資源 freshness 1.86, quantity 1"]
-  F4["fruit#4, #5, #6（実）<br/>状態 attachedTo = P2<br/>資源 freshness 1.86, quantity 1"]
-  P1["P1（人）<br/>属性 eats=plant, picks, sight 60, reach 1.5, pickPerHour 6, eatPerHour 12, …<br/>状態 alive yes, x 0, y 0, intent idle<br/>資源 nutrition 5.74, stomach 0<br/>関係 rel（心象）: tree{at 120, x 40, bears}、P2{x 20}、fruit#1〜#6{attachedTo}"]
-  P2["P2（人）<br/>状態 alive yes, x 20, y 0, intent move, target home<br/>資源 nutrition 5.75, stomach 0<br/>関係 rel（心象）: tree、P1、fruit#1〜#6"]
-  W -->|"持つ"| N
-  W -->|"持つ"| T
-  W -->|"持つ"| P1
-  W -->|"持つ"| P2
-  F1 -->|"state.attachedTo"| P1
-  F4 -->|"state.attachedTo"| P2
-  P1 -->|"rel 心象"| T
-  P1 -->|"rel 心象"| F4
-  P2 -->|"rel 心象"| T
-```
+![図6　オブジェクト図](figures/design-fig6-object.svg)
+<!-- 図の正本は figures/src/design-fig6-object.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 **図7 シーケンス図（一刻みで誰が誰を呼ぶか）。** 主語はすべて `World.tick` である。法則・感覚・心は呼ばれて答えを返すだけで、自分からは何もしないし、何も書かない。事物の表を書くのは `apply` だけで、それも `tick` の中からしか呼ばれない。
 
-```mermaid
-sequenceDiagram
-  participant W as World.tick(Δt)
-  participant L as Law 法則
-  participant S as Sense 感覚
-  participant M as Mind 心
-  participant T as ThingRecord 事物の表
-  W->>T: 写し ThingSnapshot を取る（読むだけ）
-  W->>W: 全組を数え、active で影響範囲にある組に絞る
-  loop 法則 × 組 (a, b)
-    W->>L: pair(a の写し, b の写し, Δt)
-    L-->>W: 要求 Effect の列（無ければ空）
-  end
-  W->>W: resolve 持ち主ごとに縮める（比例・優先）
-  loop 束の効果
-    W->>T: apply 状態・関係・資源だけを書く。ledger に記録
-  end
-  loop 生きている事物 × 他の事物
-    W->>S: observe(観測者, 対象)
-    S-->>W: 写す値の名、または null
-    W->>T: apply(inform / forget) 観測者の rel（心象）
-  end
-  loop 心を持つ事物
-    W->>M: decide(自分の写し)
-    M-->>W: 意図
-    W->>T: apply(intend) 状態 intent
-  end
-  W->>T: 死亡の確定（栄養が尽きた生者）
-  W->>W: now += Δt
-```
+![図7　シーケンス図](figures/design-fig7-sequence.svg)
+<!-- 図の正本は figures/src/design-fig7-sequence.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 ### 実装に渡す語彙
 

@@ -49,49 +49,13 @@ Laurier・Poelsの *Invariant Conditions in Value System Simulation Models*（20
 
 **基本REA。** 経済資源、経済事象、経済主体の三つと、四つの関係からなる。stock-flow は資源と事象の関係で、事象が資源の流入か流出かを表す。duality は事象と事象の関係で、資源を得るには別の資源を手放すという対を表す。participation は事象と主体の関係で、from と to の二役を持つ。custody は主体と資源の関係で、保管を表す。定義は、経済資源が「主体の制御下にあり、主体から主体へ移転できる価値あるもの」、経済事象が「資源の制御の主体間の移転」、経済主体が「事象に参加できる者」。知識レベルには経済資源タイプ（資源の型）、経済コミットメント（将来の事象を行う義務。資源タイプを reserves し、事象に fulfils される）、経済契約（コミットメントの入れ物）、業務過程がある。出典は INTEROP プロジェクトの講義資料（[Johannesson 2006](https://people.dsv.su.se/~distans/INTEROP/INTEROPWP10/BMREAIntro.pdf)、教育目的の利用が許可されている。スライド6〜8、12、17、20）。
 
-```mermaid
-flowchart TB
-  RT["経済資源タイプ<br/>Economic Resource Type<br/>知識レベル"]
-  CM["経済コミットメント<br/>Economic Commitment<br/>将来の事象を行う義務"]
-  CT["経済契約<br/>Economic Contract<br/>コミットメントの入れ物"]
-  R["経済資源<br/>Economic Resource<br/>主体の制御下にあり、移転できる"]
-  E1["経済事象（増分）<br/>Economic Event"]
-  E2["経済事象（減分）<br/>Economic Event"]
-  A["経済主体<br/>Economic Agent<br/>事象に参加できる者"]
-  RT -->|"of（型）"| R
-  CM -->|"reserves（予約）"| RT
-  CM -->|"fulfils（履行）"| E1
-  CM -->|"within"| CT
-  R -->|"stock-flow（流入）"| E1
-  R -->|"stock-flow（流出）"| E2
-  E1 -->|"duality（双対性）"| E2
-  E1 -->|"participation（from / to）"| A
-  E2 -->|"participation（from / to）"| A
-  A -->|"custody（保管）"| R
-```
+![図A　REA の基本図](figures/research-figA-rea.svg)
+<!-- 図の正本は figures/src/research-figA-rea.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 **単位と協調空間。** McCarthy 1982 の control participation は、事象・内部主体・外部主体の三項関係である。Hruby 2006 以降の多くの実装は二項の participation に置き換えた。[Laurier・Kiehn・Polovina 2011](https://research.dial.uclouvain.be/bitstreams/be52fc37-08b2-4c22-a563-9e12650d5679/download) の REAU は、これを**経済単位（unit）**として明示する。経済単位は「経済事象の効果を受ける（一群の）自然人・法人」で、同じ人物が主体と単位の両方を演じられる。stock-flow は「どの単位にとっての流入か流出か」、duality は「どの単位にとって流入事象と流出事象が対になるか」、participation は「どの単位のために参加するか」として、すべて単位に相対的な三項関係になる。企業中心の依存ビューでは単位が暗黙で一つだが、供給連鎖中心の独立ビュー（ISO/IEC 15944-4 の OeBTO）では、単位どうしの**協調空間**で流入・流出を扱い、内部主体は協調空間に現れず、双対性は協調空間に一つだけ存在して全当事者がその存在に合意する。ISO 15944-4 の要旨は、業務取引を「当事者ごとに一つ、二つのREA構成を接合したもの」と述べる（[FDIS 要旨](https://www.jtc1sc32.org/doc/N1501-1550/32N1511A-ABSTRACT_FDIS_15944-4_doc)。本文は委員会草案PDFが破損しており未入手）。
 
-```mermaid
-flowchart TB
-  subgraph UB["経済単位 B（売り手）"]
-    PB["パン：資源<br/>Bにとって流出"]
-    MB["通貨：資源<br/>Bにとって流入"]
-  end
-  subgraph CS["協調空間（ISO 15944-4）"]
-    S["引き渡し：事象<br/>from B / to A"]
-    P["支払：事象<br/>from A / to B"]
-    S -->|"duality"| P
-  end
-  subgraph UA["経済単位 A（買い手）"]
-    PA["パン：資源<br/>Aにとって流入"]
-    MA["通貨：資源<br/>Aにとって流出"]
-  end
-  PB -->|"stock-flow（流出）"| S
-  S -->|"stock-flow（流入）"| PA
-  MA -->|"stock-flow（流出）"| P
-  P -->|"stock-flow（流入）"| MB
-```
+![図B　経済単位と協調空間](figures/research-figB-units.svg)
+<!-- 図の正本は figures/src/research-figB-units.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
 **Valueflows の核。** 公式序文は、主体（Agent）が経済事象（Economic Event）を行って経済資源（Economic Resource）に作用し、事象は資源を produce・modify・consume・use するか、主体間で transfer するか、場所間で transport すると述べる。過程（Process）は流れをつなぎ、交換（Exchange）は合意に基づく二つの相互の流れである。[序文](https://www.valueflo.ws/introduction/core/)
 

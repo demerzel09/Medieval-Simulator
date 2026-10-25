@@ -1,0 +1,21 @@
+flowchart TD
+  SC["場面と入口<br/>fruit.ts: fruitDefs, fruitLaws, sight, ForagerMind, buildFruitScenario, runFruitDays<br/>tools/skeleton.ts（CLI）、apps/skeleton/main.ts（ブラウザ）"]
+  WD["World（クラス）<br/>持つ: things（ThingRecord の表）, defs（ThingDef の表）, laws, senses, minds, ledger, stats<br/>addDef / def / addFromDef / addLaw / addSense / addMind / seed"]
+  TK["tick(dt)（唯一の進行）<br/>orderedIds → active → Law.pair → Bundle<br/>resolve → Claim → 係数 → scaleEffect → apply → ledger<br/>perceive → Mind.decide → 死亡の確定 → now += dt"]
+  LW["Law（インターフェース）<br/>id, version, pair(a, b, dt, w): Effect の列<br/>実装: walk, pick, eat, digest, wear, ripen, rot"]
+  SN["Sense（インターフェース）<br/>observe(observer, object, w): 写す値の名<br/>expected(observer, remembered, w)<br/>実装: sight"]
+  MD["Mind（インターフェース）<br/>decide(self, now): 意図<br/>実装クラス: ForagerMind（rule）。NN・LLM・人間に替えられる"]
+  EF["Effect（データ）<br/>transfer, convert, reassign, spawn, despawn, move, use<br/>InfoEffect: inform, forget, intend"]
+  DF["ThingDef（データ）<br/>name, parent, attr, state, res<br/>実装: natureDef, treeDef, fruitDef, personDef"]
+  TR["ThingRecord（データ）<br/>id, kind, attr（凍結）, state, rel, res<br/>法則・感覚・心には写し ThingSnapshot を渡す"]
+  SC -->|"組み立てる"| WD
+  WD -->|"刻みごとに"| TK
+  TK -->|"組 (a, b) を渡す"| LW
+  TK -->|"観測を頼む"| SN
+  TK -->|"意図を頼む"| MD
+  LW -->|"要求として返す"| EF
+  SN -->|"inform / forget"| EF
+  MD -->|"intend"| EF
+  EF -->|"apply が書く（状態・関係・資源だけ）"| TR
+  DF -->|"初期配置と spawn の雛形"| TR
+  TK -->|"読む（写し）"| TR

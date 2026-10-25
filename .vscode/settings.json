@@ -1,0 +1,5 @@
+{
+  // Markdown PDF の HTML 出力が読む Mermaid の版を固定する（既定は unpkg の最新で、版が変わると図が壊れる）。
+  // プレビュー拡張 bierner.markdown-mermaid が同梱する版（11.12.2）に合わせる。
+  "markdown-pdf.mermaidServer": "https://unpkg.com/mermaid@11.12.2/dist/mermaid.min.js"
+}

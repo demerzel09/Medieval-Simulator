@@ -1,0 +1,11 @@
+flowchart TD
+  C["時計: 刻み Δt ごとに<br/>World.tick(dt)"] --> O["すべての事物 O1 ... On<br/>ThingRecord: attr（凍結）, state, rel, res<br/>法則に渡すのは読み取り専用の写し ThingSnapshot"]
+  O --> P["すべての組 Oi と Oj<br/>i = j を含む。n × n 組<br/>tick の中の二重ループ orderedIds()"]
+  P --> S["影響範囲にあるか<br/>active(a, b): 距離と範囲の属性 rangeAttrs<br/>自分自身と、位置を持たない事物は常にある"]
+  S -->|"いいえ"| Z["流れゼロ。何も起きない"]
+  S -->|"はい"| L["要求: Law.pair(a, b, dt) が<br/>札の組で当たるかを決め、流れの要求 Effect を返す<br/>束 Bundle に集める"]
+  L --> F["解決と適用: resolve(bundles) が持ち主ごとに縮め<br/>可分は比例、不可分は優先 priority(owner, requester)<br/>scaleEffect → apply(effect) が一斉に書く。ledger に記録"]
+  F --> I["情報層: perceive() が Sense.observe / expected で<br/>現れた・消えた を関係 rel に写す<br/>Mind.decide(self) が意図（状態 intent）を返す。死亡の確定"]
+  Z --> I
+  I --> T["時刻を Δt 進める<br/>now += dt"]
+  T --> C

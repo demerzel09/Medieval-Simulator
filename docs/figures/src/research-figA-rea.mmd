@@ -1,0 +1,18 @@
+flowchart TB
+  RT["経済資源タイプ<br/>Economic Resource Type<br/>知識レベル"]
+  CM["経済コミットメント<br/>Economic Commitment<br/>将来の事象を行う義務"]
+  CT["経済契約<br/>Economic Contract<br/>コミットメントの入れ物"]
+  R["経済資源<br/>Economic Resource<br/>主体の制御下にあり、移転できる"]
+  E1["経済事象（増分）<br/>Economic Event"]
+  E2["経済事象（減分）<br/>Economic Event"]
+  A["経済主体<br/>Economic Agent<br/>事象に参加できる者"]
+  RT -->|"of（型）"| R
+  CM -->|"reserves（予約）"| RT
+  CM -->|"fulfils（履行）"| E1
+  CM -->|"within"| CT
+  R -->|"stock-flow（流入）"| E1
+  R -->|"stock-flow（流出）"| E2
+  E1 -->|"duality（双対性）"| E2
+  E1 -->|"participation（from / to）"| A
+  E2 -->|"participation（from / to）"| A
+  A -->|"custody（保管）"| R

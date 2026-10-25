@@ -1,0 +1,18 @@
+flowchart TB
+  subgraph UB["経済単位 B（売り手）"]
+    PB["パン：資源<br/>Bにとって流出"]
+    MB["通貨：資源<br/>Bにとって流入"]
+  end
+  subgraph CS["協調空間（ISO 15944-4）"]
+    S["引き渡し：事象<br/>from B / to A"]
+    P["支払：事象<br/>from A / to B"]
+    S -->|"duality"| P
+  end
+  subgraph UA["経済単位 A（買い手）"]
+    PA["パン：資源<br/>Aにとって流入"]
+    MA["通貨：資源<br/>Aにとって流出"]
+  end
+  PB -->|"stock-flow（流出）"| S
+  S -->|"stock-flow（流入）"| PA
+  MA -->|"stock-flow（流出）"| P
+  P -->|"stock-flow（流入）"| MB

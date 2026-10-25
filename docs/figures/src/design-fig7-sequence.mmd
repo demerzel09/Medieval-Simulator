@@ -1,0 +1,28 @@
+sequenceDiagram
+  participant W as World.tick(Δt)
+  participant L as Law 法則
+  participant S as Sense 感覚
+  participant M as Mind 心
+  participant T as ThingRecord 事物の表
+  W->>T: 写し ThingSnapshot を取る（読むだけ）
+  W->>W: 全組を数え、active で影響範囲にある組に絞る
+  loop 法則 × 組 (a, b)
+    W->>L: pair(a の写し, b の写し, Δt)
+    L-->>W: 要求 Effect の列（無ければ空）
+  end
+  W->>W: resolve 持ち主ごとに縮める（比例・優先）
+  loop 束の効果
+    W->>T: apply 状態・関係・資源だけを書く。ledger に記録
+  end
+  loop 生きている事物 × 他の事物
+    W->>S: observe(観測者, 対象)
+    S-->>W: 写す値の名、または null
+    W->>T: apply(inform / forget) 観測者の rel（心象）
+  end
+  loop 心を持つ事物
+    W->>M: decide(自分の写し)
+    M-->>W: 意図
+    W->>T: apply(intend) 状態 intent
+  end
+  W->>T: 死亡の確定（栄養が尽きた生者）
+  W->>W: now += Δt
