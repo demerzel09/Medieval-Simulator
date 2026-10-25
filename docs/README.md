@@ -14,6 +14,7 @@
 | [NEXT_SESSION](NEXT_SESSION.md) | 最新の依頼、次の一作業、読む範囲、環境と許可 |
 | [STATUS](STATUS.md) | 今回行ったこと、現行実装の事実、検証と未実行 |
 | [DECISIONS](DECISIONS.md) | 旧版の採用判断を探す入口。新原則の並行した正本にはしない |
+| [figures](figures/big-structure-page.html)、[scripts/docs](../scripts/docs/README.md) | 大きな構造の閲覧用ページの HTML と、文書・図の検査スクリプト。補助であり正本ではない |
 
 <a id="legacy"></a>
 ## 既存文書の保存と再利用
