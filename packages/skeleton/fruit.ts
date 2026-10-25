@@ -10,8 +10,8 @@
 // 札は資源の有無では代用しない。鮮度の受け皿である自然も資源 freshness を持つので、資源の有無で「腐る物」を選ぶと自然自身に腐敗が当たる。
 // 数値はすべて仮の比較条件であり、校正値ではない。
 
-import type { Effect, Law, LedgerEntry, Mind, Relation, Sense, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
-import { World } from './world.js';
+import type { Effect, Law, LedgerEntry, Mind, Relation, Scalar, Sense, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
+import { World, type WorldOptions } from './world.js';
 
 export const MINUTE = 1;
 export const HOUR = 60;
@@ -325,27 +325,75 @@ export interface Scenario {
   persons: ThingId[];
 }
 
-/**
- * 果樹一本と家一軒（事物）と採取者。構築は、定義・法則・感覚・心の種類を登録し、事物を定義から置くだけである。
- * 採取者は家の脇に置かれるだけで、家を知覚して住み（関係 home を得て）、視界に入る木を知覚し、往復して果実で生きる。
- */
-export function buildFruitScenario(options: FruitOptions = {}): Scenario {
-  const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], allPairs: options.allPairs ?? false, pairOrder: options.pairOrder ?? 'sorted' });
-  const n = options.persons ?? 1;
-  const ids = Array.from({ length: n }, (_, i) => `P${i + 1}`);
+/** 果実の世界。定義・法則・感覚・心の種類を登録し、自然を置く。事物はまだ置かない。 */
+export function fruitWorld(options: WorldOptions = {}): World {
+  const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], ...options });
   for (const d of fruitDefs) w.addDef(d);
   for (const law of fruitLaws) w.addLaw(law);
   w.addSense(sight);
   w.addMind('forager', () => new ForagerMind());
   w.addFromDef('nature', 'nature');
-  w.addFromDef('tree', 'tree', { attr: { ripenPerHour: options.ripenPerHour ?? 0.25 }, state: { x: options.treeDistance ?? 40 } });
-  w.addFromDef('home', 'home');
-  for (const id of ids) w.addFromDef(id, 'person', { attr: { sight: options.sight ?? 60 } });
-  // 初期の実 6 個を木に付ける（自然の蓄えから）。初期状態の一部。
-  for (let i = 0; i < 6; i++) {
-    w.seed({ kind: 'spawn', id: w.nextSpawnId('fruit'), def: 'fruit', state: { attachedTo: 'tree' }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
+  return w;
+}
+
+/** 配置: 定義の名と位置を並べて置くだけ。事物ごとの設定は位置と、生成時だけ上書きできる属性に限る。 */
+export interface Placement {
+  id: ThingId;
+  def: string;
+  x?: number;
+  y?: number;
+  attr?: Record<string, Scalar>;
+}
+export function place(w: World, items: Placement[]): void {
+  for (const p of items) w.addFromDef(p.id, p.def, { attr: p.attr, state: p.x !== undefined || p.y !== undefined ? { x: p.x ?? 0, y: p.y ?? 0 } : undefined });
+}
+
+/** 初期の実を木に付ける（自然の蓄えから）。初期状態の一部。 */
+export function seedFruits(w: World, tree: ThingId, count: number): void {
+  for (let i = 0; i < count; i++) {
+    w.seed({ kind: 'spawn', id: w.nextSpawnId(`${tree === 'tree' ? '' : tree + '/'}fruit`), def: 'fruit', state: { attachedTo: tree }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
   }
+}
+
+/**
+ * 果樹一本と家一軒（事物）と採取者。構築は、定義・法則・感覚・心の種類を登録し、事物を定義から置くだけである。
+ * 採取者は家の脇に置かれるだけで、家を知覚して住み（関係 home を得て）、視界に入る木を知覚し、往復して果実で生きる。
+ */
+export function buildFruitScenario(options: FruitOptions = {}): Scenario {
+  const w = fruitWorld({ allPairs: options.allPairs ?? false, pairOrder: options.pairOrder ?? 'sorted' });
+  const n = options.persons ?? 1;
+  const ids = Array.from({ length: n }, (_, i) => `P${i + 1}`);
+  place(w, [
+    { id: 'tree', def: 'tree', x: options.treeDistance ?? 40, y: 0, attr: { ripenPerHour: options.ripenPerHour ?? 0.25 } },
+    { id: 'home', def: 'home' },
+    ...ids.map((id) => ({ id, def: 'person', attr: { sight: options.sight ?? 60 } })),
+  ]);
+  seedFruits(w, 'tree', 6);
   return { world: w, persons: ids };
+}
+
+/**
+ * 置くだけの村: 家 3 軒・木 3 本・採取者 5 人を任意の座標に置く。構築関数の固定の配置によらず、
+ * 登録した定義・法則・感覚・心の種類だけで世界が動くことを確かめる比較条件（2026-10-25。数値は仮）。
+ */
+export const placedVillage: Placement[] = [
+  { id: 'home1', def: 'home', x: 0, y: 0 },
+  { id: 'home2', def: 'home', x: 0, y: 30 },
+  { id: 'home3', def: 'home', x: 60, y: -20 },
+  { id: 'tree1', def: 'tree', x: 40, y: 0 },
+  { id: 'tree2', def: 'tree', x: -30, y: 30 },
+  { id: 'tree3', def: 'tree', x: 80, y: 20 },
+  { id: 'P1', def: 'person', x: 0, y: 0 },
+  { id: 'P2', def: 'person', x: 2, y: 0 },
+  { id: 'P3', def: 'person', x: 0, y: 30 },
+  { id: 'P4', def: 'person', x: 60, y: -20 },
+  { id: 'P5', def: 'person', x: 30, y: 10 },
+];
+export function buildPlacedScenario(items: Placement[] = placedVillage, initialFruitsPerTree = 3): Scenario {
+  const w = fruitWorld();
+  place(w, items);
+  for (const p of items) if (p.def === 'tree') seedFruits(w, p.id, initialFruitsPerTree);
+  return { world: w, persons: items.filter((p) => p.def === 'person').map((p) => p.id) };
 }
 
 export function summarize(w: World, persons: ThingId[]): Record<string, number | string> {
@@ -358,8 +406,8 @@ export function summarize(w: World, persons: ThingId[]): Record<string, number |
     out[`${p}.holding`] = edibleOn(w, p).length;
     out[`${p}.intent`] = state(t, 'intent');
   }
-  out['tree.fruits'] = edibleOn(w, 'tree').length;
-  out['home.fruits'] = edibleOn(w, 'home').length;
+  for (const t of w.query((x) => 'bears' in x.attr)) out[`${t.id}.fruits`] = edibleOn(w, t.id).length;
+  for (const h of w.query((x) => 'stores' in x.attr)) out[`${h.id}.fruits`] = edibleOn(w, h.id).length;
   out['nature.waste'] = Number(res(w.thing('nature'), 'waste').toFixed(2));
   out['things'] = w.thingCount;
   out['ledger'] = w.ledger.length;

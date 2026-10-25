@@ -7,8 +7,9 @@
 //         --order reverse|shuffle で組を数える順を変える（結果は変わらない。比較用）
 //         --ledger で記録の先頭 200 件も表示
 //         --replay で、初期状態と記録から再生した世界が走らせた世界と同じかを確かめる（法則と心を使わない再生）
+//         --placed で、置くだけの村（家 3・木 3・採取者 5 を任意の座標に。構築関数の配置によらない）を走らせる
 
-import { runFruitDays, replayFruit } from '../skeleton/index.js';
+import { runFruitDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
 
 const args = process.argv.slice(2);
 const days = Number(args.find((a) => /^\d+$/.test(a)) ?? '3');
@@ -23,10 +24,31 @@ const allPairs = args.includes('--all-pairs');
 const pairOrder = (valueOf('order') ?? 'sorted') as 'sorted' | 'reverse' | 'shuffle';
 
 const started = performance.now();
-const { scenario, daily, initial } = runFruitDays(days, { persons, ripenPerHour, sight, allPairs, pairOrder });
+const placed = args.includes('--placed');
+const run = placed ? runPlaced(days) : runFruitDays(days, { persons, ripenPerHour, sight, allPairs, pairOrder });
+const { scenario, daily, initial } = run;
 const elapsed = performance.now() - started;
-console.log(`# fruit: ${persons} forager(s), ripen ${ripenPerHour}/h, sight ${sight}m, dt 10min`);
+console.log(placed ? `# placed village: 3 homes, 3 trees, 5 foragers, dt 10min` : `# fruit: ${persons} forager(s), ripen ${ripenPerHour}/h, sight ${sight}m, dt 10min`);
 for (const row of daily) console.log(JSON.stringify(row));
+if (placed) {
+  for (const p of scenario.persons) {
+    const t = scenario.world.thing(p)!;
+    const home = Object.entries(t.rel).find(([, e]) => e['home'] === true)?.[0] ?? '-';
+    const trees = Object.entries(t.rel).filter(([, e]) => 'bears' in e).map(([id]) => id).join(',') || '-';
+    console.log(`${p}: alive=${t.state['alive']} nutrition=${(t.res['nutrition'] ?? 0).toFixed(2)} home=${home} knownTrees=${trees} holding=${edibleOn(scenario.world, p).length}`);
+  }
+}
+
+function runPlaced(days: number) {
+  const scenario = buildPlacedScenario();
+  const initial = scenario.world.save();
+  const daily: Record<string, number | string>[] = [];
+  for (let day = 0; day < days; day++) {
+    scenario.world.run((day + 1) * DAY, DT);
+    daily.push(summarize(scenario.world, scenario.persons));
+  }
+  return { scenario, daily, initial };
+}
 
 const counts: Record<string, number> = {};
 for (const e of scenario.world.ledger) {

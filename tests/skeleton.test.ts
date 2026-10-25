@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, buildFruitScenario, runFruitDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, DAY, DT, HOUR } from '../packages/skeleton/index.js';
+import { World, buildFruitScenario, buildPlacedScenario, runFruitDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, DAY, DT, HOUR } from '../packages/skeleton/index.js';
 import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
@@ -162,6 +162,23 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
     w.addMind('forager', () => ({ decide: () => ({ intent: 'idle' }) })); // 後から登録しても既にある事物に付く
     w.tick(DT);
     expect(w.thing('Q')!.state['intent']).toBe('idle');
+  });
+
+  it('置くだけの村: 家 3・木 3・採取者 5 を任意の座標に置くと、全員が家を得て木を知り、死ぬのは法則で、世界は 30 日破綻しない', () => {
+    const { world, persons } = buildPlacedScenario();
+    expect(persons.length).toBe(5);
+    world.run(30 * DAY, DT);
+    expect(flows(world, 'settle').length).toBe(5);
+    for (const p of persons) {
+      const t = world.thing(p)!;
+      expect(Object.values(t.rel).some((e) => e['home'] === true)).toBe(true);
+      expect(Object.values(t.rel).some((e) => 'bears' in e)).toBe(true);
+    }
+    const dead = persons.filter((p) => state(world.thing(p), 'alive') === 'no');
+    expect(flows(world, 'starve').length).toBe(dead.length); // 死亡はすべて法則 starve の効果
+    expect(persons.length - dead.length).toBeGreaterThanOrEqual(1); // 生存者数は比較条件（2026-10-25 は 2 人）で、心を変えれば変わる
+    const fresh = buildPlacedScenario().world;
+    expect(massTotal(world)).toBeCloseTo(massTotal(fresh), 6); // 保存則は配置によらない
   });
 
   it('家は事物で、自分の家は関係の印。持ち物は家へしまえ、家から採るのは木から採るのと同じ法則', () => {
