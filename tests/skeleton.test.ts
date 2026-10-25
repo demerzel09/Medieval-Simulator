@@ -11,7 +11,7 @@ const events = (w: World, name: string) => w.ledger.filter((e) => 'event' in e &
 const flows = (w: World, law: string) => w.ledger.filter((e) => 'law' in e && e.law === law);
 
 const PERSON_ATTR = {
-  eats: 'plant', picks: true, visibility: 100, sight: 60, reach: 1.5, smell: 3, speedPerHour: 60, walkCostPerMeter: 0,
+  eats: 'plant', picks: true, grip: 1, visibility: 100, sight: 60, reach: 1.5, smell: 3, speedPerHour: 60, walkCostPerMeter: 0,
   pickPerHour: 6, eatPerHour: 12, digestPerHour: 0.5, digestYield: 0.8, wearPerHour: 0,
 };
 const FRUIT = (id: string) => ({ kind: 'spawn' as const, id, def: 'fruit', state: { attachedTo: 'tree' }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
@@ -227,7 +227,7 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
 
 describe('skeleton: 物理層はすべての事物の組に法則を当てる', () => {
   it('刻みごとに（事物の数）² の組を調べ、絞り込みを切れば法則はその全組に当てられる', () => {
-    const { world } = buildFruitScenario({ allPairs: true }); // 自然、木、家、人、実6 = 10 事物、法則 10
+    const { world } = buildFruitScenario({ allPairs: true }); // 自然、木、家、人、実6 = 10 事物、法則 11
     world.tick(DT);
     expect(world.stats.pairChecks).toBe(10 * 10);
     expect(world.stats.pairEvaluations).toBe(10 * 10 * fruitLaws.length);
@@ -270,25 +270,45 @@ describe('skeleton: 物理層はすべての事物の組に法則を当てる', 
     expect(w.stats.limited).toBe(2);
   });
 
-  it('不可分な物の取り合いは、持ち主の関係（favor）か要求者の札（priority）で優先が決まり、無ければ id 順', () => {
-    const w = twoPickersOneFruit(); // A と B が同じ最後の実を狙う。既定では id 順で A
+  it('不可分な物の取り合いは、要求に載せた力（握る力＋刃物）の大きい方が取り、同点は id 順。持ち主の意思ではなく物理が決める', () => {
+    const w = twoPickersOneFruit(); // A と B が同じ最後の実を狙う。力が同じなら id 順で A
     w.tick(DT);
     expect(edibleOn(w, 'A').length).toBe(1);
-    const w2 = twoPickersOneFruit();
-    w2.addThing('nature2', 'x', {}); // 変更なし。優先は B の札で付ける
-    const B = w2.thing('B')!;
-    void B;
-    const w3 = new World();
-    for (const d of fruitDefs) w3.addDef(d);
-    w3.addThing('nature', 'nature', { attr: { sink: true, grows: true, rotPerHour: 0 }, res: { fruitStock: 100, growth: 100, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0 } });
-    w3.addThing('tree', 'tree', { attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: 0 }, state: { x: 0, y: 0 }, res: { growth: 0 } });
-    w3.addThing('A', 'person', { attr: PERSON_ATTR, state: { alive: 'yes', x: 1, y: 0, intent: 'pick', target: 'tree', targetX: 0, targetY: 0 }, res: { nutrition: 6, stomach: 0 } });
-    w3.addThing('B', 'person', { attr: { ...PERSON_ATTR, priority: 1 }, state: { alive: 'yes', x: 1, y: 0, intent: 'pick', target: 'tree', targetX: 0, targetY: 0 }, res: { nutrition: 6, stomach: 0 } });
-    w3.seed(FRUIT('fruit#1'));
-    for (const law of fruitLaws) w3.addLaw(law);
-    w3.tick(DT);
-    expect(edibleOn(w3, 'B').length).toBe(1); // 札 priority で B が先
-    expect(edibleOn(w3, 'A').length).toBe(0);
+    const w2 = new World();
+    for (const d of fruitDefs) w2.addDef(d);
+    w2.addThing('nature', 'nature', { attr: { sink: true, grows: true, rotPerHour: 0 }, res: { fruitStock: 100, growth: 100, growthSpent: 0, waste: 0, nutrition: 0, freshness: 0 } });
+    w2.addThing('tree', 'tree', { attr: { bears: 'fruit', visibility: 300, cap: 12, ripenPerHour: 0 }, state: { x: 0, y: 0 }, res: { growth: 0 } });
+    w2.addThing('A', 'person', { attr: PERSON_ATTR, state: { alive: 'yes', x: 1, y: 0, intent: 'pick', target: 'tree', targetX: 0, targetY: 0 }, res: { nutrition: 6, stomach: 0 } });
+    w2.addThing('B', 'person', { attr: { ...PERSON_ATTR, grip: 2 }, state: { alive: 'yes', x: 1, y: 0, intent: 'pick', target: 'tree', targetX: 0, targetY: 0 }, res: { nutrition: 6, stomach: 0 } });
+    w2.seed(FRUIT('fruit#1'));
+    for (const law of fruitLaws) w2.addLaw(law);
+    w2.tick(DT);
+    expect(edibleOn(w2, 'B').length).toBe(1); // 握る力 2 の B が取る
+    expect(edibleOn(w2, 'A').length).toBe(0);
+  });
+
+  it('結びつきの強い実（札 bond）は力が足りなければ採れず、刃物（事物）を持てば採れる。成否は両者の属性で決まる', () => {
+    const w = twoPickersOneFruit();
+    w.addDef({ name: 'nut', parent: 'fruit', attr: { bond: 5 } }); // 強く付く実の種類（定義の継承）
+    w.seed({ kind: 'move', thing: 'B', dx: 9, dy: 0, costFrom: 'B', costRes: 'nutrition', costTo: 'nature', cost: 0 }); // B を離す
+    w.seed({ kind: 'spawn', id: 'nut#1', def: 'nut', state: { attachedTo: 'tree' }, from: 'nature', fromRes: 'fruitStock', amount: 1 });
+    w.tick(DT); // A は fruit#1（bond 0）を採るが、nut#1 は握る力 1 < 5 で採れない
+    w.tick(DT);
+    expect(state(w.thing('nut#1'), 'attachedTo')).toBe('tree');
+    w.addFromDef('knife#1', 'knife', { state: { attachedTo: 'A' } }); // 刃物を持たせる（持ち物は事物）
+    w.tick(DT);
+    expect(state(w.thing('nut#1'), 'attachedTo')).toBe('A'); // 力 1 + 10 ≥ 5
+  });
+
+  it('渡すのは持ち主の行為（法則 give）で、解決の規則ではない', () => {
+    const w = twoPickersOneFruit();
+    w.tick(DT); // A が採る
+    w.seed({ kind: 'intend', person: 'A', intent: 'give', target: 'B' });
+    w.seed({ kind: 'intend', person: 'B', intent: 'idle' });
+    w.tick(DT);
+    expect(edibleOn(w, 'B').length).toBe(1);
+    expect(edibleOn(w, 'A').length).toBe(0);
+    expect(flows(w, 'give').length).toBe(1);
   });
 
   it('法則の効果は組の二つの事物（と組から生まれた事物）にしか触れられない', () => {

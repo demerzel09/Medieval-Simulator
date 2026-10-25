@@ -58,8 +58,11 @@ export type Effect =
   | { kind: 'transfer'; res: string; from: ThingId; to: ThingId; amount: number }
   /** from の資源を減らし、to の別の資源を増やす。差分は loss として明示した事物の資源へ。 */
   | { kind: 'convert'; from: ThingId; fromRes: string; amount: number; to: ThingId; toRes: string; produced: number; lossTo: ThingId; lossRes: string }
-  /** 付属先（状態 attachedTo）の付け替え。from は現在の付属先で、変わっていれば何も起きない。 */
-  | { kind: 'reassign'; thing: ThingId; from: ThingId; to: ThingId }
+  /**
+   * 付属先（状態 attachedTo）の付け替え。from は現在の付属先で、変わっていれば何も起きない。
+   * force は要求者が提供した有効な力（握る力、刃物）。同じ物を取り合えば、力の大きい要求が通り、同点は要求者の id 順。持ち主の意思ではなく物理が決める。
+   */
+  | { kind: 'reassign'; thing: ThingId; from: ThingId; to: ThingId; force?: number }
   /** 事物の生成。種類の定義 def から作り、state で初期の状態を上書きする。量は源泉の資源から引き、生まれる事物の資源 quantity になる（保存則）。 */
   | { kind: 'spawn'; id: ThingId; def: string; state?: State; from: ThingId; fromRes: string; amount: number }
   /** 事物の消滅。量は行き先の資源へ移り、差分は loss へ。 */

@@ -10,7 +10,7 @@ sequenceDiagram
     W->>L: pair(a の写し, b の写し, Δt)
     L-->>W: 要求 Effect の列（無ければ空）
   end
-  W->>W: resolve 持ち主ごとに縮める（比例・優先）
+  W->>W: resolve 資源の場所ごとに縮める（比例・要求の力）
   loop 束の効果
     W->>T: apply 状態・関係・資源だけを書く。ledger に記録
   end

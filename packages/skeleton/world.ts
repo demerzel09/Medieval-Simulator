@@ -35,11 +35,6 @@ export interface WorldOptions {
   allPairs?: boolean;
   /** 組を数える順（比較用）。結果は変わらないことを検査するために使う。 */
   pairOrder?: 'sorted' | 'reverse' | 'shuffle';
-  /**
-   * 不可分な物の取り合いの優先。持ち主 owner が要求者 requester をどれだけ優先するか。大きいほど先。
-   * 既定は、持ち主の関係 rel[requester].favor、無ければ要求者の属性 priority、無ければ 0（同点は要求者の id 順）。
-   */
-  priority?: (owner: ThingSnapshot, requester: ThingSnapshot) => number;
 }
 
 /** 一つの法則が一つの組に出した要求の束。不可分な効果を含めば全か無か。 */
@@ -51,21 +46,18 @@ interface Bundle {
   effects: Effect[];
 }
 
-/** 要求が持ち主の資源に掛ける負荷。 */
+/**
+ * 要求が持ち主の資源に掛ける負荷。force は要求者が提供した力で、不可分な物の取り合いの順になる。
+ * 解決は資源のある場所に閉じる（局所性）が、何で決めるかは持ち主の意思ではなく、要求に載った物理量である。
+ */
 interface Claim {
   bundle: Bundle;
   owner: ThingId;
   key: string;
   amount: number;
   indivisible: boolean;
+  force: number;
 }
-
-const defaultPriority = (owner: ThingSnapshot, requester: ThingSnapshot): number => {
-  const favor = owner.rel[requester.id]?.['favor'];
-  if (typeof favor === 'number') return favor;
-  const p = requester.attr['priority'];
-  return typeof p === 'number' ? p : 0;
-};
 
 export class World implements WorldView {
   now = 0;
@@ -73,7 +65,6 @@ export class World implements WorldView {
   private readonly rangeAttrs: string[];
   private readonly allPairs: boolean;
   private readonly pairOrder: 'sorted' | 'reverse' | 'shuffle';
-  private readonly priority: (owner: ThingSnapshot, requester: ThingSnapshot) => number;
   private readonly things = new Map<ThingId, ThingRecord>();
   private readonly defs = new Map<string, ThingDef>();
   private readonly laws: Law[] = [];
@@ -91,7 +82,6 @@ export class World implements WorldView {
     this.rangeAttrs = options.rangeAttrs ?? ['sight', 'reach', 'smell'];
     this.allPairs = options.allPairs ?? false;
     this.pairOrder = options.pairOrder ?? 'sorted';
-    this.priority = options.priority ?? defaultPriority;
   }
 
   // ---- 事物 ----
@@ -337,9 +327,10 @@ export class World implements WorldView {
   }
 
   /**
-   * 解決。各要求が持ち主の資源に掛ける負荷を集め、持ち主ごとに局所で決める。
-   * 不可分な負荷（付け替え、生む、消す、容量の使用）は優先順に全か無かで配り、可分な負荷（移す、変える、費用）は残りを比例で分ける。
-   * 束の係数は、その束の負荷の係数の最小。優先は持ち主が要求者をどう見るか（関係・札）、同点は要求者の id、法則、相手の順。
+   * 解決。各要求が持ち主の資源に掛ける負荷を集め、資源のある場所に閉じて決める（局所性。順序に依らず並列にできる）。
+   * 何で決めるかは物理量である。可分な負荷（移す、変える、費用）は要求がもともと能力 × Δt なので、足りなければ比例で縮める（強く引く者が多く取る）。
+   * 不可分な負荷（付け替え、生む、消す、容量の使用）は要求に載った力の大きい順に全か無か、同点は要求者の id、法則、相手の順。
+   * 持ち主の意思（好み、渡す）は解決の規則ではなく、持ち主自身の行為（法則）である。束の係数は、その束の負荷の係数の最小。
    */
   private resolve(bundles: Bundle[]): Map<Bundle, number> {
     const factor = new Map<Bundle, number>();
@@ -359,11 +350,7 @@ export class World implements WorldView {
       if (!owner) continue;
       const res = key.slice(key.indexOf('|') + 1);
       let remaining = res.startsWith('cap:') ? capacityOf(claims) : res === 'attachedTo' ? 1 : this.resOf(owner.id, res);
-      const ownerSnap = snapshot(owner);
-      const rank = (c: Claim): [number, ThingId, number, ThingId] => {
-        const requester = this.things.get(c.bundle.a);
-        return [requester ? -this.priority(ownerSnap, snapshot(requester)) : 0, c.bundle.a, c.bundle.lawIndex, c.bundle.b];
-      };
+      const rank = (c: Claim): [number, ThingId, number, ThingId] => [-c.force, c.bundle.a, c.bundle.lawIndex, c.bundle.b];
       const ordered = [...claims].sort((p, q) => {
         const [p0, p1, p2, p3] = rank(p);
         const [q0, q1, q2, q3] = rank(q);
@@ -399,20 +386,20 @@ export class World implements WorldView {
   private claimOf(bundle: Bundle, e: Effect): Claim | undefined {
     switch (e.kind) {
       case 'transfer':
-        return { bundle, owner: e.from, key: `${e.from}|${e.res}`, amount: e.amount, indivisible: false };
+        return { bundle, owner: e.from, key: `${e.from}|${e.res}`, amount: e.amount, indivisible: false, force: 0 };
       case 'convert':
-        return { bundle, owner: e.from, key: `${e.from}|${e.fromRes}`, amount: e.amount, indivisible: false };
+        return { bundle, owner: e.from, key: `${e.from}|${e.fromRes}`, amount: e.amount, indivisible: false, force: 0 };
       case 'move':
-        return e.cost > 0 ? { bundle, owner: e.costFrom, key: `${e.costFrom}|${e.costRes}`, amount: e.cost, indivisible: false } : undefined;
+        return e.cost > 0 ? { bundle, owner: e.costFrom, key: `${e.costFrom}|${e.costRes}`, amount: e.cost, indivisible: false, force: 0 } : undefined;
       case 'use':
-        return { bundle, owner: e.thing, key: `${e.thing}|cap:${e.capacity}`, amount: e.amount, indivisible: true };
+        return { bundle, owner: e.thing, key: `${e.thing}|cap:${e.capacity}`, amount: e.amount, indivisible: true, force: 0 };
       case 'reassign':
-        return { bundle, owner: e.thing, key: `${e.thing}|attachedTo`, amount: 1, indivisible: true };
+        return { bundle, owner: e.thing, key: `${e.thing}|attachedTo`, amount: 1, indivisible: true, force: e.force ?? 0 };
       case 'spawn':
-        return { bundle, owner: e.from, key: `${e.from}|${e.fromRes}`, amount: e.amount, indivisible: true };
+        return { bundle, owner: e.from, key: `${e.from}|${e.fromRes}`, amount: e.amount, indivisible: true, force: 0 };
       case 'despawn': {
         const q = this.things.get(e.thing)?.res['quantity'] ?? 1;
-        return { bundle, owner: e.thing, key: `${e.thing}|quantity`, amount: q, indivisible: true };
+        return { bundle, owner: e.thing, key: `${e.thing}|quantity`, amount: q, indivisible: true, force: 0 };
       }
     }
   }
@@ -615,7 +602,7 @@ export class World implements WorldView {
         if (!observer || !about) return 0;
         const pos = this.positionOf(e.about);
         if (!pos) return 0;
-        // 写す値は上書きし、知覚が写さない値（自分の家の印、相手への favor）は残す。
+        // 写す値は上書きし、知覚が写さない値（自分の家の印など、相互作用で得た関係）は残す。
         const entry: Relation = { ...observer.rel[e.about], at: this.now, x: pos.x, y: pos.y };
         for (const f of e.fields) {
           const v = about.attr[f] ?? about.state[f] ?? about.res[f];

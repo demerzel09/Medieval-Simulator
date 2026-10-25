@@ -3,8 +3,10 @@
 // 値の四区分: 属性（札と仕様。更新は書かない）、状態、関係（心象）、資源（釣り合う量）。
 // 法則は事物の種類ではなく属性（札）の組で相手を選ぶ。札は属性の名の有無で表し、値が仕様になる。
 //   自然: sink（受け皿）、grows（育てる）。  木: bears=fruit（実をつける）。
-//   実:   edible=plant（食べられる、植物性）、perishable（腐る）。 人: eats=plant（植物を食べる）、picks（採る）、dwells（住む）、mortal（死ぬ）、
-//         mind=forager（心の種類）、sight・reach・smell（範囲）。 家: stores（物を置ける）。
+//   実:   edible=plant（食べられる、植物性）、perishable（腐る）、bond（結びつきの強さ。採るのに要る力）。
+//   人:   eats=plant（植物を食べる）、picks（採る）、grip（握る力）、dwells（住む）、mortal（死ぬ）、mind=forager（心の種類）、sight・reach・smell（範囲）。
+//   家:   stores（物を置ける）。 刃物: cuts（切る力。人に付けると握る力に足される）。
+// 行為の成否は物理が決める。願望と予測は心象、提供した運動は意図と身体の能力、結果は法則と解決、結果の知覚で心象が更新される。
 // 場面の構築は、定義・法則・感覚・心の種類を登録して事物を置くだけで、事物ごとの設定はしない。どの家が自分の家かは人が法則 settle で得る関係
 // （rel[家].home）で、心は札 mind から世界が付け、死亡は法則 starve が返す効果である。
 // 札は資源の有無では代用しない。鮮度の受け皿である自然も資源 freshness を持つので、資源の有無で「腐る物」を選ぶと自然自身に腐敗が当たる。
@@ -53,15 +55,22 @@ export const treeDef: ThingDef = {
 };
 export const fruitDef: ThingDef = {
   name: 'fruit',
-  attr: { edible: 'plant', perishable: true, visibility: 30, odor: 5 },
+  attr: { edible: 'plant', perishable: true, visibility: 30, odor: 5, bond: 0 },
   state: { attachedTo: '' },
   res: { freshness: 2 },
+};
+/** 刃物。人に付ければ、採るときの有効な力に切る力が足される（結びつきの強い実は刃物が無ければ採れない）。持ち物は事物。 */
+export const knifeDef: ThingDef = {
+  name: 'knife',
+  attr: { cuts: 10, visibility: 5 },
+  state: { attachedTo: '' },
 };
 export const personDef: ThingDef = {
   name: 'person',
   attr: {
     eats: 'plant',
     picks: true,
+    grip: 1,
     visibility: 100,
     sight: 60,
     reach: 1.5,
@@ -86,7 +95,7 @@ export const homeDef: ThingDef = {
   attr: { stores: true, visibility: 100 },
   state: { x: 0, y: 0 },
 };
-export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, personDef, homeDef];
+export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, knifeDef, personDef, homeDef];
 
 // ---- 物理層の法則。組 (a, b) の札で当たるかを決め、状態・資源・距離で流れを決める ----
 
@@ -140,21 +149,29 @@ export const walk: Law = {
   },
 };
 
-/** 付け替えの要求。人 a が、from に付いた物 b を to へ付け替える。物と行き先が手の届く範囲にあること。一刻みの数は能力 × Δt。 */
+/** 人 a が提供できる有効な力: 握る力に、付けている道具の切る力を足したもの。 */
+export const forceOf = (a: ThingSnapshot, w: WorldView): number =>
+  attr(a, 'grip') + w.query((t) => has(t, 'cuts') && state(t, 'attachedTo') === a.id).reduce((s, t) => s + attr(t, 'cuts'), 0);
+
+/** 付け替えの要求。人 a が、from に付いた物 b を to へ付け替える。物と行き先が手の届く範囲にあること。一刻みの数は能力 × Δt。要求には提供した力を載せる。 */
 const handOver = (a: ThingSnapshot, b: ThingSnapshot, from: ThingId, to: ThingId, dt: number, w: WorldView): Effect[] => {
   if (state(b, 'attachedTo') !== from || w.distance(a.id, b.id) > attr(a, 'reach') || w.distance(a.id, to) > attr(a, 'reach')) return [];
   return [
-    { kind: 'reassign', thing: b.id, from, to },
+    { kind: 'reassign', thing: b.id, from, to, force: forceOf(a, w) },
     { kind: 'use', thing: a.id, capacity: 'pick', available: (attr(a, 'pickPerHour') / HOUR) * dt, amount: 1 },
   ];
 };
 
-/** (採る, 付属する物): 採る。意図した相手（木でも家でも）に付いた物が手の届く範囲にあれば、人へ付け替わる。二人なら優先順に、無くなれば止まる。 */
+/**
+ * (採る, 付属する物): 採る。意図した相手（木でも家でも）に付いた物が手の届く範囲にあり、提供できる力が物の結びつき（bond）以上なら、人へ付け替わる。
+ * 結びつきの強い実は刃物が無ければ採れない。二人が同じ物を狙えば力の大きい方、同点は id 順で、持ち主の意思ではなく物理が決める。
+ */
 export const pick: Law = {
   id: 'pick',
-  version: 'kinds-1',
+  version: 'kinds-2',
   pair: (a, b, dt, w) => {
     if (!alive(a) || !has(a, 'picks') || state(a, 'intent') !== 'pick' || !('attachedTo' in b.state)) return [];
+    if (forceOf(a, w) < attr(b, 'bond')) return [];
     return handOver(a, b, state(a, 'target'), a.id, dt, w);
   },
 };
@@ -224,8 +241,20 @@ export const settle: Law = {
   },
 };
 
+/** (採る, 付属する物): 渡す。自分に付いた物を、意図した生きている相手（札 picks）へ付け替える。持ち主の意思は解決の規則ではなく、この行為である。 */
+export const give: Law = {
+  id: 'give',
+  version: 'kinds-1',
+  pair: (a, b, dt, w) => {
+    if (!alive(a) || !has(a, 'picks') || state(a, 'intent') !== 'give' || !('attachedTo' in b.state)) return [];
+    const to = w.thing(state(a, 'target'));
+    if (!to || !alive(to) || !has(to, 'picks')) return [];
+    return handOver(a, b, a.id, to.id, dt, w);
+  },
+};
+
 /** 法則の一覧。同期更新なので順序は結果に関わらない（記録の並びの正規順にだけ使う）。 */
-export const fruitLaws: Law[] = [walk, pick, stow, eat, digest, wear, starve, ripen, rot, settle];
+export const fruitLaws: Law[] = [walk, pick, stow, give, eat, digest, wear, starve, ripen, rot, settle];
 
 // ---- 情報層の感覚 ----
 

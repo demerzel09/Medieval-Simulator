@@ -1,11 +1,11 @@
 flowchart LR
-  W["世界 World　時刻 2:10（13 刻み目）<br/>定義: nature, tree, fruit, person, home<br/>法則: walk, pick, stow, eat, digest, wear, starve, ripen, rot, settle<br/>感覚: sight　心: P1, P2 に ForagerMind"]
+  W["世界 World　時刻 2:10（13 刻み目）<br/>定義: nature, tree, fruit, knife, person, home<br/>法則: walk, pick, stow, give, eat, digest, wear, starve, ripen, rot, settle<br/>感覚: sight　心: P1, P2 に ForagerMind"]
   N["nature（自然）<br/>属性 sink, grows, rotPerHour 1/16<br/>資源 fruitStock 99994, nutrition 0.50, freshness 0.81, waste 0"]
   T["tree（木）<br/>属性 bears=fruit, visibility 300, cap 12, ripenPerHour 0.25<br/>状態 x 40, y 0<br/>資源 growth 0.54"]
   H["home（家）<br/>属性 stores, visibility 100<br/>状態 x 0, y 0"]
-  F1["fruit#1, #2, #3（実）<br/>属性 edible=plant, perishable, visibility 30, odor 5<br/>状態 attachedTo = P1<br/>資源 freshness 1.86, quantity 1"]
+  F1["fruit#1, #2, #3（実）<br/>属性 edible=plant, perishable, bond 0, visibility 30, odor 5<br/>状態 attachedTo = P1<br/>資源 freshness 1.86, quantity 1"]
   F4["fruit#4, #5, #6（実）<br/>状態 attachedTo = P2<br/>資源 freshness 1.86, quantity 1"]
-  P1["P1（人）<br/>属性 eats=plant, picks, dwells, mortal, mind=forager, sight 60, reach 1.5, pickPerHour 6, …<br/>状態 alive yes, x 0, y 0, intent idle<br/>資源 nutrition 5.74, stomach 0<br/>関係 rel（心象）: home{stores, home（settle で得た）, at 120, x 0}、tree{at 120, x 40, bears}、P2{x 30}、fruit#1〜#6{attachedTo}"]
+  P1["P1（人）<br/>属性 eats=plant, picks, grip 1, dwells, mortal, mind=forager, sight 60, reach 1.5, pickPerHour 6, …<br/>状態 alive yes, x 0, y 0, intent idle<br/>資源 nutrition 5.74, stomach 0<br/>関係 rel（心象）: home{stores, home（settle で得た）, at 120, x 0}、tree{at 120, x 40, bears}、P2{x 30}、fruit#1〜#6{attachedTo}"]
   P2["P2（人）<br/>状態 alive yes, x 30, y 0, intent move, target home<br/>資源 nutrition 5.76, stomach 0<br/>関係 rel（心象）: home{stores, home}、tree、P1、fruit#1〜#6"]
   W -->|"持つ"| N
   W -->|"持つ"| T
