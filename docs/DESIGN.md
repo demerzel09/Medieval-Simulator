@@ -46,15 +46,15 @@
 
 ```mermaid
 flowchart TD
-  C["時計: 刻み Δt ごとに"] --> O["すべての事物 O1 ... On<br/>それぞれが値を持つ: 属性（札）、状態、関係（心象）、資源<br/>Unity の GameObject と Component にあたる"]
-  O --> P["すべての組 Oi と Oj<br/>i = j を含む。n × n 組"]
-  P --> S["影響範囲にあるか<br/>距離と、両者の範囲の属性で判定<br/>自分自身と、位置を持たない事物は常にある"]
+  C["時計: 刻み Δt ごとに<br/>World.tick(dt)"] --> O["すべての事物 O1 ... On<br/>ThingRecord: attr（凍結）, state, rel, res<br/>法則に渡すのは読み取り専用の写し ThingSnapshot"]
+  O --> P["すべての組 Oi と Oj<br/>i = j を含む。n × n 組<br/>tick の中の二重ループ orderedIds()"]
+  P --> S["影響範囲にあるか<br/>active(a, b): 距離と範囲の属性 rangeAttrs<br/>自分自身と、位置を持たない事物は常にある"]
   S -->|"いいえ"| Z["流れゼロ。何も起きない"]
-  S -->|"はい"| L["要求: 法則が両者の札で当たるかを決め<br/>刻みの始めの状態・資源・距離から流れを求める<br/>速度 × Δt"]
-  L --> F["解決と適用: 持ち主が要求を局所で縮め<br/>（可分は比例、不可分は優先）一斉に書く<br/>資源は釣り合う。属性は変わらない"]
-  F --> I["情報層: 観測との差を事象にして心象を更新<br/>心が意図を定める。死亡の確定"]
+  S -->|"はい"| L["要求: Law.pair(a, b, dt) が<br/>札の組で当たるかを決め、流れの要求 Effect を返す<br/>束 Bundle に集める"]
+  L --> F["解決と適用: resolve(bundles) が持ち主ごとに縮め<br/>可分は比例、不可分は優先 priority(owner, requester)<br/>scaleEffect → apply(effect) が一斉に書く。ledger に記録"]
+  F --> I["情報層: perceive() が Sense.observe / expected で<br/>現れた・消えた を関係 rel に写す<br/>Mind.decide(self) が意図（状態 intent）を返す。死亡の確定"]
   Z --> I
-  I --> T["時刻を Δt 進める"]
+  I --> T["時刻を Δt 進める<br/>now += dt"]
   T --> C
 ```
 
@@ -149,23 +149,30 @@ flowchart TD
 
 事物の派生クラスにメソッドを持たせる形を採らないのは、相互作用が二つの事物の間で起こるため、派生は片側しか選べず、相手側の分岐（種類 × 種類）が残るからである。札の組で選ぶ法則なら、法則の数は相互作用の種類の数に比例し、事物の種類の数には比例しない。派生が向くのは、判断の仕組みだけが違う心の実装、法則どうしの共通処理、種類の定義の既定値の継承である。この書き方は、継承より合成、式の問題、多重ディスパッチ、ECS、データ駆動の種類の定義という既知の定石に一致する（[定石の確認](RESEARCH.md#conventions)）。
 
-図4は設計と実装の対応である。データ（定義、事物）と、世界が持つ振る舞い（法則、感覚、心）と、唯一の書き込み口（apply）を分けている。
+図1の各箱の最下行は、その段を担う実装の名である。図4は実装の構造で、クラス・データ・関数の関連を示す。場面と入口が `World` を組み立て、`World` が刻みごとに `tick` を回し、`tick` が `Law.pair`・`Sense.observe`・`Mind.decide` を呼び、法則は要求 `Effect` を返し、感覚と心は `inform`・`forget`・`intend` を返し、`apply` が `ThingRecord` の状態・関係・資源だけを書く。`ThingDef` は初期配置と `spawn` の雛形である。クラスは `World` と心の実装だけで、事物・定義・効果はデータ、法則・感覚はインターフェースを満たすオブジェクトである。
 
 ```mermaid
 flowchart TD
-  D["種類の定義 Def（データ）<br/>name・parent・attr・state・res<br/>親の既定値を継ぐ。振る舞いは無い"]
-  W["世界 World<br/>事物の表・定義の表・法則・感覚・心<br/>tick: 全組 → 影響範囲 → 要求 → 解決 → 適用"]
-  L["法則 Law（事物の外のデータと関数）<br/>pair(a, b, Δt)<br/>札の組で当たるかを決め、要求を返す"]
-  I["情報層<br/>感覚 Sense: 観測 → 現れた・消えた<br/>心 Mind（実装を替える）: 心象だけから意図"]
-  A["解決 → apply（唯一の書き込み）<br/>持ち主ごとに縮め、状態・関係・資源だけを書く<br/>組の外は例外。記録に残す"]
-  T["事物 Thing（データ）<br/>attr（凍結）・state・rel（心象）・res"]
-  D -->|"初期配置"| T
-  D -->|"生成（法則の効果 spawn）"| A
-  W -->|"組 (a, b)"| L
-  W --> I
-  L -->|"効果"| A
-  I -->|"心象・意図"| A
-  A --> T
+  SC["場面と入口<br/>fruit.ts: fruitDefs, fruitLaws, sight, ForagerMind, buildFruitScenario, runFruitDays<br/>tools/skeleton.ts（CLI）、apps/skeleton/main.ts（ブラウザ）"]
+  WD["World（クラス）<br/>持つ: things（ThingRecord の表）, defs（ThingDef の表）, laws, senses, minds, ledger, stats<br/>addDef / def / addFromDef / addLaw / addSense / addMind / seed"]
+  TK["tick(dt)（唯一の進行）<br/>orderedIds → active → Law.pair → Bundle<br/>resolve → Claim → 係数 → scaleEffect → apply → ledger<br/>perceive → Mind.decide → 死亡の確定 → now += dt"]
+  LW["Law（インターフェース）<br/>id, version, pair(a, b, dt, w): Effect の列<br/>実装: walk, pick, eat, digest, wear, ripen, rot"]
+  SN["Sense（インターフェース）<br/>observe(observer, object, w): 写す値の名<br/>expected(observer, remembered, w)<br/>実装: sight"]
+  MD["Mind（インターフェース）<br/>decide(self, now): 意図<br/>実装クラス: ForagerMind（rule）。NN・LLM・人間に替えられる"]
+  EF["Effect（データ）<br/>transfer, convert, reassign, spawn, despawn, move, use<br/>InfoEffect: inform, forget, intend"]
+  DF["ThingDef（データ）<br/>name, parent, attr, state, res<br/>実装: natureDef, treeDef, fruitDef, personDef"]
+  TR["ThingRecord（データ）<br/>id, kind, attr（凍結）, state, rel, res<br/>法則・感覚・心には写し ThingSnapshot を渡す"]
+  SC -->|"組み立てる"| WD
+  WD -->|"刻みごとに"| TK
+  TK -->|"組 (a, b) を渡す"| LW
+  TK -->|"観測を頼む"| SN
+  TK -->|"意図を頼む"| MD
+  LW -->|"要求として返す"| EF
+  SN -->|"inform / forget"| EF
+  MD -->|"intend"| EF
+  EF -->|"apply が書く（状態・関係・資源だけ）"| TR
+  DF -->|"初期配置と spawn の雛形"| TR
+  TK -->|"読む（写し）"| TR
 ```
 
 ### 実装に渡す語彙
