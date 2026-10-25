@@ -1,6 +1,6 @@
 // 最小の骨格: 世界の進行。
 // 物理層は同期更新「要求 → 解決 → 適用」。刻みの始めの状態から、影響範囲にあるすべての組 (a, b) について法則が流れの要求を出し
-// （a が切っ掛けを出す側、b が受ける側）、要求を資源の持ち主ごとに局所で解決し（出せる分だけに縮める。不可分な物は持ち主に閉じた
+// （a が切っ掛けを出す側、b が受ける側）、要求を持ち主ごとに局所で解決し（出せる分だけに縮める。不可分な物は持ち主に閉じた
 // 決定的な優先で一人に）、一斉に適用する。組をどの順に数えても、並列に計算しても、同じ結果になる。同じ刻みの中の連鎖は次の刻みへ送られる。
 // 情報層: 観測を集め、関係（心象）との差を事象（現れた・消えた）にし、心が意図を定め、死亡を確定する。
 // 値を変える経路はこのファイルの apply だけである。属性には書く経路が無い。
@@ -201,11 +201,6 @@ export class World implements WorldView {
     }
   }
 
-  /** 刻みの時間の予算。要求の段階では誰も使っていないので Δt。実際の配分は解決の段で持ち主が行う。 */
-  timeLeft(_id: ThingId): number {
-    return this.dt;
-  }
-
   /**
    * 影響範囲にあるか。自分自身との組、位置を持たない事物（自然）との組は常にある。
    * 位置を持つ二つの事物は、距離が両者の範囲の属性の最大値以下なら影響範囲にある。
@@ -288,7 +283,7 @@ export class World implements WorldView {
         this.touched = new Set();
         const applied = this.apply(scaled);
         this.assertWithinPair(bundle.law, bundle.a, bundle.b, scaled);
-        if (applied !== 0 && scaled.kind !== 'spend') this.ledger.push({ at: this.now, law: bundle.law.id, a: bundle.a, b: bundle.b, effect: scaled, applied });
+        if (applied !== 0 && scaled.kind !== 'use') this.ledger.push({ at: this.now, law: bundle.law.id, a: bundle.a, b: bundle.b, effect: scaled, applied });
       }
     }
 
@@ -338,7 +333,7 @@ export class World implements WorldView {
 
   /**
    * 解決。各要求が持ち主の資源に掛ける負荷を集め、持ち主ごとに局所で決める。
-   * 不可分な負荷（付け替え、生む、消す、時間）は優先順に全か無かで配り、可分な負荷（移す、変える、費用）は残りを比例で分ける。
+   * 不可分な負荷（付け替え、生む、消す、容量の使用）は優先順に全か無かで配り、可分な負荷（移す、変える、費用）は残りを比例で分ける。
    * 束の係数は、その束の負荷の係数の最小。優先は持ち主が要求者をどう見るか（関係・札）、同点は要求者の id、法則、相手の順。
    */
   private resolve(bundles: Bundle[]): Map<Bundle, number> {
@@ -358,7 +353,7 @@ export class World implements WorldView {
       const owner = this.things.get(claims[0]!.owner);
       if (!owner) continue;
       const res = key.slice(key.indexOf('|') + 1);
-      let remaining = res === 'time' ? this.dt : res === 'attachedTo' ? 1 : this.resOf(owner.id, res);
+      let remaining = res.startsWith('cap:') ? capacityOf(claims) : res === 'attachedTo' ? 1 : this.resOf(owner.id, res);
       const ownerSnap = snapshot(owner);
       const rank = (c: Claim): [number, ThingId, number, ThingId] => {
         const requester = this.things.get(c.bundle.a);
@@ -404,8 +399,8 @@ export class World implements WorldView {
         return { bundle, owner: e.from, key: `${e.from}|${e.fromRes}`, amount: e.amount, indivisible: false };
       case 'move':
         return e.cost > 0 ? { bundle, owner: e.costFrom, key: `${e.costFrom}|${e.costRes}`, amount: e.cost, indivisible: false } : undefined;
-      case 'spend':
-        return { bundle, owner: e.thing, key: `${e.thing}|time`, amount: e.minutes, indivisible: true };
+      case 'use':
+        return { bundle, owner: e.thing, key: `${e.thing}|cap:${e.capacity}`, amount: e.amount, indivisible: true };
       case 'reassign':
         return { bundle, owner: e.thing, key: `${e.thing}|attachedTo`, amount: 1, indivisible: true };
       case 'spawn':
@@ -468,7 +463,7 @@ export class World implements WorldView {
   /** 初期状態を作る。場面の構築時だけに使い、記録に残す。 */
   seed(effect: Effect | InfoEffect): number {
     const applied = this.apply(effect);
-    if (applied !== 0 && !('observer' in effect) && !('person' in effect) && effect.kind !== 'spend') {
+    if (applied !== 0 && !('observer' in effect) && !('person' in effect) && effect.kind !== 'use') {
       this.ledger.push({ at: this.now, law: 'seed', a: '', b: '', effect, applied });
     }
     return applied;
@@ -542,8 +537,8 @@ export class World implements WorldView {
         }
         return Math.hypot(e.dx * ratio, e.dy * ratio);
       }
-      case 'spend':
-        return e.minutes; // 時間は解決の段で配り終えている。帳簿には残さない。
+      case 'use':
+        return e.amount; // 容量は解決の段で配り終えている。帳簿には残さない。
       case 'inform': {
         const observer = this.things.get(e.observer);
         const about = this.things.get(e.about);
@@ -638,9 +633,15 @@ function participants(e: Effect): ThingId[] {
       return [e.thing, e.to, e.lossTo];
     case 'move':
       return [e.thing, e.costFrom, e.costTo];
-    case 'spend':
+    case 'use':
       return [e.thing];
   }
+}
+
+/** 容量の要求から、その刻みの容量を読む（同じ持ち主・同じ能力の要求は同じ値を持つ）。 */
+function capacityOf(claims: Claim[]): number {
+  for (const c of claims) for (const e of c.bundle.effects) if (e.kind === 'use' && `${e.thing}|cap:${e.capacity}` === c.key) return e.available;
+  return 0;
 }
 
 /** 効果を束の係数で縮める。不可分な効果は係数 1 のときだけ残る。 */
@@ -653,7 +654,7 @@ function scaleEffect(e: Effect, f: number): Effect | undefined {
       return { ...e, amount: e.amount * f, produced: e.produced * f };
     case 'move':
       return { ...e, dx: e.dx * f, dy: e.dy * f, cost: e.cost * f };
-    case 'spend':
+    case 'use':
     case 'reassign':
     case 'spawn':
     case 'despawn':

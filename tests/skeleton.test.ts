@@ -240,7 +240,7 @@ describe('skeleton: 物理層はすべての事物の組に法則を当てる', 
     expect(entry && 'applied' in entry ? entry.applied : NaN).toBeCloseTo(0.3, 9);
   });
 
-  it('刻みの時間 Δt は行為の予算で、採る・食べるはそれを使い切ると止まる', () => {
+  it('能力 × Δt がその刻みの容量で、採る 6 個/時 は 10 分の刻みでは 1 個', () => {
     const w = twoPickersOneFruit();
     // B を離し、木に実を 5 個足す。A は 6 個/時 なので 10 分の刻みでは 1 個しか採れない。
     w.seed({ kind: 'move', thing: 'B', dx: 9, dy: 0, costFrom: 'B', costRes: 'nutrition', costTo: 'nature', cost: 0 });

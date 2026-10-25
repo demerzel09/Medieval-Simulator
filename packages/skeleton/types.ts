@@ -66,8 +66,11 @@ export type Effect =
   | { kind: 'despawn'; thing: ThingId; to: ThingId; toRes: string; produced: number; lossTo: ThingId; lossRes: string }
   /** 位置（状態 x, y）の変化。動いた分の費用（資源）を別の事物へ移す。 */
   | { kind: 'move'; thing: ThingId; dx: number; dy: number; costFrom: ThingId; costRes: string; costTo: ThingId; cost: number }
-  /** 刻みの予算を使う。各事物は刻みごとに Δt を受け取り、行為がそれを使い切る。時計の帳簿であり、値ではない。 */
-  | { kind: 'spend'; thing: ThingId; minutes: number };
+  /**
+   * 容量を使う。能力（属性、毎時）× Δt がその刻みの容量で、不可分な行為（実を一個採る、一個食べる）が一つずつ使う。
+   * 持ち主が容量を超える要求を優先順に落とす。値ではなく、その刻みの中だけの帳簿。
+   */
+  | { kind: 'use'; thing: ThingId; capacity: string; available: number; amount: number };
 
 /**
  * 情報層の効果: 関係（心象）と状態（意図）を変える。世界の事象の処理と心だけが使い、法則は返さない。
@@ -90,8 +93,6 @@ export interface WorldView {
   distance(a: ThingId, b: ThingId): number;
   /** 範囲の種類ごとの判定。sight は観測者の視界と対象の見える範囲、reach は手の届く範囲、smell は匂い。属性で決まる。 */
   inRange(kind: 'sight' | 'reach' | 'smell', subject: ThingId, object: ThingId): boolean;
-  /** この刻みで事物に残っている時間（分）。 */
-  timeLeft(id: ThingId): number;
   /** 種類の定義を、親の既定値を継いで解決した形で返す。 */
   def(name: string): { attr: Record<string, Scalar>; state: State; res: Resources };
 }

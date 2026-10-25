@@ -113,55 +113,47 @@ export const rot: Law = {
   },
 };
 
-/** (歩ける, 受け皿): 移動。意図した目標へ、残っている時間 × 速度だけ進む。動いた分の栄養が熱として自然へ移る。 */
+/** (歩ける, 受け皿): 移動。意図した目標へ、速度 × Δt だけ進む。動いた分の栄養が熱として自然へ移る。 */
 export const walk: Law = {
   id: 'walk',
   version: 'kinds-1',
-  pair: (a, b, _dt, w) => {
+  pair: (a, b, dt, w) => {
     if (!alive(a) || !has(a, 'speedPerHour') || !has(b, 'sink') || state(a, 'intent') !== 'move') return [];
     const pos = w.positionOf(a.id)!;
     const dist = Math.hypot(stateNum(a, 'targetX') - pos.x, stateNum(a, 'targetY') - pos.y);
     const speed = attr(a, 'speedPerHour') / HOUR; // m/分
-    const time = w.timeLeft(a.id);
-    if (dist < 1e-9 || time <= 0 || speed <= 0) return [];
-    const step = Math.min(dist, speed * time);
+    if (dist < 1e-9 || speed <= 0) return [];
+    const step = Math.min(dist, speed * dt);
     const dx = ((stateNum(a, 'targetX') - pos.x) / dist) * step;
     const dy = ((stateNum(a, 'targetY') - pos.y) / dist) * step;
-    return [
-      { kind: 'move', thing: a.id, dx, dy, costFrom: a.id, costRes: 'nutrition', costTo: b.id, cost: attr(a, 'walkCostPerMeter') * step },
-      { kind: 'spend', thing: a.id, minutes: step / speed },
-    ];
+    return [{ kind: 'move', thing: a.id, dx, dy, costFrom: a.id, costRes: 'nutrition', costTo: b.id, cost: attr(a, 'walkCostPerMeter') * step }];
   },
 };
 
-/** (採る, 付属する物): 採る。意図した相手に付いた物が手の届く範囲にあり、時間が残っていれば、人へ付け替わる。二人なら順に、無くなれば止まる。 */
+/** (採る, 付属する物): 採る。意図した相手に付いた物が手の届く範囲にあれば、人へ付け替わる。一刻みに採れる数は能力 × Δt。二人なら優先順に、無くなれば止まる。 */
 export const pick: Law = {
   id: 'pick',
   version: 'kinds-1',
-  pair: (a, b, _dt, w) => {
+  pair: (a, b, dt, w) => {
     if (!alive(a) || !has(a, 'picks') || state(a, 'intent') !== 'pick' || !('attachedTo' in b.state)) return [];
     const holder = state(a, 'target');
     if (state(b, 'attachedTo') !== holder || w.distance(a.id, b.id) > attr(a, 'reach')) return [];
-    const cost = HOUR / attr(a, 'pickPerHour'); // 分/個
-    if (w.timeLeft(a.id) + 1e-9 < cost) return [];
     return [
       { kind: 'reassign', thing: b.id, from: holder, to: a.id },
-      { kind: 'spend', thing: a.id, minutes: cost },
+      { kind: 'use', thing: a.id, capacity: 'pick', available: (attr(a, 'pickPerHour') / HOUR) * dt, amount: 1 },
     ];
   },
 };
 
-/** (食べる, 食べられる): 食べる。札の値が合い（植物を食べる × 植物性）、自分に付いていて、意図が eat で、時間が残っていれば、胃の内容になる。 */
+/** (食べる, 食べられる): 食べる。札の値が合い（植物を食べる × 植物性）、自分に付いていて、意図が eat なら、胃の内容になる。一刻みに食べる数は能力 × Δt。 */
 export const eat: Law = {
   id: 'eat',
   version: 'kinds-1',
-  pair: (a, b, _dt, w) => {
+  pair: (a, b, dt) => {
     if (!alive(a) || !has(a, 'eats') || a.attr['eats'] !== b.attr['edible'] || state(a, 'intent') !== 'eat' || state(b, 'attachedTo') !== a.id) return [];
-    const cost = HOUR / attr(a, 'eatPerHour');
-    if (w.timeLeft(a.id) + 1e-9 < cost) return [];
     return [
       { kind: 'despawn', thing: b.id, to: a.id, toRes: 'stomach', produced: res(b, 'quantity'), lossTo: a.id, lossRes: 'stomach' },
-      { kind: 'spend', thing: a.id, minutes: cost },
+      { kind: 'use', thing: a.id, capacity: 'eat', available: (attr(a, 'eatPerHour') / HOUR) * dt, amount: 1 },
     ];
   },
 };
