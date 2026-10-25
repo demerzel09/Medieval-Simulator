@@ -175,6 +175,126 @@ flowchart TD
   TK -->|"読む（写し）"| TR
 ```
 
+### 世界の構造を示す三つの図（UML）
+
+ここまでの図を UML の語で言うと、図1は一刻みの処理の流れ（アクティビティ図に近い）、図2は概念の関係（概念図）、図3は相互作用の表（UML ではない）、図4は部品の一覧と呼び出しが混ざった図で、「誰が」が曖昧だった。世界と心象と事物が何に属し、どう作用し合うかは、三つの図に分けて示す。
+
+**図5 クラス図（何が何を持つか）。** 黒いひし形は所有（World が事物の表と定義の表を持つ）、白いひし形は登録（World が法則・感覚・心を持つが、それらは World の一部ではない）、実線の矢印は参照（事物が付属先の事物を指す、事物が相手ごとの関係＝心象を持つ）、点線は依存（法則は事物の写しを読んで要求を返す。心は自分の写しだけ読む）。心象は World の部品ではなく、各事物が相手ごとに持つ関係 `rel` である。
+
+```mermaid
+classDiagram
+  direction TB
+  class World {
+    things: Map~id, ThingRecord~
+    defs: Map~name, ThingDef~
+    laws: Law[]
+    senses: Sense[]
+    minds: Map~id, Mind~
+    ledger: LedgerEntry[]
+    tick(dt)
+    apply(effect)
+  }
+  class ThingRecord {
+    id, kind
+    attr 属性 凍結の札と仕様
+    state 状態
+    rel 関係 相手ごとの状態 心象
+    res 資源
+  }
+  class ThingDef {
+    name, parent
+    attr, state, res
+  }
+  class Law {
+    <<interface>>
+    id, version
+    pair(a, b, dt, w) Effect[]
+  }
+  class Sense {
+    <<interface>>
+    observe(observer, object, w)
+    expected(observer, remembered, w)
+  }
+  class Mind {
+    <<interface>>
+    decide(self, now) 意図
+  }
+  class ForagerMind
+  class Effect {
+    transfer, convert, reassign
+    spawn, despawn, move, use
+  }
+  World *-- "n" ThingRecord : things　持つ
+  World *-- "n" ThingDef : defs　持つ
+  World o-- "n" Law : laws　登録
+  World o-- "n" Sense : senses　登録
+  World o-- "n" Mind : minds　人物ごと
+  ThingRecord --> ThingRecord : state.attachedTo　付属。実→木、実→人
+  ThingRecord --> ThingRecord : rel　心象。相手ごとの状態
+  ThingDef --> ThingDef : parent　既定値を継ぐ
+  ThingDef ..> ThingRecord : 雛形　初期配置と spawn
+  Law ..> ThingRecord : 写しを読む
+  Law ..> Effect : 要求を返す
+  World ..> Effect : apply が状態・関係・資源に書く
+  Mind ..> ThingRecord : 自分の写しだけ読む
+  ForagerMind ..|> Mind
+```
+
+**図6 オブジェクト図（ある刻みの世界の実例）。** 二人の場面の 2 時間 10 分後（13 刻み目）の実際の値。世界は自然・木・二人・六つの実を持ち、実は付属先（attachedTo）で人に付き、人の関係 `rel` には見た木・相手・実が時刻と位置つきで写っている。心象は人の中にあり、世界の真実（左の箱）とは別の写しである。
+
+```mermaid
+flowchart LR
+  W["世界 World　時刻 2:10（13 刻み目）<br/>定義: nature, tree, fruit, person<br/>法則: walk, pick, eat, digest, wear, ripen, rot<br/>感覚: sight　心: P1, P2 に ForagerMind"]
+  N["nature（自然）<br/>属性 sink, grows, rotPerHour 1/16<br/>資源 fruitStock 99994, nutrition 0.5, freshness 0.81, waste 0"]
+  T["tree（木）<br/>属性 bears=fruit, visibility 300, cap 12, ripenPerHour 0.25<br/>状態 x 40, y 0<br/>資源 growth 0.54"]
+  F1["fruit#1, #2, #3（実）<br/>属性 edible=plant, perishable, visibility 30, odor 5<br/>状態 attachedTo = P1<br/>資源 freshness 1.86, quantity 1"]
+  F4["fruit#4, #5, #6（実）<br/>状態 attachedTo = P2<br/>資源 freshness 1.86, quantity 1"]
+  P1["P1（人）<br/>属性 eats=plant, picks, sight 60, reach 1.5, pickPerHour 6, eatPerHour 12, …<br/>状態 alive yes, x 0, y 0, intent idle<br/>資源 nutrition 5.74, stomach 0<br/>関係 rel（心象）: tree{at 120, x 40, bears}、P2{x 20}、fruit#1〜#6{attachedTo}"]
+  P2["P2（人）<br/>状態 alive yes, x 20, y 0, intent move, target home<br/>資源 nutrition 5.75, stomach 0<br/>関係 rel（心象）: tree、P1、fruit#1〜#6"]
+  W -->|"持つ"| N
+  W -->|"持つ"| T
+  W -->|"持つ"| P1
+  W -->|"持つ"| P2
+  F1 -->|"state.attachedTo"| P1
+  F4 -->|"state.attachedTo"| P2
+  P1 -->|"rel 心象"| T
+  P1 -->|"rel 心象"| F4
+  P2 -->|"rel 心象"| T
+```
+
+**図7 シーケンス図（一刻みで誰が誰を呼ぶか）。** 主語はすべて `World.tick` である。法則・感覚・心は呼ばれて答えを返すだけで、自分からは何もしないし、何も書かない。事物の表を書くのは `apply` だけで、それも `tick` の中からしか呼ばれない。
+
+```mermaid
+sequenceDiagram
+  participant W as World.tick(Δt)
+  participant L as Law 法則
+  participant S as Sense 感覚
+  participant M as Mind 心
+  participant T as ThingRecord 事物の表
+  W->>T: 写し ThingSnapshot を取る（読むだけ）
+  W->>W: 全組を数え、active で影響範囲にある組に絞る
+  loop 法則 × 組 (a, b)
+    W->>L: pair(a の写し, b の写し, Δt)
+    L-->>W: 要求 Effect の列（無ければ空）
+  end
+  W->>W: resolve 持ち主ごとに縮める（比例・優先）
+  loop 束の効果
+    W->>T: apply 状態・関係・資源だけを書く。ledger に記録
+  end
+  loop 生きている事物 × 他の事物
+    W->>S: observe(観測者, 対象)
+    S-->>W: 写す値の名、または null
+    W->>T: apply(inform / forget) 観測者の rel（心象）
+  end
+  loop 心を持つ事物
+    W->>M: decide(自分の写し)
+    M-->>W: 意図
+    W->>T: apply(intend) 状態 intent
+  end
+  W->>T: 死亡の確定（栄養が尽きた生者）
+  W->>W: now += Δt
+```
+
 ### 実装に渡す語彙
 
 語彙と型は Valueflows（`@valueflows/vf-graphql` の TypeScript 型定義の部分集合）、action 効果表は hREA の組込み定義、不変条件は Laurier・Poels の表1、最小の予測・配分規則は同論文の在庫方針を採る（[流用範囲](RESEARCH.md#rea-reuse)、[実装のヒント](RESEARCH.md#allocation-hints)）。事物は EconomicResource に身体を加えたもの、属性は EconomicResource の数量と custody に鮮度・栄養・知識などを加えたもの、作用の型は ResourceSpecification・ProcessSpecification・action 効果表・Recipe に速度と条件を加え、二つの事物の組に対して書いたもの、作用の実例は刻みごとに記録される適用済みの効果（EconomicEvent。長い作用は刻みの列）、保管者は primaryAccountable（custody）、主体は Agent、意図と約束は Intent と Commitment、記録は Agreement と Claim にあたる。事物が持つ値の四区分は、属性＝ResourceSpecification（知識レベル）、状態＝EconomicResource の stage・state、関係＝AgentRelationship と BFO 2020 の関係的性質、資源＝EconomicResource の数量と stock-flow にあたる（[手がかり](RESEARCH.md#value-kinds)）。種類の定義は ResourceSpecification、Unity の prefab、RimWorld の Def（ParentName で既定値を継ぐ）、Dwarf Fortress の raw にあたる。実装上の分かれ目である「両側を一つの作用で確定するか、予約を挟む二段にするか」は、前者を採る。
