@@ -143,11 +143,32 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
     expect(rel['tree']!['at']).toBe(0);
   });
 
+  it('配置するだけで動く: 定義から置いた人物に心が付き、家を知覚して住み（関係 home を得て）、場面は事物ごとの設定をしない', () => {
+    const { world } = buildFruitScenario();
+    expect(world.thing('P1')!.rel).toEqual({}); // 家の所属は注入されていない
+    world.tick(DT); // 家を知覚し、住む意図
+    expect(events(world, 'intend').some((e) => 'intent' in e && e.intent === 'settle')).toBe(true);
+    world.tick(DT); // 法則 settle が関係を書く
+    expect(world.thing('P1')!.rel['home']!['home']).toBe(true);
+    expect(flows(world, 'settle').length).toBe(1);
+    // 心は札 mind で定義から付く。登録していない種類なら付かない
+    const w = new World();
+    for (const d of fruitDefs) w.addDef(d);
+    w.addFromDef('nature', 'nature');
+    w.addFromDef('Q', 'person');
+    w.addLaw(fruitLaws.find((l) => l.id === 'wear')!);
+    w.tick(DT);
+    expect(events(w, 'intend').length).toBe(0); // 心が無いので意図は出ない
+    w.addMind('forager', () => ({ decide: () => ({ intent: 'idle' }) })); // 後から登録しても既にある事物に付く
+    w.tick(DT);
+    expect(w.thing('Q')!.state['intent']).toBe('idle');
+  });
+
   it('家は事物で、自分の家は関係の印。持ち物は家へしまえ、家から採るのは木から採るのと同じ法則', () => {
     const { world } = buildFruitScenario();
     expect(world.thing('home')!.attr['stores']).toBe(true);
     expect('homeX' in world.thing('P1')!.attr).toBe(false);
-    world.run(6 * HOUR, DT); // 木へ行って 3 個採り、家へ戻る
+    world.run(6 * HOUR, DT); // 住み、木へ行って 3 個採り、家へ戻る
     const p = world.thing('P1')!;
     expect(p.rel['home']!['home']).toBe(true); // 印は知覚の写し直しで消えない
     expect(p.rel['home']!['x']).toBe(0); // 位置は知覚で写る
@@ -189,7 +210,7 @@ describe('skeleton: 値の四区分（属性・状態・関係・資源）', () 
 
 describe('skeleton: 物理層はすべての事物の組に法則を当てる', () => {
   it('刻みごとに（事物の数）² の組を調べ、絞り込みを切れば法則はその全組に当てられる', () => {
-    const { world } = buildFruitScenario({ allPairs: true }); // 自然、木、家、人、実6 = 10 事物、法則 8
+    const { world } = buildFruitScenario({ allPairs: true }); // 自然、木、家、人、実6 = 10 事物、法則 10
     world.tick(DT);
     expect(world.stats.pairChecks).toBe(10 * 10);
     expect(world.stats.pairEvaluations).toBe(10 * 10 * fruitLaws.length);
@@ -365,22 +386,27 @@ describe('skeleton: 範囲は属性と距離で決まり、知識は情報層の
   });
 });
 
-describe('skeleton: 心は意図だけを定め、世界が死亡を確定する', () => {
+describe('skeleton: 心は意図だけを定め、死亡は法則が決める', () => {
   it('意図は変わったときだけ事象になる', () => {
     const { world } = buildFruitScenario();
     world.run(DAY, DT);
     expect(events(world, 'intend').length).toBeLessThan(world.stats.ticks);
   });
 
-  it('栄養が尽きた人物は刻みの終わりに世界が死亡と確定し、以後の法則の組から外れる', () => {
+  it('栄養が尽きた人物は、自分自身との組の法則（札 mortal）で次の刻みに死に、以後の法則の組から外れる。世界の進行は栄養を知らない', () => {
     const w = new World();
     w.addThing('nature', 'nature', { attr: { sink: true }, res: { nutrition: 0, waste: 0 } });
-    w.addThing('P', 'person', { attr: { wearPerHour: 0.6, digestPerHour: 0.5, digestYield: 0.8 }, state: { alive: 'yes', x: 0, y: 0, intent: 'idle' }, res: { nutrition: 0.05, stomach: 0 } });
+    w.addThing('P', 'person', { attr: { wearPerHour: 0.6, digestPerHour: 0.5, digestYield: 0.8, mortal: true }, state: { alive: 'yes', x: 0, y: 0, intent: 'idle' }, res: { nutrition: 0.05, stomach: 0 } });
+    w.addThing('I', 'person', { attr: { wearPerHour: 0.6 }, state: { alive: 'yes', x: 0, y: 0, intent: 'idle' }, res: { nutrition: 0, stomach: 0 } }); // 札 mortal が無ければ死なない
     for (const law of fruitLaws) w.addLaw(law);
+    w.tick(DT); // 栄養が尽きる（法則は刻みの始めの状態を読むので、死ぬのは次の刻み）
+    expect(res(w.thing('P'), 'nutrition')).toBe(0);
+    expect(state(w.thing('P'), 'alive')).toBe('yes');
     w.tick(DT);
     expect(state(w.thing('P'), 'alive')).toBe('no');
-    expect(events(w, 'death').length).toBe(1);
+    expect(flows(w, 'starve').length).toBe(1);
+    expect(state(w.thing('I'), 'alive')).toBe('yes');
     w.tick(DT);
-    expect(flows(w, 'wear').length).toBe(1); // 二刻み目は消耗しない
+    expect(flows(w, 'wear').filter((e) => 'a' in e && e.a === 'P').length).toBe(1); // 死後は消耗しない
   });
 });

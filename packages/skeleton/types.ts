@@ -70,7 +70,11 @@ export type Effect =
    * 容量を使う。能力（属性、毎時）× Δt がその刻みの容量で、不可分な行為（実を一個採る、一個食べる）が一つずつ使う。
    * 持ち主が容量を超える要求を優先順に落とす。値ではなく、その刻みの中だけの帳簿。
    */
-  | { kind: 'use'; thing: ThingId; capacity: string; available: number; amount: number };
+  | { kind: 'use'; thing: ThingId; capacity: string; available: number; amount: number }
+  /** 関係を書く。thing の相手 about への関係に fields を重ねる（所属、所有）。相互作用で得る関係はこれで書き、場面の構築で注入しない。 */
+  | { kind: 'relate'; thing: ThingId; about: ThingId; fields: Relation }
+  /** 生死の確定。状態 alive を no にし、意図を消す。以後その事物はどの組でも何も起こさない。法則が返す（世界の進行は栄養という名を知らない）。 */
+  | { kind: 'die'; thing: ThingId };
 
 /**
  * 情報層の効果: 関係（心象）と状態（意図）を変える。世界の事象の処理と心だけが使い、法則は返さない。
@@ -126,8 +130,7 @@ export type LedgerEntry =
   | { at: number; law: string; a: ThingId; b: ThingId; effect: Effect; applied: number }
   | { at: number; event: 'appear'; person: ThingId; about: ThingId; kind: string }
   | { at: number; event: 'vanish'; person: ThingId; about: ThingId }
-  | { at: number; event: 'intend'; person: ThingId; intent: string; target?: ThingId; targetX?: number; targetY?: number }
-  | { at: number; event: 'death'; person: ThingId };
+  | { at: number; event: 'intend'; person: ThingId; intent: string; target?: ThingId; targetX?: number; targetY?: number };
 
 /**
  * 世界の写し（録画の初期状態）。定義と事物の値をそのまま持つ。World.save が作り、World.load が世界に戻す。
@@ -141,7 +144,11 @@ export interface WorldState {
   spawnSeq: Record<string, number>;
 }
 
-/** 心: 自分の写し（関係＝心象を含む）だけから、自分の意図を返す。世界の真実は見ない。 */
+/**
+ * 心: 自分の写し（関係＝心象を含む）だけから、自分の意図を返す。世界の真実は見ない。
+ * どの心を持つかは事物の札 mind（定義にある）で決まり、世界は登録された心の種類から作って事物に付ける。場面が人物ごとに割り当てることはしない。
+ * 入力は自分の写し、出力は有限の行為（意図）の一つなので、規則・NN・LLM・人間の代行、強化学習や遺伝的アルゴリズムで探した方針に差し替えられる。
+ */
 export interface Mind {
   decide(self: ThingSnapshot, now: number): Omit<Extract<InfoEffect, { kind: 'intend' }>, 'kind' | 'person'> | undefined;
 }

@@ -5,6 +5,7 @@ classDiagram
     defs: Map~name, ThingDef~
     laws: Law[]
     senses: Sense[]
+    mindKinds: Map~name, make~
     minds: Map~id, Mind~
     ledger: LedgerEntry[]
     tick(dt)
@@ -42,12 +43,13 @@ classDiagram
   class Effect {
     transfer, convert, reassign
     spawn, despawn, move, use
+    relate, die
   }
   World *-- "n" ThingRecord : things　持つ
   World *-- "n" ThingDef : defs　持つ
   World o-- "n" Law : laws　登録
   World o-- "n" Sense : senses　登録
-  World o-- "n" Mind : minds　人物ごと
+  World o-- "n" Mind : minds　札 mind で付く
   ThingRecord --> ThingRecord : state.attachedTo　付属。実→木、実→人
   ThingRecord --> ThingRecord : rel　心象。相手ごとの状態
   ThingDef --> ThingDef : parent　既定値を継ぐ

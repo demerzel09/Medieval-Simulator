@@ -78,6 +78,8 @@ export class World implements WorldView {
   private readonly defs = new Map<string, ThingDef>();
   private readonly laws: Law[] = [];
   private readonly senses: Sense[] = [];
+  /** 心の種類（札 mind の値 → 作る関数）。法則や感覚と同じく世界に一度登録する。 */
+  private readonly mindKinds = new Map<string, () => Mind>();
   private readonly minds = new Map<ThingId, Mind>();
   private touched = new Set<ThingId>();
   private readonly spawnSeq = new Map<string, number>();
@@ -94,7 +96,7 @@ export class World implements WorldView {
 
   // ---- 事物 ----
 
-  /** 事物を置く。attr は属性（仕様）で凍結され、以後どの効果も書けない。state・rel・res は更新が書く。 */
+  /** 事物を置く。attr は属性（仕様）で凍結され、以後どの効果も書けない。state・rel・res は更新が書く。札 mind があれば心が付く。 */
   addThing(id: ThingId, kind: string, parts: ThingParts): void {
     if (this.things.has(id)) throw new Error(`duplicate thing ${id}`);
     this.things.set(id, {
@@ -105,6 +107,14 @@ export class World implements WorldView {
       rel: { ...(parts.rel ?? {}) },
       res: { ...(parts.res ?? {}) },
     });
+    this.attachMind(id);
+  }
+
+  /** 札 mind の名の心を作って付ける。登録されていない種類なら付かない（再生の世界は心を登録しない）。 */
+  private attachMind(id: ThingId): void {
+    const name = this.things.get(id)!.attr['mind'];
+    const make = typeof name === 'string' ? this.mindKinds.get(name) : undefined;
+    if (make) this.minds.set(id, make());
   }
 
   // ---- 種類の定義と生成 ----
@@ -229,9 +239,11 @@ export class World implements WorldView {
     this.senses.push(sense);
   }
 
-  addMind(person: ThingId, mind: Mind): void {
-    if (!this.things.has(person)) throw new Error(`unknown person ${person}`);
-    this.minds.set(person, mind);
+  /** 心の種類を登録する。札 mind にこの名を持つ事物が置かれる・生まれるたびに make() で作って付ける。既にある事物にも付ける。 */
+  addMind(name: string, make: () => Mind): void {
+    if (this.mindKinds.has(name)) throw new Error(`duplicate mind ${name}`);
+    this.mindKinds.set(name, make);
+    for (const id of this.things.keys()) if (!this.minds.has(id)) this.attachMind(id);
   }
 
   // ---- 進行 ----
@@ -239,8 +251,9 @@ export class World implements WorldView {
   /**
    * 一刻み。
    * 1. 物理層: 要求（全組に法則。刻みの始めの状態だけを読む）→ 解決（持ち主ごとに局所で縮める）→ 適用（一斉に書く）。
-   * 2. 情報層: 観測を集め、関係（心象）との差を事象にする。心が意図を定める。死亡を確定する。
+   * 2. 情報層: 観測を集め、関係（心象）との差を事象にする。心が意図を定める。
    * 3. 時刻を Δt 進める。
+   * 世界の進行は事物の種類の名も資源の名も知らない。死亡も法則（自分自身との組）が返す効果である。
    */
   tick(dt: number): void {
     this.dt = dt;
@@ -303,19 +316,9 @@ export class World implements WorldView {
       this.apply({ kind: 'intend', person, ...intent });
       this.ledger.push({ at: this.now, event: 'intend', person, intent: intent.intent, target: intent.target, targetX: intent.targetX, targetY: intent.targetY });
     }
-    // 死亡の確定: 生きている（状態 alive）事物の栄養（資源）が尽きたら、世界が確定する。
-    for (const t of this.things.values()) {
-      if (t.state['alive'] === 'yes' && typeof t.res['nutrition'] === 'number' && t.res['nutrition'] <= 1e-9) this.die(t.id);
-    }
 
     // 3. 時刻。
     this.now += dt;
-  }
-
-  private die(id: ThingId): void {
-    this.setState(id, 'alive', 'no');
-    this.setState(id, 'intent', 'none');
-    this.ledger.push({ at: this.now, event: 'death', person: id });
   }
 
   /** 組を数える順。結果は変わらない（検査用に逆順・乱順を選べる）。 */
@@ -469,21 +472,21 @@ export class World implements WorldView {
     return JSON.parse(JSON.stringify({ now: this.now, defs: [...this.defs.values()], things: [...this.things.values()], spawnSeq: Object.fromEntries(this.spawnSeq) }));
   }
 
-  /** 写しから世界を作る。法則・感覚・心は入らない（コードなので、要るものを登録し直す）。 */
+  /** 写しから世界を作る。法則・感覚・心の種類は入らない（コードなので、要るものを登録し直す）。 */
   static load(s: WorldState, options: WorldOptions = {}): World {
     const w = new World(options);
     w.now = s.now;
     for (const d of s.defs) w.addDef(d);
-    for (const t of s.things) w.addThing(t.id, t.kind, t);
+    for (const t of s.things) w.things.set(t.id, { id: t.id, kind: t.kind, attr: Object.freeze({ ...t.attr }), state: { ...t.state }, rel: { ...t.rel }, res: { ...t.res } });
     for (const [k, n] of Object.entries(s.spawnSeq)) w.spawnSeq.set(k, n);
     return w;
   }
 
   /**
    * 再生。初期状態から load した世界に、記録を刻みごとに適用し直して時刻 until の状態を再現する。
-   * 法則と心は要らない。流れ（物理層）と意図（心の選択）は記録にあるので、そのまま適用する。
+   * 法則と心は要らない。流れ（物理層。死亡も含む）と意図（心の選択）は記録にあるので、そのまま適用する。
    * 感覚は要る。心象の刻みごとの写し直し（いつ見たか、位置、鮮度）は事象ではなく記録に無いので、知覚は世界の真実から計算し直す。
-   * 現れた・消えた・死亡は、その結果として同じに出る。初期状態より前の記録と seed（初期状態に含まれる）は飛ばす。
+   * 現れた・消えたは、その結果として同じに出る。初期状態より前の記録と seed（初期状態に含まれる）は飛ばす。
    */
   replay(ledger: LedgerEntry[], dt: number, until: number): void {
     let i = 0;
@@ -500,14 +503,12 @@ export class World implements WorldView {
         const applied = this.apply(e.effect);
         if (applied !== 0) this.ledger.push({ at: this.now, law: e.law, a: e.a, b: e.b, effect: e.effect, applied });
       }
-      // 2. 情報層: 知覚を計算し直し、記録の意図と死亡を適用する。
+      // 2. 情報層: 知覚を計算し直し、記録の意図を適用する。
       this.perceive();
       for (const e of entries) {
-        if (!('event' in e)) continue;
-        if (e.event === 'intend') {
-          this.apply({ kind: 'intend', person: e.person, intent: e.intent, target: e.target, targetX: e.targetX, targetY: e.targetY });
-          this.ledger.push({ ...e, at: this.now });
-        } else if (e.event === 'death') this.die(e.person);
+        if (!('event' in e) || e.event !== 'intend') continue;
+        this.apply({ kind: 'intend', person: e.person, intent: e.intent, target: e.target, targetX: e.targetX, targetY: e.targetY });
+        this.ledger.push({ ...e, at: this.now });
       }
       // 3. 時刻。
       this.now += Math.min(dt, until - this.now);
@@ -562,6 +563,7 @@ export class World implements WorldView {
         this.setRes(e.from, e.fromRes, have - e.amount);
         this.things.set(e.id, { id: e.id, kind: e.def, attr: Object.freeze({ ...d.attr }), state: { ...d.state, ...(e.state ?? {}) }, rel: {}, res: { ...d.res, quantity: e.amount } });
         this.touched.add(e.id);
+        this.attachMind(e.id);
         return e.amount;
       }
       case 'despawn': {
@@ -573,6 +575,7 @@ export class World implements WorldView {
         this.setRes(e.to, e.toRes, this.resOf(e.to, e.toRes) + e.produced);
         if (loss > 0) this.setRes(e.lossTo, e.lossRes, this.resOf(e.lossTo, e.lossRes) + loss);
         this.things.delete(e.thing);
+        this.minds.delete(e.thing);
         this.touched.add(e.thing);
         return amount || 1;
       }
@@ -593,6 +596,19 @@ export class World implements WorldView {
       }
       case 'use':
         return e.amount; // 容量は解決の段で配り終えている。帳簿には残さない。
+      case 'relate': {
+        const t = this.things.get(e.thing);
+        if (!t || !this.things.has(e.about)) return 0;
+        this.setRel(e.thing, { ...t.rel, [e.about]: { ...t.rel[e.about], ...e.fields } });
+        return 1;
+      }
+      case 'die': {
+        const t = this.things.get(e.thing);
+        if (!t || t.state['alive'] !== 'yes') return 0;
+        this.setState(e.thing, 'alive', 'no');
+        this.setState(e.thing, 'intent', 'none');
+        return 1;
+      }
       case 'inform': {
         const observer = this.things.get(e.observer);
         const about = this.things.get(e.about);
@@ -689,7 +705,10 @@ function participants(e: Effect): ThingId[] {
     case 'move':
       return [e.thing, e.costFrom, e.costTo];
     case 'use':
+    case 'die':
       return [e.thing];
+    case 'relate':
+      return [e.thing, e.about];
   }
 }
 
@@ -713,6 +732,8 @@ function scaleEffect(e: Effect, f: number): Effect | undefined {
     case 'reassign':
     case 'spawn':
     case 'despawn':
+    case 'relate':
+    case 'die':
       return undefined;
   }
 }
