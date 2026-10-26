@@ -3,6 +3,8 @@
 //         npm run skeleton -- 30 --persons 2     （同じ木を 2 人で使う）
 //         npm run skeleton -- 30 --sight 20      （家から木が見えない視界）
 //         npm run skeleton -- 30 --ripen 0.5     （実る速さ 実/時）
+//         npm run skeleton -- 30 --tree-distance 200 （木までの距離 m。視界の外なら採取者は探索して見つける）
+//         --spacing 2 で探索の渦巻きの腕の間隔を視界の 2 倍に（方針の値。既定 1）
 //         --all-pairs で影響範囲の絞り込みを切る（比較用）
 //         --order reverse|shuffle で組を数える順を変える（結果は変わらない。比較用）
 //         --ledger で記録の先頭 200 件も表示
@@ -10,7 +12,7 @@
 //         --placed で、置くだけの村（家 3・木 3・採取者 5 を任意の座標に。構築関数の配置によらない）を走らせる
 //         --grain で、実の足りない木と穀物の畑と炉（間接さの段 2）。--knows を足すと、穀物が炉で粥になると知っている人（違いは心象の知識だけ）
 
-import { runFruitDays, runGrainDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
+import { ForagerMind, runFruitDays, runGrainDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
 
 const args = process.argv.slice(2);
 const days = Number(args.find((a) => /^\d+$/.test(a)) ?? '3');
@@ -21,6 +23,9 @@ const valueOf = (name: string) => {
 const persons = Number(valueOf('persons') ?? '1');
 const ripenPerHour = Number(valueOf('ripen') ?? '0.25');
 const sight = Number(valueOf('sight') ?? '60');
+const treeDistance = Number(valueOf('tree-distance') ?? '40');
+const spacing = valueOf('spacing');
+const mind = spacing !== undefined ? () => new ForagerMind(3, 4, Number(spacing)) : undefined;
 const allPairs = args.includes('--all-pairs');
 const pairOrder = (valueOf('order') ?? 'sorted') as 'sorted' | 'reverse' | 'shuffle';
 
@@ -32,7 +37,7 @@ const run = placed
   ? runPlaced(days)
   : grain
     ? runGrainDays(days, { knows, treeRipenPerHour: valueOf('ripen') !== undefined ? ripenPerHour : undefined })
-    : runFruitDays(days, { persons, ripenPerHour, sight, allPairs, pairOrder });
+    : runFruitDays(days, { persons, ripenPerHour, sight, treeDistance, allPairs, pairOrder, mind });
 const { scenario, daily, initial } = run;
 const elapsed = performance.now() - started;
 console.log(
@@ -40,7 +45,7 @@ console.log(
     ? `# placed village: 3 homes, 3 trees, 5 foragers, dt 10min`
     : grain
       ? `# grain: scarce tree, field, hearth, 1 ${knows ? 'farmer (knows grain becomes gruel at a hearth)' : 'forager (no knowledge of grain)'}, dt 10min`
-      : `# fruit: ${persons} forager(s), ripen ${ripenPerHour}/h, sight ${sight}m, dt 10min`,
+      : `# fruit: ${persons} forager(s), ripen ${ripenPerHour}/h, sight ${sight}m, tree at ${treeDistance}m${spacing !== undefined ? `, explore spacing ${spacing}` : ''}, dt 10min`,
 );
 for (const row of daily) console.log(JSON.stringify(row));
 if (placed) {

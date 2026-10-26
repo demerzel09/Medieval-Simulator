@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, buildFruitScenario, buildPlacedScenario, buildGrainScenario, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
+import { World, ForagerMind, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
 import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
@@ -364,10 +364,44 @@ describe('skeleton: 範囲は属性と距離で決まり、知識は情報層の
     expect(Object.values(k2).some((e) => 'edible' in e)).toBe(true);
   });
 
-  it('視界が木まで届かなければ木を知ることがなく、探索が無いので動けずに死ぬ', () => {
-    const { scenario, daily } = runFruitDays(5, { sight: 20 });
-    expect(scenario.world.thing('P1')!.rel['tree']).toBeUndefined();
-    expect(daily[daily.length - 1]!['P1.alive']).toBe('no');
+  it('視界が木まで届かなくても、木を知らない採取者は家を中心に渦巻きに歩いて探し、木を見つけて 30 日生きる', () => {
+    const { world } = buildFruitScenario({ sight: 20 });
+    world.tick(DT);
+    expect(world.thing('P1')!.rel['tree']).toBeUndefined(); // 家からは見えない
+    world.run(30 * DAY, DT);
+    expect(world.thing('P1')!.rel['tree']?.['bears']).toBe('fruit');
+    expect(state(world.thing('P1'), 'alive')).toBe('yes');
+  });
+
+  it('探索は相手を持たない移動（intent move、target は空）で、法則も行為も増やさない。行き先に着くまで替えず、記録から再生できる', () => {
+    const { world } = buildFruitScenario({ treeDistance: 200 }); // 視界 60m の外
+    const initial = world.save();
+    world.run(2 * DAY, DT);
+    const explores = events(world, 'intend').filter((e) => 'intent' in e && e.intent === 'move' && !e.target);
+    expect(explores.length).toBeGreaterThan(10);
+    expect(new Set(world.ledger.filter((e) => 'law' in e).map((e) => ('law' in e ? e.law : '')))).not.toContain('explore');
+    // 渦巻き: 行き先の家からの距離は、次の行き先ほど大きい（内側は見たものとみなす）
+    const radii = explores.map((e) => ('targetX' in e ? Math.hypot(e.targetX ?? 0, e.targetY ?? 0) : 0));
+    for (let i = 1; i < radii.length && i < 20; i++) expect(radii[i]!).toBeGreaterThan(radii[i - 1]!);
+    expect(world.thing('P1')!.rel['tree']).toBeDefined();
+    expect(edibleOn(world, 'P1').length + flows(world, 'eat').length).toBeGreaterThan(0);
+    const replayed = replayFruit(initial, world.ledger, world.now);
+    expect(JSON.stringify(replayed.query(() => true))).toBe(JSON.stringify(world.query(() => true)));
+  });
+
+  it('探索の方針に万能の値は無い: 渦巻きの腕の間隔が狭いと遠い木に届かず、広いと近い木を見逃す（配置しだいで生死が入れ替わる）', () => {
+    // 木を一本、家から距離 d・向き angle に置き、腕の間隔（視界に対する比）だけを変えた心で 30 日。数値は 2026-10-27 の実測。
+    const survives = (spacing: number, d: number, angle: number) => {
+      const w = fruitWorld({ mind: () => new ForagerMind(3, 4, spacing) });
+      place(w, [{ id: 'tree', def: 'tree', x: d * Math.cos(angle), y: d * Math.sin(angle) }, { id: 'home', def: 'home' }, { id: 'P1', def: 'person' }]);
+      seedFruits(w, 'tree', 6);
+      w.run(3 * DAY, DT); // 探索の予算は栄養が尽きるまでの約 2 日
+      return state(w.thing('P1'), 'alive') === 'yes';
+    };
+    expect(survives(1, 100, 0)).toBe(true); // 隙間の無い渦巻きは近い木を必ず見つける
+    expect(survives(3, 100, 0)).toBe(false); // 腕の間が視界より広いと、近い木でも見逃す
+    expect(survives(1, 300, 2)).toBe(false); // 隙間の無い渦巻きは 2 日で 300m に届かない
+    expect(survives(3, 300, 2)).toBe(true); // 広い渦巻きは届く
   });
 
   it('手の届く範囲の外からは採れない', () => {

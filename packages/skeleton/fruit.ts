@@ -298,18 +298,26 @@ const becomesFood = (k: Relations, kind: Scalar | undefined, depth = 0): boolean
 };
 
 /**
- * 採取者: 木の場所も家の場所も知らない。視界に入って心象（関係）に写った物から選ぶ。
+ * 採取者: 木の場所も家の場所も知らない。視界に入って心象（関係）に写った物から選ぶ。木を一本も知らなければ、家を中心に渦巻きに歩いて探す。
  * 家が無ければ、知っている置ける物（札 stores）のうち最も近いものに住む（意図 settle。法則が関係 home を書く）。
  * 空腹で実を持っていれば食べ、手持ちが目標未満なら実の付いた木へ行って採り、足りれば家へ戻る。実は手に持ったままで、家にはしまわない
  * （しまう心にすると、二人で一本の木では先の一人の蓄えが循環から外れ、もう一人が 19 日目に死んだ。DESIGN「骨格を動かして分かったこと」）。
  * 実が見つからなければ、心象の種類の知識（`kind:名`）で加工すれば食べ物になると分かる物を採り、知識が示す場所（札）で加工する。
  * 知識が無ければ、その物はただの物で、心は選ばない（同じ心で、心象の違いだけが行動を分ける）。
- * 入力は自分の写し、出力は有限の行為（idle・move・settle・pick・stow・eat・process）の一つ。細かい行動原理は後に学習で探す。
+ * 入力は自分の写し、出力は有限の行為（idle・move・settle・pick・stow・eat・process）の一つ。探索は相手を持たない move で、行為を増やさない。細かい行動原理は後に学習で探す。
  */
 export class ForagerMind implements Mind {
+  /**
+   * 方針の値。target は手持ちの目標、eatBelow は食べ始める栄養。探索は、渦巻きの腕の間隔と一歩（どちらも自分の視界に対する比）、
+   * 回る向き（1 は反時計回り、-1 は時計回り）、家を知らないときの向き（rad）。後に個性・遺伝子として探す値。
+   */
   constructor(
     private readonly target = 3,
     private readonly eatBelow = 4,
+    private readonly exploreSpacing = 1,
+    private readonly exploreStep = 0.5,
+    private readonly exploreTurn = 1,
+    private readonly heading = 0,
   ) {}
   decide(self: ThingSnapshot, _now: number) {
     const me = self.id;
@@ -350,11 +358,38 @@ export class ForagerMind implements Mind {
       // 二つの木の中間で向きを変え続けて動けなくなる）。手の届く所まで来ても実が無ければ待つ。
       const unknown = trees.find((t) => state(self, 'intent') === 'move' && state(self, 'target') === t.id && !near(t.e)) ?? trees.find((t) => !near(t.e));
       if (unknown) return goTo(unknown.id, unknown.e);
-      return { intent: 'idle' }; // 木を知らなければ探索が要るが、未実装。
+      // 木を一本も知らなければ探索する。知っている木で待つか探しに出るかは、後に学習で探す方針の分かれ目として残す。
+      if (trees.length === 0) return this.explore(self, home?.[1]);
+      return { intent: 'idle' };
     }
     // 足りている。家に着いていなければ戻る。
     if (home && !near(home[1])) return goTo(home[0], home[1]);
     return { intent: 'idle' };
+  }
+
+  /**
+   * 探索: 家を中心に外へ広がる渦巻き（アルキメデスの渦巻き。腕の間隔は自分の視界 × spacing）の上を、腕に沿って視界 × step ずつ進む。
+   * 次の行き先は「いまの位置の家からの距離と角度」だけで決まるので、心は探索の記憶を持たない（いまより内側は見たものとみなす）。
+   * 途中で木や家を見つければ、ほかの規則が先に選ばれる。家を知らなければ中心が無いので、向き heading へまっすぐ進む。
+   * 行為は相手を持たない移動（intent move、target は空）で、法則 walk がそのまま進める。行き先に着くまでは替えない。
+   */
+  private explore(self: ThingSnapshot, home: Relation | undefined) {
+    const x = stateNum(self, 'x');
+    const y = stateNum(self, 'y');
+    if (state(self, 'intent') === 'move' && state(self, 'target') === '' && Math.hypot(stateNum(self, 'targetX') - x, stateNum(self, 'targetY') - y) > 1e-6) {
+      return { intent: 'move', target: '', targetX: stateNum(self, 'targetX'), targetY: stateNum(self, 'targetY') };
+    }
+    const arm = attr(self, 'sight') * this.exploreSpacing;
+    const step = attr(self, 'sight') * this.exploreStep;
+    if (!home || arm <= 0) return { intent: 'move', target: '', targetX: x + step * Math.cos(this.heading), targetY: y + step * Math.sin(this.heading) };
+    const cx = relNum(home, 'x');
+    const cy = relNum(home, 'y');
+    const r = Math.hypot(x - cx, y - cy);
+    if (r < 1e-6) return { intent: 'move', target: '', targetX: cx + step * Math.cos(this.heading), targetY: cy + step * Math.sin(this.heading) };
+    const turn = this.exploreTurn * Math.min(1, step / r); // 腕に沿って step だけ回る角度（中心の近くでは 1 rad まで）
+    const angle = Math.atan2(y - cy, x - cx) + turn;
+    const radius = r + (arm * Math.abs(turn)) / (2 * Math.PI); // 一周で arm だけ外へ
+    return { intent: 'move', target: '', targetX: cx + radius * Math.cos(angle), targetY: cy + radius * Math.sin(angle) };
   }
 }
 
@@ -372,6 +407,8 @@ export interface FruitOptions {
   sight?: number;
   /** 木までの距離（m）。 */
   treeDistance?: number;
+  /** 心の種類 forager の作り方（方針の差し替え。既定は ForagerMind の既定値）。 */
+  mind?: () => Mind;
 }
 
 export interface Scenario {
@@ -379,13 +416,14 @@ export interface Scenario {
   persons: ThingId[];
 }
 
-/** 果実の世界。定義・法則・感覚・心の種類を登録し、自然を置く。事物はまだ置かない。 */
-export function fruitWorld(options: WorldOptions = {}): World {
-  const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], ...options });
+/** 果実の世界。定義・法則・感覚・心の種類を登録し、自然を置く。事物はまだ置かない。mind で心の種類 forager の方針を差し替えられる。 */
+export function fruitWorld(options: WorldOptions & { mind?: () => Mind } = {}): World {
+  const { mind, ...worldOptions } = options;
+  const w = new World({ rangeAttrs: ['sight', 'reach', 'smell'], ...worldOptions });
   for (const d of fruitDefs) w.addDef(d);
   for (const law of fruitLaws) w.addLaw(law);
   w.addSense(sight);
-  w.addMind('forager', () => new ForagerMind());
+  w.addMind('forager', mind ?? (() => new ForagerMind()));
   w.addFromDef('nature', 'nature');
   return w;
 }
@@ -414,7 +452,7 @@ export function seedFruits(w: World, tree: ThingId, count: number): void {
  * 採取者は家の脇に置かれるだけで、家を知覚して住み（関係 home を得て）、視界に入る木を知覚し、往復して果実で生きる。
  */
 export function buildFruitScenario(options: FruitOptions = {}): Scenario {
-  const w = fruitWorld({ allPairs: options.allPairs ?? false, pairOrder: options.pairOrder ?? 'sorted' });
+  const w = fruitWorld({ allPairs: options.allPairs ?? false, pairOrder: options.pairOrder ?? 'sorted', mind: options.mind });
   const n = options.persons ?? 1;
   const ids = Array.from({ length: n }, (_, i) => `P${i + 1}`);
   place(w, [

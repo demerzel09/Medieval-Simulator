@@ -9,7 +9,7 @@
 | `render-page.cjs` | 閲覧用ページの `<pre class="mermaid" data-id="figN">` を Mermaid 11.4.1 で SVG に描画して埋め込む（id は衝突しないよう data-id を使う） | 同上。`NODE_PATH=$PWD/node_modules node scripts/docs/render-page.cjs DIR docs/figures/big-structure-page.html` |
 | `parse-mermaid-9.cjs` | `.mmd` が Mermaid 9.1.7 で `parse` に通るかを調べる | `DIR/node_modules/jsdom` と `DIR/old/node_modules/mermaid@9.1.7`。`cd DIR/old && node /path/to/parse-mermaid-9.cjs ../x.mmd` の形で、相対パスは置き場に依存する |
 | `render-figures.cjs` | `docs/figures/src/*.mmd` を Mermaid で描画し `docs/figures/*.svg` に書く。文書はこの SVG を画像として参照する | 置き場の Mermaid（プレビュー拡張と同じ 11.12.x を推奨）とリポジトリの playwright。`NODE_PATH=$PWD/node_modules node scripts/docs/render-figures.cjs /tmp/mmd/node_modules/mermaid/dist/mermaid.min.js` |
-| `browser-check.cjs` | Vite の開発サーバを起動し、`skeleton.html` をヘッドレス Chromium で開いて 3 日進め、描画とコンソールエラーを確認する | リポジトリの playwright。`NODE_PATH=$PWD/node_modules node scripts/docs/browser-check.cjs out.png` |
+| `browser-check.cjs` | Vite の開発サーバを起動し、`skeleton.html` をヘッドレス Chromium で開いて 3 日進め、描画とコンソールエラーを確認する | リポジトリの playwright。`NODE_PATH=$PWD/node_modules node scripts/docs/browser-check.cjs out.png [問い合わせ]`（例 `persons=1&tree=200`。既定 `persons=2&sight=60`） |
 
 ## Mermaid の置き場 `DIR` の作り方
 

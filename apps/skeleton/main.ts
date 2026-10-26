@@ -1,5 +1,5 @@
 // 骨格（採取だけの経済）のブラウザ画面。既存の村デバッグ画面と同じ見た目で、果実の環を走らせて見る。
-// 地図（木・実・人・家・視界と手の届く範囲）、選んだ事物の値の四区分（属性・状態・関係・資源）、日次要約、記録の内訳、計測。
+// 地図（木・実・人・家・視界と手の届く範囲・歩いた跡。探索の渦巻きが見える）、選んだ事物の値の四区分（属性・状態・関係・資源）、日次要約、記録の内訳、計測。
 // 起動: launch.json「骨格: ブラウザ画面（採取だけの経済）」または `npm run dev` → http://127.0.0.1:5173/skeleton.html
 // 問い合わせ: ?persons=2&sight=20&ripen=0.25&tree=40
 
@@ -21,6 +21,9 @@ let lastDay = 0;
 let running = false;
 let ticksPerFrame = 6;
 let selected = 'P1';
+/** 人ごとの歩いた跡（刻みごとの位置。最近の分だけ）と、地図に収める範囲（広がるだけで縮まない）。 */
+let trails = new Map<string, [number, number][]>();
+let extent = { minX: -20, maxX: 60, minY: -40, maxY: 40 };
 
 const root = document.getElementById('root')!;
 root.innerHTML = `
@@ -55,7 +58,7 @@ root.innerHTML = `
       <label>人数 <input id="persons" type="number" min="1" max="6" value="${options.persons}"></label>
       <label>視界 m <input id="sight" type="number" min="1" max="500" value="${options.sight}"></label>
       <label>実る 個/時 <input id="ripen" type="number" min="0" max="5" step="0.05" value="${options.ripenPerHour}"></label>
-      <label>木まで m <input id="tree" type="number" min="1" max="300" value="${options.treeDistance}"></label>
+      <label>木まで m <input id="tree" type="number" min="1" max="1000" value="${options.treeDistance}"></label>
       <button id="rebuild">作り直す</button>
       <button id="step">1刻み（10分）</button>
       <button id="hour">1時間</button>
@@ -68,7 +71,7 @@ root.innerHTML = `
   <div class="grid">
     <div>
       <canvas id="map" width="640" height="420"></canvas>
-      <p class="note">地図: 木（緑）と実（橙。木の周りと、持つ人の脇）、人（黄。破線の円は視界、小さな円は手の届く範囲）、家（白。周りの点は家に置いた実）。実の見える範囲（30m）は薄い円。1 目盛 10m。</p>
+      <p class="note">地図: 木（緑）と実（橙。木の周りと、持つ人の脇）、人（黄。破線の円は視界、小さな円は手の届く範囲）、家（白。周りの点は家に置いた実）。実の見える範囲（30m）は薄い円。薄い線は歩いた跡（木を知らないときは家を中心に渦巻きに探す）。目盛は 10m（広い地図では 50m）。</p>
     </div>
     <div class="panel">
       <h2>事物の値の四区分 <select id="thing"></select></h2>
@@ -101,23 +104,41 @@ function drawMap() {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#1e3430';
   ctx.fillRect(0, 0, W, H);
-  // 木と家が収まる縮尺。1 目盛 = 10m。
+  // 位置を持つ事物と歩いた跡が収まる縮尺（範囲は広がるだけ）。目盛は 10m、広ければ 50m。
   const tree = w.thing('tree');
   const tx = typeof tree?.state['x'] === 'number' ? (tree.state['x'] as number) : 40;
-  const span = Math.max(80, tx + 40);
-  const scale = Math.min((W - 80) / span, (H - 80) / 80);
-  const ox = 40 + 20 * scale;
-  const oy = H / 2;
+  for (const t of w.query(() => true)) {
+    const pos = w.positionOf(t.id);
+    if (pos) fit(pos.x, pos.y);
+  }
+  for (const trail of trails.values()) for (const [x, y] of trail) fit(x, y);
+  const spanX = extent.maxX - extent.minX;
+  const spanY = extent.maxY - extent.minY;
+  const scale = Math.min((W - 40) / spanX, (H - 40) / spanY);
+  const ox = W / 2 - ((extent.minX + extent.maxX) / 2) * scale;
+  const oy = H / 2 - ((extent.minY + extent.maxY) / 2) * scale;
   const px = (x: number, y: number) => [ox + x * scale, oy + y * scale] as const;
   ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth = 1;
-  for (let gx = -20; gx <= span; gx += 10) {
+  const grid = Math.max(spanX, spanY) > 200 ? 50 : 10;
+  for (let gx = Math.ceil(extent.minX / grid) * grid; gx <= extent.maxX; gx += grid) {
     const [x] = px(gx, 0);
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
   }
-  for (let gy = -40; gy <= 40; gy += 10) {
+  for (let gy = Math.ceil(extent.minY / grid) * grid; gy <= extent.maxY; gy += grid) {
     const [, y] = px(0, gy);
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  // 歩いた跡
+  ctx.strokeStyle = 'rgba(214,180,118,0.35)';
+  for (const trail of trails.values()) {
+    ctx.beginPath();
+    trail.forEach(([x, y], i) => {
+      const [cx, cy] = px(x, y);
+      if (i === 0) ctx.moveTo(cx, cy);
+      else ctx.lineTo(cx, cy);
+    });
+    ctx.stroke();
   }
   // 家（事物。札 stores）と、家に置いた実
   for (const h of w.query((t) => 'stores' in t.attr)) {
@@ -182,6 +203,12 @@ function drawMap() {
   });
 }
 
+/** 地図に収める範囲を、点 (x, y) と余白が入るまで広げる。 */
+function fit(x: number, y: number) {
+  const m = 20;
+  extent = { minX: Math.min(extent.minX, x - m), maxX: Math.max(extent.maxX, x + m), minY: Math.min(extent.minY, y - m), maxY: Math.max(extent.maxY, y + m) };
+}
+
 // ---- 四区分 ----
 function kindTable(title: string, rows: [string, unknown][]): string {
   const body = rows.length ? rows.map(([k, v]) => `<tr><td class="k">${k}</td><td>${fmt(v)}</td></tr>`).join('') : '<tr><td class="note">（無し）</td></tr>';
@@ -238,6 +265,15 @@ function advance(ticks: number) {
   const w = scenario.world;
   for (let i = 0; i < ticks; i++) {
     w.tick(DT);
+    for (const p of scenario.persons) {
+      const pos = w.positionOf(p);
+      if (!pos) continue;
+      const trail = trails.get(p) ?? [];
+      const last = trail[trail.length - 1];
+      if (!last || last[0] !== pos.x || last[1] !== pos.y) trail.push([pos.x, pos.y]);
+      if (trail.length > 3000) trail.shift();
+      trails.set(p, trail);
+    }
     const day = Math.floor(w.now / DAY);
     if (day > lastDay) {
       daily.push(summarize(w, scenario.persons));
@@ -254,6 +290,8 @@ function rebuild() {
   daily = [];
   lastDay = 0;
   selected = 'P1';
+  trails = new Map();
+  extent = { minX: -20, maxX: 60, minY: -40, maxY: 40 };
   const url = new URL(window.location.href);
   url.searchParams.set('persons', String(opts.persons));
   url.searchParams.set('sight', String(opts.sight));
