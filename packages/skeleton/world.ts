@@ -5,7 +5,7 @@
 // 情報層: 観測を集め、関係（心象）との差を事象（現れた・消えた）にし、心が意図を定め、死亡を確定する。
 // 値を変える経路はこのファイルの apply だけである。属性には書く経路が無い。
 
-import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
+import type { Attrs, Effect, InfoEffect, Law, LedgerEntry, Memory, Mind, Relation, Relations, Resources, Scalar, Sense, State, ThingDef, ThingId, ThingSnapshot, WorldState, WorldView } from './types.js';
 
 interface ThingRecord {
   id: ThingId;
@@ -69,6 +69,7 @@ export class World implements WorldView {
   private readonly defs = new Map<string, ThingDef>();
   private readonly laws: Law[] = [];
   private readonly senses: Sense[] = [];
+  private readonly memories: Memory[] = [];
   /** 心の種類（札 mind の値 → 作る関数）。法則や感覚と同じく世界に一度登録する。 */
   private readonly mindKinds = new Map<string, () => Mind>();
   private readonly minds = new Map<ThingId, Mind>();
@@ -229,6 +230,12 @@ export class World implements WorldView {
     this.senses.push(sense);
   }
 
+  /** 記憶の規則を登録する。知覚のあと、観測者の心象の各項目に当てる。 */
+  addMemory(memory: Memory): void {
+    if (this.memories.some((m) => m.id === memory.id)) throw new Error(`duplicate memory ${memory.id}`);
+    this.memories.push(memory);
+  }
+
   /** 心の種類を登録する。札 mind にこの名を持つ事物が置かれる・生まれるたびに make() で作って付ける。既にある事物にも付ける。 */
   addMind(name: string, make: () => Mind): void {
     if (this.mindKinds.has(name)) throw new Error(`duplicate mind ${name}`);
@@ -241,7 +248,7 @@ export class World implements WorldView {
   /**
    * 一刻み。
    * 1. 物理層: 要求（全組に法則。刻みの始めの状態だけを読む）→ 解決（持ち主ごとに局所で縮める）→ 適用（一斉に書く）。
-   * 2. 情報層: 観測を集め、関係（心象）との差を事象にする。心が意図を定める。
+   * 2. 情報層: 観測を集め、関係（心象）との差を事象にする。記憶の規則が心象の見込みを書き直す。心が意図を定める。
    * 3. 時刻を Δt 進める。
    * 世界の進行は事物の種類の名も資源の名も知らない。死亡も法則（自分自身との組）が返す効果である。
    */
@@ -436,6 +443,17 @@ export class World implements WorldView {
         this.apply({ kind: 'forget', observer: pId, about: oId });
         this.ledger.push({ at: this.now, event: 'vanish', person: pId, about: oId });
       }
+      // 記憶: 知覚のあとの写しから、心象の各項目の書き直しを計算し、まとめて重ねる。
+      if (!this.memories.length) continue;
+      const perceived = snapshot(p);
+      const updates: [ThingId, Relation][] = [];
+      for (const memory of this.memories) {
+        for (const [about, entry] of Object.entries(perceived.rel)) {
+          const fields = memory.learn(perceived, about, entry, this, this.dt);
+          if (fields) updates.push([about, fields]);
+        }
+      }
+      for (const [about, fields] of updates) this.setRel(pId, { ...p.rel, [about]: { ...p.rel[about], ...fields } });
     }
   }
 
@@ -490,7 +508,8 @@ export class World implements WorldView {
         const applied = this.apply(e.effect);
         if (applied !== 0) this.ledger.push({ at: this.now, law: e.law, a: e.a, b: e.b, effect: e.effect, applied });
       }
-      // 2. 情報層: 知覚を計算し直し、記録の意図を適用する。
+      // 2. 情報層: 知覚と記憶を計算し直し、記録の意図を適用する。
+      this.dt = Math.min(dt, until - this.now);
       this.perceive();
       for (const e of entries) {
         if (!('event' in e) || e.event !== 'intend') continue;

@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, ForagerMind, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
+import { World, ForagerMind, PatrolMind, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
 import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
@@ -541,5 +541,82 @@ describe('skeleton: 間接さの段 2（穀物を自分で加工して食べる�
     // 加工（生む・消す）も記録から同じに再生できる
     const replayed = replayFruit(initial, farmer.world.ledger, 3 * DAY);
     expect(JSON.stringify(replayed.query(() => true))).toBe(JSON.stringify(runGrainDays(3, { knows: true }).scenario.world.query(() => true)));
+  });
+});
+
+describe('skeleton: 実る時期のある木と、時期を学んで巡回する心（docs/RESEARCH.md「巡回と時期の学習」）', () => {
+  const near = (w: World, a: string, b: string) => w.distance(a, b) <= 1.5;
+
+  it('木は種類ごとの時期にだけ実る。時期の外では育ちも実も増えず、年ごとのずれは木・種・年で決まる', () => {
+    const { world } = buildSeasonScenario({ persons: [] });
+    world.run(8 * DAY - DT, DT);
+    expect(edibleOn(world, 'B1').length).toBe(0); // B は 8 日目から
+    const aSpawnsAfter6 = flows(world, 'ripen').filter((e) => 'effect' in e && e.effect.kind === 'spawn' && e.a === 'nature' && e.b.startsWith('A') && e.at >= 6 * DAY);
+    expect(aSpawnsAfter6.length).toBe(0); // A の時期（0〜6 日）が過ぎたら実らない
+    world.run(9 * DAY, DT);
+    expect(edibleOn(world, 'B1').length).toBeGreaterThan(0);
+    const tree = (seed: number) => ({ id: 'T', kind: 'treeA', attr: { seasonPeriod: SEASON_YEAR, seasonStart: 2 * DAY, seasonLength: DAY, seasonJitter: DAY, seasonSeed: seed }, state: {}, rel: {}, res: {} });
+    const starts = (seed: number) => [0, 1, 2].map((y) => {
+      for (let t = y * SEASON_YEAR; t < (y + 1) * SEASON_YEAR; t += DT) if (inSeason(tree(seed), t)) return t - y * SEASON_YEAR;
+      return -1;
+    });
+    expect(starts(0)).toEqual(starts(0));
+    expect(new Set(starts(0)).size).toBeGreaterThan(1); // 年ごとにずれる
+    expect(starts(1)).not.toEqual(starts(0)); // 種を変えれば別の年回り
+    for (const s of starts(0)) expect(Math.abs(s - 2 * DAY)).toBeLessThanOrEqual(DAY);
+  });
+
+  it('記憶の規則: 着いた刻みに一度だけ、その時期の見込みを予測誤差の learnRate 倍だけ直し、近くにいる間は最後に見た数を書き続ける。記録には残らない', () => {
+    const { world } = buildSeasonScenario({ persons: [{ id: 'P1', def: 'patroller' }] });
+    let arrived = -1;
+    for (let i = 0; i < 2 * DAY / DT && arrived < 0; i++) {
+      world.tick(DT);
+      if (typeof world.thing('P1')!.rel['A1']?.['visits'] === 'number') arrived = i;
+    }
+    expect(arrived).toBeGreaterThanOrEqual(0);
+    const e = world.thing('P1')!.rel['A1']!;
+    expect(e['visits']).toBe(1);
+    expect(e['fc0']).toBeCloseTo(1 + 0.5 * ((e['lastCount'] as number) - 1), 9); // 初めの見込み prior 1、学ぶ速さ 0.5、一年 12 区間の最初の区間
+    world.tick(DT);
+    if (near(world, 'P1', 'A1')) expect(world.thing('P1')!.rel['A1']!['visits']).toBe(1); // 居続けても数えない
+    expect(world.ledger.some((x) => 'law' in x && x.law === 'forecast')).toBe(false);
+  });
+
+  it('巡回者の心は記憶を持たない: 同じ写しからは同じ意図。見込みは心象の値だけから計算する', () => {
+    const { world } = buildSeasonScenario({ persons: [{ id: 'P1', def: 'patroller' }] });
+    world.run(3 * DAY, DT);
+    const mind = new PatrolMind();
+    const snap = world.thing('P1')!;
+    expect(mind.decide(snap, world.now)).toEqual(mind.decide(snap, world.now));
+    expect(predict(snap, snap.rel['A1']!, world.now)).toBe(predict(snap, snap.rel['A1']!, world.now));
+  });
+
+  it('季節の場面も、組の順に依らず同じ結果になり、初期状態と記録から再生すると心象の見込みまで同じになる', () => {
+    const dump = (w: World) => JSON.stringify(w.query(() => true));
+    const run = (order: 'sorted' | 'reverse' | 'shuffle') => {
+      const s = buildSeasonScenario({ pairOrder: order, jitterDays: 2 });
+      s.world.run(3 * DAY, DT);
+      return s.world;
+    };
+    const base = run('sorted');
+    expect(dump(run('reverse'))).toBe(dump(base));
+    expect(dump(run('shuffle'))).toBe(dump(base));
+    const s = buildSeasonScenario({ jitterDays: 2 });
+    const initial = s.world.save();
+    s.world.run(5 * DAY, DT);
+    expect(dump(replaySeason(initial, s.world.ledger, s.world.now))).toBe(dump(s.world));
+  });
+
+  it('時期の学習は効くが万能ではない: 一人で 72 日、生産量と食欲しだいで、学ぶ心と学ばない心の生死が入れ替わる', () => {
+    // 数値は 2026-10-27 の実測（docs/DESIGN.md「時期と巡回」）。学ばない心は learnRate 0（直近の観察だけ）。
+    const survives = (ripenPerHour: number, attr: Record<string, number>) => {
+      const { world } = buildSeasonScenario({ persons: [{ id: 'X', def: 'patroller', attr }], ripenPerHour });
+      world.run(72 * DAY, DT);
+      return state(world.thing('X'), 'alive') === 'yes';
+    };
+    expect(survives(0.15, { appetite: 4 })).toBe(true);
+    expect(survives(0.15, { appetite: 4, learnRate: 0 })).toBe(false);
+    expect(survives(0.12, { appetite: 7 })).toBe(false);
+    expect(survives(0.12, { appetite: 7, learnRate: 0 })).toBe(true);
   });
 });

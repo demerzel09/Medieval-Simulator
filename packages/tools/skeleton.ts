@@ -11,8 +11,10 @@
 //         --replay で、初期状態と記録から再生した世界が走らせた世界と同じかを確かめる（法則と心を使わない再生）
 //         --placed で、置くだけの村（家 3・木 3・採取者 5 を任意の座標に。構築関数の配置によらない）を走らせる
 //         --grain で、実の足りない木と穀物の畑と炉（間接さの段 2）。--knows を足すと、穀物が炉で粥になると知っている人（違いは心象の知識だけ）
+//         --season で、実る時期の違う三種の木の果樹園（一年 24 日）と、巡回者 2・採取者 2。--ripen 実/時、--jitter 年ごとのずれ（日）、--seed 種、
+//           --who '[{"id":"P1","def":"patroller","attr":{"appetite":7}}]' で置く人と個性を指定（例: npm run skeleton -- 72 --season --ripen 0.15）
 
-import { ForagerMind, runFruitDays, runGrainDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
+import { ForagerMind, runSeasonDays, seasonOutcome, replaySeason, runFruitDays, runGrainDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
 
 const args = process.argv.slice(2);
 const days = Number(args.find((a) => /^\d+$/.test(a)) ?? '3');
@@ -33,7 +35,18 @@ const started = performance.now();
 const placed = args.includes('--placed');
 const grain = args.includes('--grain');
 const knows = args.includes('--knows');
-const run = placed
+const season = args.includes('--season');
+const who = valueOf('who');
+const seasonOptions = {
+  persons: who ? JSON.parse(who) : undefined,
+  ripenPerHour: valueOf('ripen') !== undefined ? ripenPerHour : undefined,
+  jitterDays: valueOf('jitter') !== undefined ? Number(valueOf('jitter')) : undefined,
+  seed: valueOf('seed') !== undefined ? Number(valueOf('seed')) : undefined,
+  pairOrder,
+};
+const run = season
+  ? runSeasonDays(days, seasonOptions)
+  : placed
   ? runPlaced(days)
   : grain
     ? runGrainDays(days, { knows, treeRipenPerHour: valueOf('ripen') !== undefined ? ripenPerHour : undefined })
@@ -41,7 +54,9 @@ const run = placed
 const { scenario, daily, initial } = run;
 const elapsed = performance.now() - started;
 console.log(
-  placed
+  season
+    ? `# season: orchard of three tree kinds fruiting 6 of 24 days each, ${seasonOptions.persons ? seasonOptions.persons.length : 4} person(s), ripen ${seasonOptions.ripenPerHour ?? 0.25}/h, jitter ${seasonOptions.jitterDays ?? 0}d, dt 10min`
+    : placed
     ? `# placed village: 3 homes, 3 trees, 5 foragers, dt 10min`
     : grain
       ? `# grain: scarce tree, field, hearth, 1 ${knows ? 'farmer (knows grain becomes gruel at a hearth)' : 'forager (no knowledge of grain)'}, dt 10min`
@@ -56,6 +71,8 @@ if (placed) {
     console.log(`${p}: alive=${t.state['alive']} nutrition=${(t.res['nutrition'] ?? 0).toFixed(2)} home=${home} knownTrees=${trees} holding=${edibleOn(scenario.world, p).length}`);
   }
 }
+
+if (season) for (const o of seasonOutcome(scenario.world, scenario.persons)) console.log(`${o.id} (${o.kind}): ${o.alive ? 'alive' : `died day ${o.diedDay}`}, eaten ${o.eaten}, visits ${JSON.stringify(o.visits)}`);
 
 function runPlaced(days: number) {
   const scenario = buildPlacedScenario();
@@ -81,7 +98,7 @@ console.log(
 if (args.includes('--ledger')) for (const e of scenario.world.ledger.slice(0, 200)) console.log(JSON.stringify(e));
 if (args.includes('--replay')) {
   const t0 = performance.now();
-  const replayed = replayFruit(initial, scenario.world.ledger, scenario.world.now);
+  const replayed = (season ? replaySeason : replayFruit)(initial, scenario.world.ledger, scenario.world.now);
   const dump = (w: typeof replayed) => JSON.stringify(w.query(() => true));
   const same = dump(replayed) === dump(scenario.world);
   const sameLedger = JSON.stringify(replayed.ledger) === JSON.stringify(scenario.world.ledger.filter((e) => !('law' in e && e.law === 'seed')));

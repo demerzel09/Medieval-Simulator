@@ -81,6 +81,7 @@ export const personDef: ThingDef = {
     eatPerHour: 12,
     digestPerHour: 0.5,
     digestYield: 0.8,
+    nutritionMax: 10,
     wearPerHour: 0.1,
     workPerHour: 1,
     dwells: true,
@@ -100,12 +101,36 @@ export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, knifeDef, pe
 
 // ---- 物理層の法則。組 (a, b) の札で当たるかを決め、状態・資源・距離で流れを決める ----
 
-/** (育てる, 実をつける): 実る。育ちが自然から木へ移り、1 たまるごとに、上限まで、bears が指す定義の事物が木に生まれる。量は自然の蓄えから引く。 */
+/** 0 以上 1 未満の決定的な値。文字列と整数から作る（FNV-1a）。年ごとのずれや心の気まぐれを、組の順や実行に依らず再現するために使う。 */
+export function unitHash(key: string, n: number): number {
+  let h = 2166136261;
+  const text = `${key}#${n}`;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * 実る時期にあるか。札 seasonPeriod（周期、分）を持つ物は、周期ごとに seasonStart から seasonLength の間だけ実る。
+ * 始まりは周期ごとに ±seasonJitter だけずれる（年ごとのずれ。物の id・seasonSeed・周期の番号から決まる）。札が無ければ常に実る。
+ */
+export function inSeason(t: ThingSnapshot, now: number): boolean {
+  const period = attr(t, 'seasonPeriod');
+  if (period <= 0) return true;
+  const k = Math.floor(now / period);
+  // ずれで窓が周期の境をまたいでもよいように、前後の周期の窓も見る。
+  for (const j of [k - 1, k, k + 1]) {
+    const start = j * period + attr(t, 'seasonStart') + attr(t, 'seasonJitter') * (2 * unitHash(`${t.id}:${attr(t, 'seasonSeed')}`, j) - 1);
+    if (now >= start && now < start + attr(t, 'seasonLength')) return true;
+  }
+  return false;
+}
+
+/** (育てる, 実をつける): 実る。実る時期に、育ちが自然から木へ移り、1 たまるごとに、上限まで、bears が指す定義の事物が木に生まれる。量は自然の蓄えから引く。 */
 export const ripen: Law = {
   id: 'ripen',
-  version: 'defs-2',
+  version: 'season-1',
   pair: (a, b, dt, w) => {
-    if (!has(a, 'grows') || typeof b.attr['bears'] !== 'string') return [];
+    if (!has(a, 'grows') || typeof b.attr['bears'] !== 'string' || !inSeason(b, w.now)) return [];
     const rate = attr(b, 'ripenPerHour') / HOUR; // 実/分
     const effects: Effect[] = [{ kind: 'transfer', res: 'growth', from: a.id, to: b.id, amount: rate * dt }];
     // 刻みの始めにたまっている育ちで生むかを決める。この刻みの流入は次の刻みに効く（同期更新）。
@@ -201,14 +226,16 @@ export const eat: Law = {
   },
 };
 
-/** (消化する, 受け皿): 消化。胃の内容が速度で栄養になり、一部は排出として自然へ。 */
+/** (消化する, 受け皿): 消化。胃の内容が速度で栄養になり、一部は排出として自然へ。栄養は身体の蓄えの上限までしか増えない。 */
 export const digest: Law = {
   id: 'digest',
   version: 'kinds-1',
   pair: (a, b, dt) => {
     if (!alive(a) || !has(a, 'digestPerHour') || !has(b, 'sink') || res(a, 'stomach') <= 0) return [];
     const amount = (attr(a, 'digestPerHour') / HOUR) * dt;
-    return [{ kind: 'convert', from: a.id, fromRes: 'stomach', amount, to: a.id, toRes: 'nutrition', produced: amount * attr(a, 'digestYield'), lossTo: b.id, lossRes: 'waste' }];
+    // 身体の蓄えには上限（札 nutritionMax）があり、超える分は排出として自然へ。上限の札が無ければ限りなく蓄える。
+    const room = has(a, 'nutritionMax') ? Math.max(0, attr(a, 'nutritionMax') - res(a, 'nutrition')) : Number.POSITIVE_INFINITY;
+    return [{ kind: 'convert', from: a.id, fromRes: 'stomach', amount, to: a.id, toRes: 'nutrition', produced: Math.min(amount * attr(a, 'digestYield'), room), lossTo: b.id, lossRes: 'waste' }];
   },
 };
 
@@ -374,23 +401,33 @@ export class ForagerMind implements Mind {
    * 行為は相手を持たない移動（intent move、target は空）で、法則 walk がそのまま進める。行き先に着くまでは替えない。
    */
   private explore(self: ThingSnapshot, home: Relation | undefined) {
-    const x = stateNum(self, 'x');
-    const y = stateNum(self, 'y');
-    if (state(self, 'intent') === 'move' && state(self, 'target') === '' && Math.hypot(stateNum(self, 'targetX') - x, stateNum(self, 'targetY') - y) > 1e-6) {
-      return { intent: 'move', target: '', targetX: stateNum(self, 'targetX'), targetY: stateNum(self, 'targetY') };
-    }
-    const arm = attr(self, 'sight') * this.exploreSpacing;
-    const step = attr(self, 'sight') * this.exploreStep;
-    if (!home || arm <= 0) return { intent: 'move', target: '', targetX: x + step * Math.cos(this.heading), targetY: y + step * Math.sin(this.heading) };
-    const cx = relNum(home, 'x');
-    const cy = relNum(home, 'y');
-    const r = Math.hypot(x - cx, y - cy);
-    if (r < 1e-6) return { intent: 'move', target: '', targetX: cx + step * Math.cos(this.heading), targetY: cy + step * Math.sin(this.heading) };
-    const turn = this.exploreTurn * Math.min(1, step / r); // 腕に沿って step だけ回る角度（中心の近くでは 1 rad まで）
-    const angle = Math.atan2(y - cy, x - cx) + turn;
-    const radius = r + (arm * Math.abs(turn)) / (2 * Math.PI); // 一周で arm だけ外へ
-    return { intent: 'move', target: '', targetX: cx + radius * Math.cos(angle), targetY: cy + radius * Math.sin(angle) };
+    return exploreSpiral(self, home, this.exploreSpacing, this.exploreStep, this.exploreTurn, this.heading);
   }
+}
+
+/** 探索の途中（相手を持たない移動で、行き先に着いていない）か。 */
+export const exploring = (self: ThingSnapshot): boolean =>
+  state(self, 'intent') === 'move' && state(self, 'target') === '' && Math.hypot(stateNum(self, 'targetX') - stateNum(self, 'x'), stateNum(self, 'targetY') - stateNum(self, 'y')) > 1e-6;
+
+/**
+ * 探索の一歩: 家を中心に外へ広がる渦巻き（腕の間隔は視界 × spacing）の上を、視界 × step だけ進む行き先。行き先に着くまでは替えない。
+ * 次の行き先は「いまの位置の家からの距離と角度」だけで決まり、心は探索の記憶を持たない。家を知らなければ向き heading へまっすぐ進む。
+ */
+export function exploreSpiral(self: ThingSnapshot, home: Relation | undefined, spacing: number, stepRatio: number, turnSign: number, heading: number) {
+  const x = stateNum(self, 'x');
+  const y = stateNum(self, 'y');
+  if (exploring(self)) return { intent: 'move', target: '', targetX: stateNum(self, 'targetX'), targetY: stateNum(self, 'targetY') };
+  const arm = attr(self, 'sight') * spacing;
+  const step = attr(self, 'sight') * stepRatio;
+  if (!home || arm <= 0) return { intent: 'move', target: '', targetX: x + step * Math.cos(heading), targetY: y + step * Math.sin(heading) };
+  const cx = relNum(home, 'x');
+  const cy = relNum(home, 'y');
+  const r = Math.hypot(x - cx, y - cy);
+  if (r < 1e-6) return { intent: 'move', target: '', targetX: cx + step * Math.cos(heading), targetY: cy + step * Math.sin(heading) };
+  const turn = turnSign * Math.min(1, step / r); // 腕に沿って step だけ回る角度（中心の近くでは 1 rad まで）
+  const angle = Math.atan2(y - cy, x - cx) + turn;
+  const radius = r + (arm * Math.abs(turn)) / (2 * Math.PI); // 一周で arm だけ外へ
+  return { intent: 'move', target: '', targetX: cx + radius * Math.cos(angle), targetY: cy + radius * Math.sin(angle) };
 }
 
 // ---- 場面 ----

@@ -67,6 +67,17 @@
       "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run skeleton -- 30 --grain && PATH=\"$HOME/.local/node/bin:$PATH\" npm run skeleton -- 30 --grain --knows"
     },
     {
+      "name": "骨格: 季節の果樹園（CLI、巡回者 2・採取者 2、3 年）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "00 骨格（現在）",
+        "order": 7
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run skeleton -- 72 --season && PATH=\"$HOME/.local/node/bin:$PATH\" npx tsx packages/tools/season-compare.ts solo"
+    },
+    {
       "name": "骨格: ブラウザ画面（探索。木が視界の外 200m）",
       "type": "node-terminal",
       "request": "launch",
