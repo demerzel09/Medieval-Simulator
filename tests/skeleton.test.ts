@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, ForagerMind, seasonMind, textDigest, unitHash, seasonWorld, buildFromConfig, record, registryMismatch, replayRecording, finalOf, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
+import { World, ForagerMind, seasonMind, textDigest, unitHash, kindModel, treeModel, responsibilities, responsibilityAssigner, winnerAssigner, artAssigner, uncertaintyAssigner, seasonWorld, buildFromConfig, record, registryMismatch, replayRecording, finalOf, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
 import type { ScenarioConfig, ThingSnapshot } from '../packages/skeleton/index.js';
 import { readFileSync } from 'node:fs';
 
@@ -659,6 +659,55 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
     expect(textDigest(JSON.stringify(w.ledger))).toBe('0c11cec9a03f5c');
     const relDigest = (id: string) => textDigest(JSON.stringify(Object.fromEntries(Object.entries(w.thing(id)!.rel).sort(([a], [b]) => (a < b ? -1 : 1)))));
     expect([relDigest('P1'), relDigest('P2')]).toEqual(['03d2c66c3c5085', '1ce4f97ecbfa26']);
+  }, 60_000);
+
+  it('誤差の割り当ての理論: 責任は外し具合の小さいモデルほど大きく、勝者一つは一つだけ直し、作る形は合わないときに例外を作り、不確かさは自信の無いモデルほど多く直す', () => {
+    const self = { id: 'X', kind: 'patroller', attr: { respVar: 1, errRate: 0.2, vigilance: 1, kindRate: 0.5, learnRate: 0.5, obsNoise: 1, drift: 0.05, priorVar: 4 }, state: {}, rel: {}, res: {} } as ThingSnapshot;
+    const models = [kindModel, treeModel];
+    const term = (value: number, err?: number, known = true, variance?: number) => ({ value, known, err, variance });
+    // 責任: 外し具合 0 と 2 なら、softmax(−err / 2) で 1 : e^-1。和は 1。
+    const r = responsibilities(self, [term(1, 0), term(3, 2)]);
+    expect(r[0]! + r[1]!).toBeCloseTo(1, 12);
+    expect(r[0]! / r[1]!).toBeCloseTo(Math.E, 9);
+    expect(responsibilityAssigner.combine(self, [term(1, 0), term(3, 2)])).toBeCloseTo(r[0]! * 1 + r[1]! * 3, 12);
+    const soft = responsibilityAssigner.assign(self, [term(1, 0), term(3, 2)], 2, models);
+    expect(soft[0]!.value).toBeCloseTo(1 + 0.5 * r[0]! * (2 - 1), 12);
+    expect(soft[1]!.value).toBeCloseTo(3 + 0.5 * r[1]! * (2 - 3), 12);
+    expect(soft[0]!.err).toBeCloseTo(0 + 0.2 * (1 - 0), 12); // 外し具合は全モデルで直す
+    // 勝者一つ: 外し具合の小さい種類のモデルだけが値を直す。外し具合は両方。
+    const win = winnerAssigner.assign(self, [term(1, 0), term(3, 2)], 2, models);
+    expect(win[0]!.value).toBeCloseTo(1.5, 12);
+    expect(win[1]!.value).toBeUndefined();
+    expect(win[1]!.err).toBeCloseTo(2 + 0.2 * (1 - 2), 12);
+    expect(winnerAssigner.combine(self, [term(1, 0), term(3, 2)])).toBe(1);
+    // 作る: 一本ずつのモデルがまだ無い区間で、種類のモデルの誤差の二乗が警戒の基準 1 を超えれば、観察そのものを値とする例外を作る。
+    expect(artAssigner.assign(self, [term(1, 0), term(1, undefined, false)], 3, models)[1]).toEqual({ value: 3, err: 0 });
+    expect(artAssigner.assign(self, [term(1, 0), term(1, undefined, false)], 1.5, models)[1]).toBeUndefined(); // 0.25 は基準以下
+    expect(artAssigner.combine(self, [term(1, 0), term(5, undefined, false)])).toBe(1); // 作られていないモデルは候補でない
+    // 不確かさ: 見込みは不確かさの逆数で重みづけた平均。利得 K = q / (q + R)。
+    expect(uncertaintyAssigner.combine(self, [term(1, undefined, true, 1), term(4, undefined, true, 3)])).toBeCloseTo((1 / 1 + 4 / 3) / (1 + 1 / 3), 12);
+    const kal = uncertaintyAssigner.assign(self, [term(1, undefined, true, 1), term(4, undefined, true, 3)], 2, models);
+    expect(kal[0]!.value).toBeCloseTo(1 + 0.5 * 1, 12);
+    expect(kal[1]!.value).toBeCloseTo(4 + 0.75 * -2, 12);
+    expect(kal[1]!.variance).toBeCloseTo(0.25 * 3 + 0.05, 12);
+  });
+
+  it('競合型の割り当てでも、組の順に依らず同じ結果になり、記録から再生すると心象まで同じになる', () => {
+    const dump = (w: World) => JSON.stringify(w.query(() => true));
+    for (const assigner of ['responsibility', 'winner', 'art', 'uncertainty']) {
+      const persons = [{ id: 'P1', def: 'patroller', attr: { models: 'forage-compete', assigner, kindRate: 0.5, learnRate: 0.5 } }, { id: 'P2', def: 'patroller' }];
+      const run = (pairOrder: 'sorted' | 'reverse') => {
+        const s = buildSeasonScenario({ ...single, persons, pairOrder, spreadDays: 3 });
+        const initial = s.world.save();
+        s.world.run(3 * DAY, DT);
+        return { w: s.world, initial };
+      };
+      const a = run('sorted');
+      expect(dump(run('reverse').w), assigner).toBe(dump(a.w));
+      expect(dump(replaySeason(a.initial, a.w.ledger, a.w.now)), assigner).toBe(dump(a.w));
+      const keys = Object.keys(a.w.thing('P1')!.rel.A1 ?? {});
+      expect(keys.some((k) => /^(tv\d+|fcerr|tverr|fcq\d+)$/.test(k)), assigner).toBe(true); // 競合型の欄を書いている
+    }
   }, 60_000);
 
   it('部品は人の札の名で選ぶ。札が無ければ既定の部品、知らない名なら止まる', () => {

@@ -187,7 +187,7 @@ function ForecastTable({ self, now }: { self: ThingSnapshot; now: number }) {
   const head = <thead><tr><th style={cell}>相手</th>{Array.from({ length: bins }, (_, b) => <th key={b} style={cell}>{b + 1}</th>)}<th style={cell}>いま</th></tr></thead>;
   return <section className="village-status-card" aria-label="見込みの表" style={{ marginTop: 6 }}>
     <h3>見込みの表（一年 {bins} 区間、いまは {current + 1} 番目）</h3>
-    <small>種類の行は種類の見込み fc。木の行はその木のずれ dv で、いまの見込みは 種類 + ずれ + 直近の観察のずれ。</small>
+    <small>割り当て {String(self.attr["assigner"] ?? "")}（組 {String(self.attr["models"] ?? "")}）。種類の行は種類のモデルの値 fc。木の行は、協調型ならその木のずれ dv、競合型ならその木のモデルの値 tv。外し具合は誤差の二乗の移動平均（種類 / 木）。いまの見込みは割り当てが組んだ値 + 直近の観察のずれ。</small>
     <table className="village-log-table" style={{ fontSize: 11 }}>{head}<tbody>
       {kinds.map(([k, e]) => <tr key={k}><td style={cell}><b>{k.slice(5)}</b></td>{cells(e, "fc")}<td style={cell}></td></tr>)}
     </tbody></table>
@@ -195,7 +195,11 @@ function ForecastTable({ self, now }: { self: ThingSnapshot; now: number }) {
       const rows = trees.filter(([, e]) => String(e["kind"]) === kind);
       return <details key={kind}><summary>{kind} の木 {rows.length} 本（ずれ dv と、いまの見込み）</summary>
         <table className="village-log-table" style={{ fontSize: 11 }}>{head}<tbody>
-          {rows.map(([id, e]) => <tr key={id}><td style={cell}>{id}{typeof e["visits"] === "number" ? ` (${e["visits"]}回)` : ""}</td>{cells(e, "dv")}<td style={cell}>{predict(self, e, now).toFixed(2)}</td></tr>)}
+          {rows.map(([id, e]) => {
+            const key = Object.keys(e).some((k) => /^tv\d+$/.test(k)) ? "tv" : "dv";
+            const err = [e["fcerr"], e["tverr"]].map((v) => (typeof v === "number" ? v.toFixed(2) : "·")).join(" / ");
+            return <tr key={id}><td style={cell}>{id}{typeof e["visits"] === "number" ? ` (${e["visits"]}回)` : ""}{err !== "· / ·" ? ` 外し ${err}` : ""}</td>{cells(e, key)}<td style={cell}>{predict(self, e, now).toFixed(2)}</td></tr>;
+          })}
         </tbody></table></details>;
     })}
   </section>;

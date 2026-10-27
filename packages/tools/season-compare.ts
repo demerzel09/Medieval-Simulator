@@ -10,9 +10,12 @@
 //           見込みの覚え方 4 通り（学ばない・一本ずつ・種類だけ・両方）を一人ずつ置き、死んだ日と、着いたときに実があった割合（年ごと）を並べる。
 //           種の数が 2 以上なら、種 seed 0, 1, … で繰り返し、生き残った数・平均の生存日数・実があった割合（全体）を並べる。
 //           世界の選択は , で区切って並べる: shared（年ごとのずれを種類で共通に。既定は木一本ごと）、spread:日（木一本ごとに毎年同じ時期の違い ±日）、life:日（木の寿命）。
+//         npx tsx packages/tools/season-compare.ts theories [生産量の並び 0.25,0.15] [食欲 4] [種の数 10] [世界の選択] [理論の並び]
+//           誤差の割り当ての理論（variants の表。札 models・assigner と学ぶ速さ）を一人ずつ置き、生き残った数・平均の生存日数・実があった割合（全体、
+//           2 年目以降の知って 1 年未満の木と 1 年以上の木）を並べる。世界の選択に forest を足すと森の果樹園（森ごとに 7 本、life があれば種をまく）。
 //         npx tsx packages/tools/season-compare.ts lifespan [寿命の並び 日 0,72,24,12,6] [一本の生産量 0.036] [食欲 7] [種の数 10] [木ごとの時期の違い 日 3] [まく速さ 回/日 2]
 //           木の寿命ごとに（寿命があれば木は種をまく）、覚え方 4 通りを比べる。2 年目以降に木へ着いたときに実があった割合を、その木を知ってから 1 年未満（新しい木）と 1 年以上（なじみの木）に分ける。
-import { buildSeasonScenario, edibleOn, inSeason, seasonOutcome, DAY, DT, SEASON_YEAR } from '../skeleton/index.js';
+import { buildSeasonScenario, edibleOn, inSeason, predict, seasonOutcome, DAY, DT, SEASON_YEAR } from '../skeleton/index.js';
 import type { SeasonOptions } from '../skeleton/index.js';
 
 type Person = NonNullable<SeasonOptions['persons']>[number];
@@ -38,8 +41,22 @@ const levels: [string, { kindRate: number; learnRate: number }][] = [
   ['both', { kindRate: 0.25, learnRate: 0.25 }],
 ];
 
+/**
+ * 比べる理論（心象のモデルの組と誤差の割り当て。docs/RESEARCH.md 10.7）。協調型は同じ誤差を分け合い、競合型は各モデルが単独で全体を予測する。
+ * 競合型の速さは、一つのモデルが単独で直る速さ（一本ずつの協調型と同じ 0.5）。
+ */
+const variants: [string, Record<string, number | string>][] = [
+  ['none', { models: 'forage', assigner: 'additive', kindRate: 0, learnRate: 0 }],
+  ['coop-tree', { models: 'forage', assigner: 'additive', kindRate: 0, learnRate: 0.5 }],
+  ['coop-both', { models: 'forage', assigner: 'additive', kindRate: 0.25, learnRate: 0.25 }],
+  ['mosaic', { models: 'forage-compete', assigner: 'responsibility', kindRate: 0.5, learnRate: 0.5 }],
+  ['winner', { models: 'forage-compete', assigner: 'winner', kindRate: 0.5, learnRate: 0.5 }],
+  ['art', { models: 'forage-compete', assigner: 'art', kindRate: 0.5, learnRate: 0.5 }],
+  ['kalman', { models: 'forage-compete', assigner: 'uncertainty' }],
+];
+
 type World = ReturnType<typeof buildSeasonScenario>['world'];
-type Count = { arrivals: number; inSeason: number; withFruit: number[]; byYear: number[]; fresh: [number, number]; familiar: [number, number] };
+type Count = { arrivals: number; inSeason: number; withFruit: number[]; byYear: number[]; fresh: [number, number]; familiar: [number, number]; sq: number; sqN: number };
 
 /** 世界の選択（levels の 5 番目）を場面の選択に直す。 */
 const worldOptions = (spec = ''): SeasonOptions => {
@@ -47,7 +64,8 @@ const worldOptions = (spec = ''): SeasonOptions => {
   for (const part of spec.split(',').filter(Boolean)) {
     if (part === 'shared') out.sharedJitter = true;
     else if (part.startsWith('spread:')) out.spreadDays = Number(part.slice(7));
-    else if (part.startsWith('life:')) out.lifespanDays = Number(part.slice(5));
+    else if (part.startsWith('life:')) { out.lifespanDays = Number(part.slice(5)); out.sowPerDay = 2; }
+    else if (part === 'forest') out.treesPerForest = 7;
   }
   return out;
 };
@@ -55,6 +73,7 @@ const worldOptions = (spec = ''): SeasonOptions => {
 /**
  * 刻みごとに、人が木に着いた回数、そのうち実る時期だった回数、実が付いていた回数（年ごと）を数えながら DAYS 日走らせる。
  * 2 年目以降に着いた回数と実があった回数は、その木を心象に初めて写してから 1 年未満（fresh）と以上（familiar）に分けても数える。
+ * 見込みの正しさは選び方と切り分けて測る: 向かっている木に着いたとき、着く前の刻みのその木の見込みと、着いたときに実際に付いている実の数の差の二乗を足す（sq・sqN）。
  * 木は枯れて生まれ替わるので、刻みごとに数え直す。数えるのは観測だけで、世界には何もしない。
  */
 function countArrivals(persons: Person[], options: SeasonOptions) {
@@ -62,7 +81,15 @@ function countArrivals(persons: Person[], options: SeasonOptions) {
   const at = new Map<string, string>();
   const firstSeen = new Map<string, number>();
   const count = new Map<string, Count>();
+  const aimed = new Map<string, { tree: string; forecast: number }>();
   for (let t = 0; t < DAYS * DAY; t += DT) {
+    for (const p of ids) {
+      const self = world.thing(p)!;
+      const target = String(self.state['target'] ?? '');
+      const entry = target ? self.rel[target] : undefined;
+      if (self.state['alive'] === 'yes' && entry && 'bears' in entry) aimed.set(p, { tree: target, forecast: predict(self, entry, world.now + DT) });
+      else aimed.delete(p);
+    }
     world.tick(DT);
     const trees = world.query((x) => typeof x.attr['bears'] === 'string').map((x) => x.id);
     for (const p of ids) {
@@ -71,7 +98,9 @@ function countArrivals(persons: Person[], options: SeasonOptions) {
       for (const id of trees) if (self.rel[id] && !firstSeen.has(`${p}|${id}`)) firstSeen.set(`${p}|${id}`, world.now);
       const tree = trees.find((x) => world.distance(p, x) <= 1.5) ?? '';
       if (tree && at.get(p) !== tree) {
-        const c = count.get(p) ?? { arrivals: 0, inSeason: 0, withFruit: [0, 0, 0], byYear: [0, 0, 0], fresh: [0, 0], familiar: [0, 0] };
+        const c = count.get(p) ?? { arrivals: 0, inSeason: 0, withFruit: [0, 0, 0], byYear: [0, 0, 0], fresh: [0, 0], familiar: [0, 0], sq: 0, sqN: 0 };
+        const aim = aimed.get(p);
+        if (aim && aim.tree === tree) { c.sq += (aim.forecast - edibleOn(world, tree).length) ** 2; c.sqN += 1; }
         const year = Math.min(2, Math.floor(world.now / SEASON_YEAR));
         const fruit = edibleOn(world, tree).length > 0;
         c.arrivals += 1;
@@ -154,6 +183,34 @@ if (mode === 'solo') {
     });
     console.log(`ripen ${r}/h, jitter ${jitterDays}d${spec ? ` [${spec}]` : ''}, appetite ${appetite}  ${row.join(' | ')}`);
   }
+} else if (mode === 'theories') {
+  const appetite = Number(a2 ?? 4);
+  const seeds = Number(a3 ?? 10);
+  const spec = process.argv[6] ?? '';
+  const only = process.argv[7] ? process.argv[7].split(',') : undefined;
+  for (const r of (a1 ?? '0.25,0.15').split(',').map(Number)) {
+    const rows = variants.filter(([n]) => !only || only.includes(n)).map(([name, v]) => {
+      let alive = 0, days = 0, hits = 0, arrivals = 0, sq = 0, sqN = 0;
+      const fresh: [number, number] = [0, 0];
+      const familiar: [number, number] = [0, 0];
+      for (let seed = 0; seed < seeds; seed++) {
+        const { world, ids, count } = countArrivals([{ id: 'X', def: 'patroller', attr: { appetite, ...v } }], { ripenPerHour: r, seed, ...worldOptions(spec) });
+        const o = seasonOutcome(world, ids)[0]!;
+        const c = count.get('X');
+        if (o.alive) alive += 1;
+        days += o.alive ? DAYS : o.diedDay!;
+        if (c) {
+          hits += c.withFruit.reduce((x, y) => x + y, 0);
+          arrivals += c.arrivals;
+          sq += c.sq;
+          sqN += c.sqN;
+          for (const [into, from] of [[fresh, c.fresh], [familiar, c.familiar]] as const) { into[0] += from[0]; into[1] += from[1]; }
+        }
+      }
+      return `${name.padEnd(9)} ${alive}/${seeds} alive, ${(days / seeds).toFixed(1).padStart(4)}d, hit ${pct(hits, arrivals)} of ${arrivals}, new ${pct(fresh[1], fresh[0])}, familiar ${pct(familiar[1], familiar[0])}, forecast rmse ${sqN ? Math.sqrt(sq / sqN).toFixed(2) : '-'} (${sqN})`;
+    });
+    console.log(`ripen ${r}/h, appetite ${appetite}${spec ? ` [${spec}]` : ''}\n  ${rows.join('\n  ')}`);
+  }
 } else if (mode === 'lifespan') {
   const r = Number(a2 ?? 0.036);
   const appetite = Number(a3 ?? 7);
@@ -178,6 +235,6 @@ if (mode === 'solo') {
     console.log(`lifespan ${life || '∞'}d, ripen ${r}/h, appetite ${appetite}, spread ±${spreadDays}d\n  ${row.join('\n  ')}`);
   }
 } else {
-  console.error(`unknown mode ${mode} (solo | group | arrivals | levels | lifespan)`);
+  console.error(`unknown mode ${mode} (solo | group | arrivals | levels | theories | lifespan)`);
   process.exit(1);
 }

@@ -11,7 +11,7 @@
 // 数値はすべて仮の比較条件であり、校正値ではない。
 
 import type { Law, Relation, Relations, ThingDef, ThingId, ThingSnapshot } from './types.js';
-import { ModularMind, additiveAssigner, createModelSystem, individualModel, kindModel, prioritySelector, type Intent, type ModelSet, type RuleSet } from './modular.js';
+import { ModularMind, assigners, createModelSystem, individualModel, kindModel, prioritySelector, treeModel, type Intent, type ModelSet, type RuleSet } from './modular.js';
 import { World, type WorldOptions } from './world.js';
 import { DAY, DT, HOUR, KIND, edibleOn, exploreSpiral, exploring, fruitWorld, place, seedFruits, sight, unitHash, type Placement, type Scenario } from './fruit.js';
 
@@ -59,11 +59,13 @@ export const treeCDef: ThingDef = seasonTree('treeC', 16 * DAY);
  * kindRate は種類の見込みを、learnRate は一本ごとのずれを、予測誤差のどれだけ直すか（和を 1 以下に。kindRate 0 なら一本ずつ、learnRate 0 なら種類だけで覚え、両方 0 なら学ばない）、
  * recallHours は直近の観察（最後に見た数）を信じる長さ（時）、wander は気まぐれさ η（点数は 実 / m）、prior は見たことの無い時期の見込み（実）、
  * appetite は栄養がこれを下回れば食べる値（身体の蓄えの上限 nutritionMax までは、多く食べるほど端境を越えやすいが、共有の木を空にする）、carry は持ち歩く実の目標の数。
+ * 競合型の割り当て（modular.ts）の値: errRate は外し具合の移動平均の速さ、respVar は責任の幅 σ²、vigilance は作る警戒の基準（誤差の二乗）、
+ * obsNoise・drift・priorVar は不確かさの割り当ての観察の揺らぎ・不確かさの増え方・初めの不確かさ。協調型では使わない。
  */
 export const patrollerDef: ThingDef = {
   name: 'patroller',
   parent: 'person',
-  attr: { mind: 'modular', models: 'forage', assigner: 'additive', rules: 'patrol', selector: 'priority', calendar: SEASON_YEAR, bins: 12, kindRate: 0.25, learnRate: 0.25, recallHours: 12, wander: 0.002, prior: 1, appetite: 4, carry: 3 },
+  attr: { mind: 'modular', models: 'forage', assigner: 'additive', rules: 'patrol', selector: 'priority', calendar: SEASON_YEAR, bins: 12, kindRate: 0.25, learnRate: 0.25, recallHours: 12, wander: 0.002, prior: 1, appetite: 4, carry: 3, errRate: 0.2, respVar: 1, vigilance: 1, obsNoise: 1, drift: 0.05, priorVar: 4 },
 };
 /**
  * 森: 木の生える広がり（札 area）。中心（位置）から area（m）の内にだけ、木の種が根付く。いまは誰にも見えない（visibility を持たない）。
@@ -92,8 +94,14 @@ export const forageModelSet: ModelSet = {
   models: [kindModel, individualModel],
 };
 
-/** 季節の段の見込みの仕組み。記憶の規則（forageModels.memory）を世界に登録し、見込みは predict で読む。 */
-export const forageModels = createModelSystem({ forage: forageModelSet }, { additive: additiveAssigner });
+/**
+ * 源の組 forage-compete: 源と観察は forage と同じで、種類のモデルと一本ずつのモデル（競合型 treeModel）が、それぞれ単独で全体を予測する。
+ * 責任・勝者一つ・作る・不確かさの割り当てと組む（協調型と組むと二つの予測の和になり、意味を持たない）。
+ */
+export const forageCompeteSet: ModelSet = { ...forageModelSet, id: 'forage-compete', models: [kindModel, treeModel] };
+
+/** 季節の段の見込みの仕組み。記憶の規則（forageModels.memory）を世界に登録し、見込みは predict で読む。割り当ては一覧 assigners から札で選ぶ。 */
+export const forageModels = createModelSystem({ forage: forageModelSet, 'forage-compete': forageCompeteSet }, assigners);
 
 /**
  * 見込み: 源の心象 entry から、時刻 t に付いている数の見込み。区間の見込み（種類 + その木のずれ）に、直近の観察のずれを経過時間で薄めて足す。

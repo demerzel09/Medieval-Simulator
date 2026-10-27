@@ -17,6 +17,8 @@ const attr = (t: ThingSnapshot | undefined, a: string): number => {
 };
 const name = (t: ThingSnapshot, a: string): string => (typeof t.attr[a] === 'string' ? (t.attr[a] as string) : '');
 const num = (e: Relation | undefined, k: string, d: number): number => (typeof e?.[k] === 'number' ? (e[k] as number) : d);
+/** 札の数。札が無ければ d（個性の値の既定）。 */
+const opt = (t: ThingSnapshot, a: string, d: number): number => (typeof t.attr[a] === 'number' ? (t.attr[a] as number) : d);
 
 /** 意図（心が選ぶもの）。 */
 export type Intent = NonNullable<ReturnType<Mind['decide']>>;
@@ -57,7 +59,7 @@ export const kindModel: ModelKind = {
   base: (self) => attr(self, 'prior'),
 };
 
-/** 一本ずつのモデル: 相手その物の項目に置く。見たことの無い区間は 0（種類のモデルと足すときのずれ）。 */
+/** 一本ずつのモデル（協調型のずれ）: 相手その物の項目に置く。見たことの無い区間は 0（種類のモデルと足すときのずれ）。 */
 export const individualModel: ModelKind = {
   id: 'individual',
   version: 'modular-1',
@@ -69,31 +71,186 @@ export const individualModel: ModelKind = {
 };
 
 /**
- * 誤差の割り当て。combine は項たちから見込みを組む。assign は観察 observed を受けて、各モデルの新しい項を返す（undefined は書かない）。
- * 理論の違い（協調・責任・勝者一つ・作る・不確かさ）は、この部品の違いとして並べる。
+ * 一本ずつのモデル（競合型）: 相手その物の項目に置き、単独で全体を予測する。見たことの無い区間は札 prior（種類のモデルと同じ出発点）。
+ * 協調型のずれ（individualModel）とは値の意味が違うので、項目の名も別にする（tv{区間}）。
+ */
+export const treeModel: ModelKind = {
+  id: 'tree',
+  version: 'modular-1',
+  prefix: 'tv',
+  rateAttr: 'learnRate',
+  own: true,
+  slot: () => undefined,
+  base: (self) => attr(self, 'prior'),
+};
+
+/**
+ * 割り当てに渡す、一つのモデルの項。value は区間の値（無ければ base）、known はその区間の値を持っているか、
+ * err はそのモデルがこの源をどれだけ外してきたか（誤差の二乗の移動平均。源の項目の `{prefix}err`。まだ無ければ undefined）、
+ * variance はその区間の値の不確かさ（モデルの項目の `{prefix}q{区間}`。まだ無ければ undefined）。
+ */
+export interface Term {
+  value: number;
+  known: boolean;
+  err: number | undefined;
+  variance: number | undefined;
+}
+
+/** 割り当てが返す、一つのモデルの書き直し。書かない欄は省く。モデルごとに undefined なら何も書かない。 */
+export interface TermUpdate {
+  value?: number;
+  err?: number;
+  variance?: number;
+}
+
+/**
+ * 誤差の割り当て。combine は項たちから見込みを組む。assign は観察 observed を受けて、各モデルの書き直しを返す。
+ * 理論の違い（協調・責任・勝者一つ・作る・不確かさ）は、この部品の違いとして並べる（docs/RESEARCH.md 10.7）。
  */
 export interface Assigner {
   id: string;
   version: string;
-  combine(self: ThingSnapshot, terms: number[]): number;
-  assign(self: ThingSnapshot, terms: number[], observed: number, models: ModelKind[]): (number | undefined)[];
+  combine(self: ThingSnapshot, terms: Term[]): number;
+  assign(self: ThingSnapshot, terms: Term[], observed: number, models: ModelKind[]): (TermUpdate | undefined)[];
 }
 
 /**
  * 協調型（いまの二段の見込み）: 見込みは項の和。誤差 e = 観察 − 和 を、各モデルが自分の速さ倍だけ足す（同じ誤差を分け合う）。
- * 速さ 0 のモデルは書かない。専門家の混合でいう協調型で、モデルは分かれない（RESEARCH 10.3）。
+ * 速さ 0 のモデルは書かない。外し具合も不確かさも使わない。専門家の混合でいう協調型で、モデルは分かれない（RESEARCH 10.3）。
  */
 export const additiveAssigner: Assigner = {
   id: 'additive',
   version: 'modular-1',
-  combine: (_self, terms) => terms.reduce((a, b) => a + b, 0),
+  combine: (_self, terms) => terms.reduce((a, t) => a + t.value, 0),
   assign: (self, terms, observed, models) => {
-    const error = observed - terms.reduce((a, b) => a + b, 0);
+    const error = observed - terms.reduce((a, t) => a + t.value, 0);
     return models.map((m, i) => {
       const rate = attr(self, m.rateAttr);
-      return rate > 0 ? terms[i]! + rate * error : undefined;
+      return rate > 0 ? { value: terms[i]!.value + rate * error } : undefined;
     });
   },
+};
+
+/** 外し具合の移動平均を直す。速さは札 errRate（既定 0.2）。まだ記録が無ければ、いまの誤差の二乗から始める。 */
+const nextErr = (self: ThingSnapshot, t: Term, observed: number): number => {
+  const sq = (observed - t.value) ** 2;
+  return t.err === undefined ? sq : t.err + opt(self, 'errRate', 0.2) * (sq - t.err);
+};
+/** 外し具合（記録が無ければ札 respVar、既定 1）。 */
+const errOf = (self: ThingSnapshot, t: Term): number => t.err ?? opt(self, 'respVar', 1);
+
+/**
+ * 責任: 各モデルの外し具合から、softmax(−err / 2σ²) で責任を出す（σ² は札 respVar、既定 1）。MOSAIC の責任信号を、源ごとの外し具合で出す形。
+ * 責任を出す前に、外し具合の最も小さいものを引いておく（値は変わらず、桁があふれない）。
+ */
+export function responsibilities(self: ThingSnapshot, terms: Term[], among: boolean[] = terms.map(() => true)): number[] {
+  const s2 = Math.max(1e-9, opt(self, 'respVar', 1));
+  const errs = terms.map((t) => errOf(self, t));
+  const low = Math.min(...errs.filter((_, i) => among[i]));
+  const w = errs.map((e, i) => (among[i] ? Math.exp(-(e - low) / (2 * s2)) : 0));
+  const sum = w.reduce((a, b) => a + b, 0) || 1;
+  return w.map((x) => x / sum);
+}
+
+/** 外し具合が最も小さいモデル（同じなら並びの先）。among で候補を絞る。 */
+const winnerOf = (self: ThingSnapshot, terms: Term[], among: boolean[] = terms.map(() => true)): number => {
+  let best = -1;
+  terms.forEach((t, i) => {
+    if (among[i] && (best < 0 || errOf(self, t) < errOf(self, terms[best]!) - 1e-12)) best = i;
+  });
+  return Math.max(0, best);
+};
+
+/**
+ * 柔らかい責任（MOSAIC）: 各モデルは単独で全体を予測する（競合型）。見込みは責任で重みづけた和。
+ * 各モデルは自分の誤差 e_i = 観察 − 値_i を、速さ × 責任 r_i 倍だけ足す。外し具合は全モデルで直す（どのモデルも予測したので）。
+ */
+export const responsibilityAssigner: Assigner = {
+  id: 'responsibility',
+  version: 'modular-1',
+  combine: (self, terms) => {
+    const r = responsibilities(self, terms);
+    return terms.reduce((a, t, i) => a + r[i]! * t.value, 0);
+  },
+  assign: (self, terms, observed, models) => {
+    const r = responsibilities(self, terms);
+    return models.map((m, i) => ({ value: terms[i]!.value + attr(self, m.rateAttr) * r[i]! * (observed - terms[i]!.value), err: nextErr(self, terms[i]!, observed) }));
+  },
+};
+
+/**
+ * 勝者一つ: 見込みは外し具合の最も小さいモデルの値。直るのはそのモデルだけ（自分の誤差を自分の速さ倍）。外し具合は全モデルで直す。
+ * 問い「階層のどこかの、最も寄与した一か所の線形モデルだけを直す」の、層が一つのときの形。
+ */
+export const winnerAssigner: Assigner = {
+  id: 'winner',
+  version: 'modular-1',
+  combine: (self, terms) => terms[winnerOf(self, terms)]!.value,
+  assign: (self, terms, observed, models) => {
+    const w = winnerOf(self, terms);
+    return models.map((m, i) => ({ ...(i === w ? { value: terms[i]!.value + attr(self, m.rateAttr) * (observed - terms[i]!.value) } : {}), err: nextErr(self, terms[i]!, observed) }));
+  },
+};
+
+/**
+ * 合わなければ作る（ART の形）: 並びの先のモデル（いまの組では種類のモデル）は初めからあり、ほかのモデルは、その区間の値を持つ（作られた）ときだけ候補になる。
+ * 見込みと直し方は勝者一つと同じ（候補の中で）。勝ったモデルの誤差の二乗が警戒の基準（札 vigilance、既定 1）を超え、
+ * まだ作られていないモデルがあれば、並びの先から一つを作り、その区間の値を観察そのものにする（一度で覚える例外）。
+ * 作られた例外は、その源のその区間だけに置かれ、ほかの区間は先のモデルで当てる。
+ */
+export const artAssigner: Assigner = {
+  id: 'art',
+  version: 'modular-1',
+  combine: (self, terms) => {
+    const among = terms.map((t, i) => i === 0 || t.known);
+    return terms[winnerOf(self, terms, among)]!.value;
+  },
+  assign: (self, terms, observed, models) => {
+    const among = terms.map((t, i) => i === 0 || t.known);
+    const w = winnerOf(self, terms, among);
+    const out: (TermUpdate | undefined)[] = models.map((m, i) =>
+      among[i] ? { ...(i === w ? { value: terms[i]!.value + attr(self, m.rateAttr) * (observed - terms[i]!.value) } : {}), err: nextErr(self, terms[i]!, observed) } : undefined,
+    );
+    const missing = terms.findIndex((_, i) => !among[i]);
+    if ((observed - terms[w]!.value) ** 2 > opt(self, 'vigilance', 1) && missing >= 0) out[missing] = { value: observed, err: 0 };
+    return out;
+  },
+};
+
+/**
+ * 不確かさで振り分ける（カルマンフィルタ・階層ガウスフィルタの形）: 各モデルは区間ごとに値と不確かさ q を持ち、単独で全体を予測する（競合型）。
+ * 見込みは不確かさの逆数で重みづけた平均。各モデルは、利得 K = q / (q + R) で自分の誤差を足し、q ← (1 − K) q + Q とする
+ * （R は観察の揺らぎ、札 obsNoise、既定 1。Q は時とともに増える不確かさ、札 drift、既定 0.05。まだ記録の無い q は札 priorVar、既定 4）。
+ * 自信の無いモデルほど多く直り、見込みへの重みは小さい。速さの札は使わない。
+ */
+export const uncertaintyAssigner: Assigner = {
+  id: 'uncertainty',
+  version: 'modular-1',
+  combine: (self, terms) => {
+    const q0 = opt(self, 'priorVar', 4);
+    const w = terms.map((t) => 1 / Math.max(1e-9, t.variance ?? q0));
+    const sum = w.reduce((a, b) => a + b, 0);
+    return terms.reduce((a, t, i) => a + w[i]! * t.value, 0) / sum;
+  },
+  assign: (self, terms, observed) => {
+    const q0 = opt(self, 'priorVar', 4);
+    const R = Math.max(1e-9, opt(self, 'obsNoise', 1));
+    const Q = opt(self, 'drift', 0.05);
+    return terms.map((t) => {
+      const q = t.variance ?? q0;
+      const K = q / (q + R);
+      return { value: t.value + K * (observed - t.value), variance: (1 - K) * q + Q, err: nextErr(self, t, observed) };
+    });
+  },
+};
+
+/** 割り当ての一覧（札 assigner の名）。 */
+export const assigners: Record<string, Assigner> = {
+  additive: additiveAssigner,
+  responsibility: responsibilityAssigner,
+  winner: winnerAssigner,
+  art: artAssigner,
+  uncertainty: uncertaintyAssigner,
 };
 
 /** 段ごとのモデルの組: 心象のどの項目を源とみなし、着いたときに何を観察するか、どのモデルを並べるか。 */
@@ -121,16 +278,22 @@ function partOf<T>(self: ThingSnapshot, tag: string, parts: Record<string, T>, f
 }
 
 /** 札 models の組と札 assigner の割り当てで見込みを持つ仕組みを作る。札 models が無い人には働かない。札 assigner が無ければ協調型。 */
-export function createModelSystem(sets: Record<string, ModelSet>, assigners: Record<string, Assigner>): ModelSystem {
+export function createModelSystem(sets: Record<string, ModelSet>, assignerTable: Record<string, Assigner> = assigners): ModelSystem {
   const setOf = (self: ThingSnapshot) => partOf(self, 'models', sets, undefined);
-  const assignerOf = (self: ThingSnapshot) => partOf(self, 'assigner', assigners, additiveAssigner)!;
+  const assignerOf = (self: ThingSnapshot) => partOf(self, 'assigner', assignerTable, additiveAssigner)!;
   const paramsOf = (self: ThingSnapshot, m: ModelKind, entry: Relation): Relation | undefined => {
     if (m.own) return entry;
     const slot = m.slot(entry);
     return slot ? self.rel[slot] : undefined;
   };
-  const termsAt = (self: ThingSnapshot, set: ModelSet, entry: Relation, b: number) =>
-    set.models.map((m) => num(paramsOf(self, m, entry), `${m.prefix}${b}`, m.base(self)));
+  const termsAt = (self: ThingSnapshot, set: ModelSet, entry: Relation, b: number): Term[] =>
+    set.models.map((m) => {
+      const params = paramsOf(self, m, entry);
+      const v = params?.[`${m.prefix}${b}`];
+      const err = entry[`${m.prefix}err`];
+      const q = params?.[`${m.prefix}q${b}`];
+      return { value: typeof v === 'number' ? v : m.base(self), known: typeof v === 'number', err: typeof err === 'number' ? err : undefined, variance: typeof q === 'number' ? q : undefined };
+    });
 
   /**
    * 記憶の規則 models: 札 models の組を持つ観測者が、源の手の届く所にいるとき、その源と、モデルたちの項目を書き直す。
@@ -152,12 +315,17 @@ export function createModelSystem(sets: Record<string, ModelSet>, assigners: Rec
       const next = assignerOf(observer).assign(observer, termsAt(observer, set, entry, b), count, set.models);
       const out: Relations = { [about]: fields };
       set.models.forEach((m, i) => {
-        const v = next[i];
-        if (v === undefined) return;
-        if (m.own) fields[`${m.prefix}${b}`] = v;
+        const u = next[i];
+        if (!u) return;
+        // 値と不確かさはモデルの項目へ、外し具合は源の項目へ。
+        const own: Relation = {};
+        if (u.value !== undefined) own[`${m.prefix}${b}`] = u.value;
+        if (u.variance !== undefined) own[`${m.prefix}q${b}`] = u.variance;
+        if (u.err !== undefined) fields[`${m.prefix}err`] = u.err;
+        if (m.own) Object.assign(fields, own);
         else {
           const slot = m.slot(entry);
-          if (slot) out[slot] = { ...(out[slot] ?? {}), [`${m.prefix}${b}`]: v };
+          if (slot && Object.keys(own).length) out[slot] = { ...(out[slot] ?? {}), ...own };
         }
       });
       fields['visits'] = num(entry, 'visits', 0) + 1;
