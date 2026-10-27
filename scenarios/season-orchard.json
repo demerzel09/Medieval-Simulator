@@ -1,0 +1,261 @@
+{
+  "format": "skeleton-scenario/1",
+  "name": "season-orchard",
+  "description": "実る時期の違う三種の木が森ごとに一本。巡回者 2・採取者 2。",
+  "modules": [
+    "fruit",
+    "season"
+  ],
+  "world": {
+    "days": 72
+  },
+  "things": [
+    {
+      "id": "nature",
+      "def": "nature",
+      "res": {
+        "fruitStock": 99988
+      }
+    },
+    {
+      "id": "home",
+      "def": "home",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "wood-A1",
+      "def": "forest",
+      "x": 50,
+      "y": 10
+    },
+    {
+      "id": "wood-A2",
+      "def": "forest",
+      "x": -40,
+      "y": 60
+    },
+    {
+      "id": "wood-B1",
+      "def": "forest",
+      "x": 90,
+      "y": -30
+    },
+    {
+      "id": "wood-B2",
+      "def": "forest",
+      "x": -70,
+      "y": -50
+    },
+    {
+      "id": "wood-C1",
+      "def": "forest",
+      "x": 20,
+      "y": -90
+    },
+    {
+      "id": "wood-C2",
+      "def": "forest",
+      "x": 120,
+      "y": 60
+    },
+    {
+      "id": "A1",
+      "def": "treeA",
+      "x": 50,
+      "y": 10,
+      "attr": {
+        "ripenPerHour": 0.25
+      }
+    },
+    {
+      "id": "A2",
+      "def": "treeA",
+      "x": -40,
+      "y": 60,
+      "attr": {
+        "ripenPerHour": 0.25
+      }
+    },
+    {
+      "id": "B1",
+      "def": "treeB",
+      "x": 90,
+      "y": -30,
+      "attr": {
+        "ripenPerHour": 0.25
+      }
+    },
+    {
+      "id": "B2",
+      "def": "treeB",
+      "x": -70,
+      "y": -50,
+      "attr": {
+        "ripenPerHour": 0.25
+      }
+    },
+    {
+      "id": "C1",
+      "def": "treeC",
+      "x": 20,
+      "y": -90,
+      "attr": {
+        "ripenPerHour": 0.25
+      }
+    },
+    {
+      "id": "C2",
+      "def": "treeC",
+      "x": 120,
+      "y": 60,
+      "attr": {
+        "ripenPerHour": 0.25
+      }
+    },
+    {
+      "id": "P1",
+      "def": "patroller",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "id": "P2",
+      "def": "patroller",
+      "x": 6.123233995736766e-17,
+      "y": 1
+    },
+    {
+      "id": "F1",
+      "def": "person",
+      "x": -1,
+      "y": 1.2246467991473532e-16
+    },
+    {
+      "id": "F2",
+      "def": "person",
+      "x": -1.8369701987210297e-16,
+      "y": -1
+    },
+    {
+      "id": "A1/fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#4",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#5",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#6",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#4",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#5",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#6",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    }
+  ]
+}

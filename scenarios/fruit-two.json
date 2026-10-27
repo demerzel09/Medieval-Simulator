@@ -1,0 +1,104 @@
+{
+  "format": "skeleton-scenario/1",
+  "name": "fruit-two",
+  "description": "一本の木を採取者二人で使う。",
+  "modules": [
+    "fruit"
+  ],
+  "world": {
+    "days": 30
+  },
+  "things": [
+    {
+      "id": "nature",
+      "def": "nature",
+      "res": {
+        "fruitStock": 99994
+      }
+    },
+    {
+      "id": "tree",
+      "def": "tree",
+      "x": 40,
+      "y": 0
+    },
+    {
+      "id": "home",
+      "def": "home",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "P1",
+      "def": "person",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "P2",
+      "def": "person",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#4",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#5",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#6",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    }
+  ]
+}

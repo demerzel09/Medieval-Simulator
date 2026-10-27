@@ -1,0 +1,114 @@
+{
+  "format": "skeleton-scenario/1",
+  "name": "grain-naive",
+  "description": "実の足りない木と穀物の畑と炉。穀物が粥になると知らない人。",
+  "modules": [
+    "fruit",
+    "grain"
+  ],
+  "world": {
+    "days": 30
+  },
+  "things": [
+    {
+      "id": "nature",
+      "def": "nature",
+      "res": {
+        "fruitStock": 99994
+      }
+    },
+    {
+      "id": "home",
+      "def": "home",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "hearth",
+      "def": "hearth",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "id": "tree",
+      "def": "tree",
+      "x": 40,
+      "y": 0,
+      "attr": {
+        "ripenPerHour": 0.1
+      }
+    },
+    {
+      "id": "field",
+      "def": "field",
+      "x": -40,
+      "y": 0
+    },
+    {
+      "id": "P1",
+      "def": "person",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#4",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#5",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "fruit#6",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree"
+      },
+      "res": {
+        "quantity": 1
+      }
+    }
+  ]
+}

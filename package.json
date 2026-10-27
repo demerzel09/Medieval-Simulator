@@ -27,7 +27,8 @@
     "content:validate": "tsx packages/tools/validate.ts",
     "test:browser": "playwright test",
     "fixtures": "tsx packages/tools/combat-report.ts",
-    "skeleton": "tsx packages/tools/skeleton.ts"
+    "skeleton": "tsx packages/tools/skeleton.ts",
+    "scenario": "tsx packages/tools/scenario.ts"
   },
   "dependencies": {
     "@fontsource/noto-sans-jp": "5.3.0",

@@ -1,0 +1,650 @@
+{
+  "format": "skeleton-scenario/1",
+  "name": "season-forest",
+  "description": "三種の木の森が六つ（7 本ずつ）。木は種をまき、寿命 24 日（0.5〜1.5 倍）で枯れる。木ごとに毎年同じ時期の違い ±3 日。巡回者は二段で覚える P1 と一本ずつ覚える P2。",
+  "modules": [
+    "fruit",
+    "season"
+  ],
+  "world": {
+    "days": 72
+  },
+  "things": [
+    {
+      "id": "nature",
+      "def": "nature",
+      "res": {
+        "fruitStock": 99988
+      }
+    },
+    {
+      "id": "home",
+      "def": "home",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "wood-A1",
+      "def": "forest",
+      "x": 50,
+      "y": 10
+    },
+    {
+      "id": "wood-A2",
+      "def": "forest",
+      "x": -40,
+      "y": 60
+    },
+    {
+      "id": "wood-B1",
+      "def": "forest",
+      "x": 90,
+      "y": -30
+    },
+    {
+      "id": "wood-B2",
+      "def": "forest",
+      "x": -70,
+      "y": -50
+    },
+    {
+      "id": "wood-C1",
+      "def": "forest",
+      "x": 20,
+      "y": -90
+    },
+    {
+      "id": "wood-C2",
+      "def": "forest",
+      "x": 120,
+      "y": 60
+    },
+    {
+      "id": "A1",
+      "def": "treeA",
+      "x": 50,
+      "y": 10,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A1b",
+      "def": "treeA",
+      "x": 57.80517534691257,
+      "y": 21.630309624721146,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A1c",
+      "def": "treeA",
+      "x": 45.22603102349746,
+      "y": 0.06028358215938745,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A1d",
+      "def": "treeA",
+      "x": 35.85292450668088,
+      "y": 10.948449286483351,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A1e",
+      "def": "treeA",
+      "x": 43.02397670954789,
+      "y": 19.879351895855315,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A1f",
+      "def": "treeA",
+      "x": 62.58598629222786,
+      "y": 9.201117505041456,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A1g",
+      "def": "treeA",
+      "x": 57.036590723999254,
+      "y": -1.6397724532441718,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A2",
+      "def": "treeA",
+      "x": -40,
+      "y": 60,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A2b",
+      "def": "treeA",
+      "x": -51.75867655679078,
+      "y": 61.59082735589929,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A2c",
+      "def": "treeA",
+      "x": -26.321229147211596,
+      "y": 57.070391046854034,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A2d",
+      "def": "treeA",
+      "x": -37.66988397973328,
+      "y": 45.91127922484446,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A2e",
+      "def": "treeA",
+      "x": -33.89833297305381,
+      "y": 69.2313887466977,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A2f",
+      "def": "treeA",
+      "x": -45.698002857831845,
+      "y": 70.27871683260332,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "A2g",
+      "def": "treeA",
+      "x": -50.62052079001739,
+      "y": 51.54094412053828,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B1",
+      "def": "treeB",
+      "x": 90,
+      "y": -30,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B1b",
+      "def": "treeB",
+      "x": 85.2091480765582,
+      "y": -42.50317012284336,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B1c",
+      "def": "treeB",
+      "x": 88.10616401270933,
+      "y": -19.884506080078765,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B1d",
+      "def": "treeB",
+      "x": 75.32023816286714,
+      "y": -28.064789542309672,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B1e",
+      "def": "treeB",
+      "x": 100.21771593910366,
+      "y": -26.46485509313235,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B1f",
+      "def": "treeB",
+      "x": 95.96120750027629,
+      "y": -41.45388571180327,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B2",
+      "def": "treeB",
+      "x": -70,
+      "y": -50,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B2b",
+      "def": "treeB",
+      "x": -82.37428089679187,
+      "y": -53.65409018850013,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B2c",
+      "def": "treeB",
+      "x": -63.06053438020748,
+      "y": -39.78175097758965,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B2d",
+      "def": "treeB",
+      "x": -62.959343559264866,
+      "y": -59.150980318001174,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B2e",
+      "def": "treeB",
+      "x": -77.92213581162153,
+      "y": -42.81789890072363,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B2f",
+      "def": "treeB",
+      "x": -58.04571808188841,
+      "y": -50.37544304045611,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "B2g",
+      "def": "treeB",
+      "x": -72.45080139403893,
+      "y": -63.21925665241841,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C1",
+      "def": "treeC",
+      "x": 20,
+      "y": -90,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C1b",
+      "def": "treeC",
+      "x": 23.146289215132796,
+      "y": -77.44467964624043,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C1c",
+      "def": "treeC",
+      "x": 29.419920601108075,
+      "y": -100.99456621101562,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C1d",
+      "def": "treeC",
+      "x": 5.564928642861734,
+      "y": -88.10076664123606,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C1e",
+      "def": "treeC",
+      "x": 34.31638698840982,
+      "y": -90.02226780105589,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C1f",
+      "def": "treeC",
+      "x": 14.732415159231692,
+      "y": -99.3831276719302,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C1g",
+      "def": "treeC",
+      "x": 12.87406952506942,
+      "y": -81.07038224770494,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C2",
+      "def": "treeC",
+      "x": 120,
+      "y": 60,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C2b",
+      "def": "treeC",
+      "x": 115.92977564351602,
+      "y": 71.3353695260475,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C2c",
+      "def": "treeC",
+      "x": 130.47016561630556,
+      "y": 57.650662286610626,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C2d",
+      "def": "treeC",
+      "x": 110.52588449541409,
+      "y": 48.54126456481478,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C2e",
+      "def": "treeC",
+      "x": 110.44131087169868,
+      "y": 62.97586294459475,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C2f",
+      "def": "treeC",
+      "x": 127.63988402457558,
+      "y": 69.56076871607311,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "C2g",
+      "def": "treeC",
+      "x": 124.7637049045962,
+      "y": 48.05016632153168,
+      "attr": {
+        "lifespan": 34560,
+        "sowPerDay": 2,
+        "seasonSpread": 4320
+      }
+    },
+    {
+      "id": "P1",
+      "def": "patroller",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "id": "P2",
+      "def": "patroller",
+      "x": -1,
+      "y": 1.2246467991473532e-16,
+      "attr": {
+        "kindRate": 0,
+        "learnRate": 0.5
+      }
+    },
+    {
+      "id": "A1/fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#4",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#5",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A1/fruit#6",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#4",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#5",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "A2/fruit#6",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "A2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    }
+  ]
+}

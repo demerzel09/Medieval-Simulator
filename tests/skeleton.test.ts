@@ -1,8 +1,9 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, ForagerMind, PatrolMind, unitHash, seasonWorld, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
-import type { ThingSnapshot } from '../packages/skeleton/index.js';
+import { World, ForagerMind, PatrolMind, unitHash, seasonWorld, buildFromConfig, record, registryMismatch, replayRecording, finalOf, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
+import type { ScenarioConfig, ThingSnapshot } from '../packages/skeleton/index.js';
+import { readFileSync } from 'node:fs';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
 const state = (t: ThingSnapshot | undefined, s: string): string => (typeof t?.state[s] === 'string' ? (t!.state[s] as string) : '');
@@ -674,5 +675,51 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
     expect(inWood.length).toBeLessThanOrEqual(9); // 広さ 15m・縄張り 10m の森に入るのはおよそ 7 本
     expect(trees().filter((t) => Math.hypot(t.state['x'] as number, t.state['y'] as number) > 15).map((t) => t.id)).toEqual(['lone']); // 森の外の木は増えない
     expect(massTotal(w)).toBeCloseTo(m0, 6);
+  });
+});
+
+describe('skeleton: 設定のファイルから世界を作り、記録して再現する（scenarios/、packages/skeleton/scenario.ts）', () => {
+  const builders: Record<string, () => World> = {
+    'fruit-one': () => buildFruitScenario().world,
+    'fruit-two': () => buildFruitScenario({ persons: 2 }).world,
+    'placed-village': () => buildPlacedScenario().world,
+    'grain-naive': () => buildGrainScenario().world,
+    'grain-knows': () => buildGrainScenario({ knows: true }).world,
+    'season-orchard': () => buildSeasonScenario({ treesPerForest: 1, ripenPerHour: 0.25 }).world,
+    'season-forest': () => buildSeasonScenario({ persons: [{ id: 'P1', def: 'patroller' }, { id: 'P2', def: 'patroller', attr: { kindRate: 0, learnRate: 0.5 } }], spreadDays: 3, lifespanDays: 24, sowPerDay: 2 }).world,
+  };
+  const noSeed = (w: World) => JSON.stringify(w.ledger.filter((e) => !('law' in e && e.law === 'seed')));
+  const things = (w: World) => JSON.stringify(w.query(() => true).sort((a, b) => (a.id < b.id ? -1 : 1)));
+
+  it('置いてある設定のファイルは、構築関数の場面と同じ世界になる（初期の実の seed の記録を除き、記録も状態も同じ）', () => {
+    for (const [name, make] of Object.entries(builders)) {
+      const config = JSON.parse(readFileSync(`scenarios/${name}.json`, 'utf8')) as ScenarioConfig;
+      const a = make();
+      const b = buildFromConfig(config);
+      a.run(2 * DAY, DT);
+      b.run(2 * DAY, DT);
+      expect(noSeed(b), name).toBe(noSeed(a));
+      expect(things(b), name).toBe(things(a));
+    }
+  }, 60_000);
+
+  it('記録のファイルから再生すると最後の状態と記録が同じになり、部品の版が違えば分かる', () => {
+    const config = JSON.parse(readFileSync('scenarios/season-forest.json', 'utf8')) as ScenarioConfig;
+    const rec = record(config, 2);
+    expect(rec.registry.laws.map((l) => l.id)).toContain('sow');
+    expect(registryMismatch(rec)).toEqual([]);
+    expect(finalOf(replayRecording(rec))).toEqual(rec.final);
+    const rerun = buildFromConfig(config);
+    rerun.run(rec.until, rec.dt);
+    expect(finalOf(rerun)).toEqual(rec.final);
+    const changed = { ...rec, registry: { ...rec.registry, laws: rec.registry.laws.map((l) => (l.id === 'sow' ? { ...l, version: 'old' } : l)) } };
+    expect(registryMismatch(changed)).toEqual(['recorded sow@old', `current sow@${rec.registry.laws.find((l) => l.id === 'sow')!.version}`]);
+  }, 30_000);
+
+  it('設定の誤りは組み立てで止まる。番号付きの id を置けば、後で生まれる物はその番号を避ける', () => {
+    expect(() => buildFromConfig({ format: 'skeleton-scenario/1', modules: ['nothing'], things: [] })).toThrow(/unknown module/);
+    expect(() => buildFromConfig({ format: 'skeleton-scenario/1', modules: ['fruit'], defs: [{ name: 'orphan', parent: 'missing' }], things: [] })).toThrow(/unknown parent/);
+    const w = buildFromConfig({ format: 'skeleton-scenario/1', modules: ['fruit'], things: [{ id: 'nature', def: 'nature' }, { id: 'tree/fruit#4', def: 'fruit' }] });
+    expect(w.nextSpawnId('tree/fruit')).toBe('tree/fruit#5');
   });
 });

@@ -1,0 +1,176 @@
+{
+  "format": "skeleton-scenario/1",
+  "name": "placed-village",
+  "description": "家 3・木 3・採取者 5 を任意の座標に置いただけの村。",
+  "modules": [
+    "fruit"
+  ],
+  "world": {
+    "days": 30
+  },
+  "things": [
+    {
+      "id": "nature",
+      "def": "nature",
+      "res": {
+        "fruitStock": 99991
+      }
+    },
+    {
+      "id": "home1",
+      "def": "home",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "home2",
+      "def": "home",
+      "x": 0,
+      "y": 30
+    },
+    {
+      "id": "home3",
+      "def": "home",
+      "x": 60,
+      "y": -20
+    },
+    {
+      "id": "tree1",
+      "def": "tree",
+      "x": 40,
+      "y": 0
+    },
+    {
+      "id": "tree2",
+      "def": "tree",
+      "x": -30,
+      "y": 30
+    },
+    {
+      "id": "tree3",
+      "def": "tree",
+      "x": 80,
+      "y": 20
+    },
+    {
+      "id": "P1",
+      "def": "person",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "P2",
+      "def": "person",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "id": "P3",
+      "def": "person",
+      "x": 0,
+      "y": 30
+    },
+    {
+      "id": "P4",
+      "def": "person",
+      "x": 60,
+      "y": -20
+    },
+    {
+      "id": "P5",
+      "def": "person",
+      "x": 30,
+      "y": 10
+    },
+    {
+      "id": "tree1/fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree1/fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree1/fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree1"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree2/fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree2/fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree2/fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree2"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree3/fruit#1",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree3"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree3/fruit#2",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree3"
+      },
+      "res": {
+        "quantity": 1
+      }
+    },
+    {
+      "id": "tree3/fruit#3",
+      "def": "fruit",
+      "state": {
+        "attachedTo": "tree3"
+      },
+      "res": {
+        "quantity": 1
+      }
+    }
+  ]
+}

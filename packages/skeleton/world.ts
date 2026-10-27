@@ -87,9 +87,14 @@ export class World implements WorldView {
 
   // ---- 事物 ----
 
-  /** 事物を置く。attr は属性（仕様）で凍結され、以後どの効果も書けない。state・rel・res は更新が書く。札 mind があれば心が付く。 */
+  /**
+   * 事物を置く。attr は属性（仕様）で凍結され、以後どの効果も書けない。state・rel・res は更新が書く。札 mind があれば心が付く。
+   * id が「頭#番号」の形なら、その番号までを採番済みにする（設定から置いた物と、後で生まれる物の id が重ならない）。
+   */
   addThing(id: ThingId, kind: string, parts: ThingParts): void {
     if (this.things.has(id)) throw new Error(`duplicate thing ${id}`);
+    const numbered = /^(.*)#(\d+)$/.exec(id);
+    if (numbered) this.spawnSeq.set(numbered[1]!, Math.max(this.spawnSeq.get(numbered[1]!) ?? 0, Number(numbered[2])));
     this.things.set(id, {
       id,
       kind,
