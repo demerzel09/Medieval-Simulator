@@ -6,7 +6,7 @@ import type { LedgerEntry, Memory, Mind, Relations, Resources, Scalar, Sense, St
 import { World, type WorldOptions } from './world.js';
 import { DAY, DT, ForagerMind, fruitDefs, fruitLaws, sight } from './fruit.js';
 import { grainDefs, processLaw } from './grain.js';
-import { PatrolMind, forecastMemory, seasonDefs, sow, wither } from './season.js';
+import { forageModels, seasonDefs, seasonMind, sow, wither } from './season.js';
 import type { Law } from './types.js';
 
 /** 部品の組: 定義・法則・感覚・記憶の規則・心の種類。設定の modules で名前を挙げると、その組を世界に登録する。 */
@@ -22,7 +22,7 @@ export interface Module {
 export const catalog: Record<string, Module> = {
   fruit: { defs: fruitDefs, laws: fruitLaws, senses: [sight], memories: [], minds: { forager: () => new ForagerMind() } },
   grain: { defs: grainDefs, laws: [processLaw], senses: [], memories: [], minds: {} },
-  season: { defs: seasonDefs, laws: [wither, sow], senses: [], memories: [forecastMemory], minds: { patroller: () => new PatrolMind() } },
+  season: { defs: seasonDefs, laws: [wither, sow], senses: [], memories: [forageModels.memory], minds: { modular: seasonMind } },
 };
 
 /** 置く物。定義の名と、定義の既定値への上書き。位置は x・y（状態に入る）。 */

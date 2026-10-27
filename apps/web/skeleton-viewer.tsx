@@ -394,7 +394,7 @@ export default function SkeletonViewer() {
               {rec && <p className="village-record-source">記録 {rec.final.ledger.toLocaleString()}件 · 最後の状態の要約 {rec.final.thingsHash} · 記録の要約 {rec.final.ledgerHash}</p>}
             </section>
           </div>
-          {has(self, "forecasts") && view && <ForecastTable self={self} now={view.now} />}
+          {has(self, "models") && view && <ForecastTable self={self} now={view.now} />}
         </> : <p>物を選んでください。</p>}
       </aside>
     </main>

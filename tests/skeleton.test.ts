@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, ForagerMind, PatrolMind, unitHash, seasonWorld, buildFromConfig, record, registryMismatch, replayRecording, finalOf, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
+import { World, ForagerMind, seasonMind, textDigest, unitHash, seasonWorld, buildFromConfig, record, registryMismatch, replayRecording, finalOf, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
 import type { ScenarioConfig, ThingSnapshot } from '../packages/skeleton/index.js';
 import { readFileSync } from 'node:fs';
 
@@ -610,7 +610,7 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
   it('巡回者の心は記憶を持たない: 同じ写しからは同じ意図。見込みは心象の値だけから計算する', () => {
     const { world } = buildSeasonScenario({ ...single, persons: [{ id: 'P1', def: 'patroller' }] });
     world.run(3 * DAY, DT);
-    const mind = new PatrolMind();
+    const mind = seasonMind();
     const snap = world.thing('P1')!;
     expect(mind.decide(snap, world.now)).toEqual(mind.decide(snap, world.now));
     expect(predict(snap, snap.rel['A1']!, world.now)).toBe(predict(snap, snap.rel['A1']!, world.now));
@@ -650,6 +650,29 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
     expect(diedDay(0.15, tree)).toBe(Infinity); // 一本ずつは生き残り
     expect(diedDay(0.15, both)).toBeLessThan(72); // 二段は 40.5 日に死ぬ
   }, 60_000); // 72 日を 5 回走らせる
+
+  it('心象のモデルの枠組みの上の巡回者は、枠組みへ移す前の巡回者と同じ記録と心象になる（季節の果樹園、72 日）', () => {
+    // 要約の値は、移す前（記憶の規則 forecast と心 PatrolMind、commit 26b6117）に同じ設定のファイルで取った値。振る舞いを変えると変わる。
+    const w = buildFromConfig(JSON.parse(readFileSync('scenarios/season-orchard.json', 'utf8')) as ScenarioConfig);
+    w.run(72 * DAY, DT);
+    expect(w.ledger.length).toBe(144766);
+    expect(textDigest(JSON.stringify(w.ledger))).toBe('0c11cec9a03f5c');
+    const relDigest = (id: string) => textDigest(JSON.stringify(Object.fromEntries(Object.entries(w.thing(id)!.rel).sort(([a], [b]) => (a < b ? -1 : 1)))));
+    expect([relDigest('P1'), relDigest('P2')]).toEqual(['03d2c66c3c5085', '1ce4f97ecbfa26']);
+  }, 60_000);
+
+  it('部品は人の札の名で選ぶ。札が無ければ既定の部品、知らない名なら止まる', () => {
+    const run = (attr: Record<string, string>) => {
+      const { world } = buildSeasonScenario({ ...single, persons: [{ id: 'P1', def: 'patroller', attr }] });
+      world.run(2 * DAY, DT);
+      return world;
+    };
+    expect(() => run({ assigner: 'nope' })).toThrow(/unknown assigner nope/);
+    expect(() => run({ rules: 'nope' })).toThrow(/unknown rules nope/);
+    expect(() => run({ selector: 'nope' })).toThrow(/unknown selector nope/);
+    expect(() => run({ models: 'nope' })).toThrow(/unknown models nope/);
+    expect(JSON.stringify(run({ assigner: 'additive' }).ledger)).toBe(JSON.stringify(run({}).ledger)); // 巡回者の定義の既定は協調型
+  }, 30_000);
 
   it('森と木を置くだけで、木は森の中の空いた所に種から生え、寿命で枯れる。森の外の木は増えない。木の数を決めるものは無く、森の広さで頭打ちになる', () => {
     const w = seasonWorld();
