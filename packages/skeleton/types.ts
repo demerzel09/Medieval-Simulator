@@ -69,7 +69,7 @@ export type Effect =
    */
   | { kind: 'reassign'; thing: ThingId; from: ThingId; to: ThingId; force?: number }
   /** 事物の生成。種類の定義 def から作り、state で初期の状態を上書きする。量は源泉の資源から引き、生まれる事物の資源 quantity になる（保存則）。 */
-  | { kind: 'spawn'; id: ThingId; def: string; state?: State; from: ThingId; fromRes: string; amount: number }
+  | { kind: 'spawn'; id: ThingId; def: string; attr?: Attrs; state?: State; from: ThingId; fromRes: string; amount: number }
   /** 事物の消滅。量は行き先の資源へ移り、差分は loss へ。 */
   | { kind: 'despawn'; thing: ThingId; to: ThingId; toRes: string; produced: number; lossTo: ThingId; lossRes: string }
   /** 位置（状態 x, y）の変化。動いた分の費用（資源）を別の事物へ移す。 */
@@ -142,8 +142,11 @@ export interface Sense {
 export interface Memory {
   id: string;
   version: string;
-  /** 観測者の、相手 about についての心象 entry に重ねる値。何もしなければ null。dt はこの刻みの長さ。 */
-  learn(observer: ThingSnapshot, about: ThingId, entry: Relation, w: WorldView, dt: number): Relation | null;
+  /**
+   * 観測者の、相手 about についての心象 entry を見て、心象の項目に重ねる値（項目の名 → 値）。何もしなければ null。dt はこの刻みの長さ。
+   * 重ねる先は about 自身の項目のほか、種類の知識（`kind:名`）のような、物でない項目でもよい。
+   */
+  learn(observer: ThingSnapshot, about: ThingId, entry: Relation, w: WorldView, dt: number): Relations | null;
 }
 
 /** 記録: 起きたことの記述。物理層は適用した流れ、情報層は事象。再現と検査に使う。 */

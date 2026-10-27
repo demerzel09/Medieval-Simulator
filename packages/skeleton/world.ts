@@ -446,14 +446,15 @@ export class World implements WorldView {
       // 記憶: 知覚のあとの写しから、心象の各項目の書き直しを計算し、まとめて重ねる。
       if (!this.memories.length) continue;
       const perceived = snapshot(p);
-      const updates: [ThingId, Relation][] = [];
+      // 同じ項目の同じ値を二つの書き直しが書けば、後の方（項目の並びで後の相手）が残る。
+      const updates: [string, Relation][] = [];
       for (const memory of this.memories) {
         for (const [about, entry] of Object.entries(perceived.rel)) {
-          const fields = memory.learn(perceived, about, entry, this, this.dt);
-          if (fields) updates.push([about, fields]);
+          const out = memory.learn(perceived, about, entry, this, this.dt);
+          if (out) updates.push(...Object.entries(out));
         }
       }
-      for (const [about, fields] of updates) this.setRel(pId, { ...p.rel, [about]: { ...p.rel[about], ...fields } });
+      for (const [key, fields] of updates) this.setRel(pId, { ...p.rel, [key]: { ...p.rel[key], ...fields } });
     }
   }
 
@@ -567,7 +568,8 @@ export class World implements WorldView {
         if (have < e.amount) return 0;
         const d = this.def(e.def);
         this.setRes(e.from, e.fromRes, have - e.amount);
-        this.things.set(e.id, { id: e.id, kind: e.def, attr: Object.freeze({ ...d.attr }), state: { ...d.state, ...(e.state ?? {}) }, rel: { ...d.rel }, res: { ...d.res, quantity: e.amount } });
+        // 属性は定義の値に、効果が渡す値（親から受け継ぐ値など）を重ねる。生まれた後は凍結。
+        this.things.set(e.id, { id: e.id, kind: e.def, attr: Object.freeze({ ...d.attr, ...(e.attr ?? {}) }), state: { ...d.state, ...(e.state ?? {}) }, rel: { ...d.rel }, res: { ...d.res, quantity: e.amount } });
         this.touched.add(e.id);
         this.attachMind(e.id);
         return e.amount;

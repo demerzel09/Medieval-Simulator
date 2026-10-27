@@ -11,7 +11,8 @@
 //         --replay で、初期状態と記録から再生した世界が走らせた世界と同じかを確かめる（法則と心を使わない再生）
 //         --placed で、置くだけの村（家 3・木 3・採取者 5 を任意の座標に。構築関数の配置によらない）を走らせる
 //         --grain で、実の足りない木と穀物の畑と炉（間接さの段 2）。--knows を足すと、穀物が炉で粥になると知っている人（違いは心象の知識だけ）
-//         --season で、実る時期の違う三種の木の果樹園（一年 24 日）と、巡回者 2・採取者 2。--ripen 実/時、--jitter 年ごとのずれ（日）、--seed 種、
+//         --season で、実る時期の違う三種の木の森の果樹園（一年 24 日。森ごとに 7 本）と、巡回者 2・採取者 2。--ripen 木一本の実/時、--jitter 年ごとのずれ（日）、--seed 種、
+//           --spread 木ごとの毎年同じ時期の違い（日）、--lifespan 木の寿命（日。寿命があれば木は --sow 回/日 で種をまく。既定 2）、--forest-trees 森ごとに初めに置く木の数、
 //           --who '[{"id":"P1","def":"patroller","attr":{"appetite":7}}]' で置く人と個性を指定（例: npm run skeleton -- 72 --season --ripen 0.15）
 
 import { ForagerMind, runSeasonDays, seasonOutcome, replaySeason, runFruitDays, runGrainDays, replayFruit, buildPlacedScenario, summarize, edibleOn, DAY, DT } from '../skeleton/index.js';
@@ -42,6 +43,10 @@ const seasonOptions = {
   ripenPerHour: valueOf('ripen') !== undefined ? ripenPerHour : undefined,
   jitterDays: valueOf('jitter') !== undefined ? Number(valueOf('jitter')) : undefined,
   seed: valueOf('seed') !== undefined ? Number(valueOf('seed')) : undefined,
+  spreadDays: valueOf('spread') !== undefined ? Number(valueOf('spread')) : undefined,
+  lifespanDays: valueOf('lifespan') !== undefined ? Number(valueOf('lifespan')) : undefined,
+  sowPerDay: valueOf('lifespan') !== undefined ? Number(valueOf('sow') ?? '2') : undefined,
+  treesPerForest: valueOf('forest-trees') !== undefined ? Number(valueOf('forest-trees')) : undefined,
   pairOrder,
 };
 const run = season
@@ -55,7 +60,7 @@ const { scenario, daily, initial } = run;
 const elapsed = performance.now() - started;
 console.log(
   season
-    ? `# season: orchard of three tree kinds fruiting 6 of 24 days each, ${seasonOptions.persons ? seasonOptions.persons.length : 4} person(s), ripen ${seasonOptions.ripenPerHour ?? 0.25}/h, jitter ${seasonOptions.jitterDays ?? 0}d, dt 10min`
+    ? `# season: six forests of three tree kinds fruiting 6 of 24 days each, ${seasonOptions.treesPerForest ?? 7} tree(s) per forest, ${seasonOptions.persons ? seasonOptions.persons.length : 4} person(s), ripen ${seasonOptions.ripenPerHour ?? 0.036}/h per tree, jitter ${seasonOptions.jitterDays ?? 0}d, spread ${seasonOptions.spreadDays ?? 0}d, lifespan ${seasonOptions.lifespanDays ?? '∞'}d, dt 10min`
     : placed
     ? `# placed village: 3 homes, 3 trees, 5 foragers, dt 10min`
     : grain

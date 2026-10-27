@@ -101,17 +101,27 @@ export const fruitDefs: ThingDef[] = [natureDef, treeDef, fruitDef, knifeDef, pe
 
 // ---- 物理層の法則。組 (a, b) の札で当たるかを決め、状態・資源・距離で流れを決める ----
 
-/** 0 以上 1 未満の決定的な値。文字列と整数から作る（FNV-1a）。年ごとのずれや心の気まぐれを、組の順や実行に依らず再現するために使う。 */
+/**
+ * 0 以上 1 未満の決定的な値。文字列と整数から作る（FNV-1a のあと murmur3 の fmix32 で混ぜる）。年ごとのずれや心の気まぐれを、組の順や実行に依らず再現するために使う。
+ * FNV-1a だけでは末尾の文字の違いが下位の桁にしか届かず、n が 1 違うだけの値がほぼ同じになる（年ごとのずれが毎年ほぼ同じ、気まぐれが刻みをまたいで続く）ので、最後に混ぜる。
+ */
 export function unitHash(key: string, n: number): number {
   let h = 2166136261;
   const text = `${key}#${n}`;
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
 }
 
 /**
  * 実る時期にあるか。札 seasonPeriod（周期、分）を持つ物は、周期ごとに seasonStart から seasonLength の間だけ実る。
  * 始まりは周期ごとに ±seasonJitter だけずれる（年ごとのずれ。物の id・seasonSeed・周期の番号から決まる）。札が無ければ常に実る。
+ * 札 seasonShared（文字列）を持つ物は、id の代わりにその名でずれを決める。同じ名の物は、同じ年に同じだけずれる（種類で共通の年回り）。
+ * 札 seasonSpread は、毎年同じ一本ごとの違い。始まりを ±seasonSpread だけ、物の id と seasonSeed から決まる量で動かす（後から生まれた木にも、id から個性が付く）。
  */
 export function inSeason(t: ThingSnapshot, now: number): boolean {
   const period = attr(t, 'seasonPeriod');
@@ -119,7 +129,9 @@ export function inSeason(t: ThingSnapshot, now: number): boolean {
   const k = Math.floor(now / period);
   // ずれで窓が周期の境をまたいでもよいように、前後の周期の窓も見る。
   for (const j of [k - 1, k, k + 1]) {
-    const start = j * period + attr(t, 'seasonStart') + attr(t, 'seasonJitter') * (2 * unitHash(`${t.id}:${attr(t, 'seasonSeed')}`, j) - 1);
+    const key = typeof t.attr['seasonShared'] === 'string' ? t.attr['seasonShared'] : t.id;
+    const own = attr(t, 'seasonSpread') * (2 * unitHash(`${t.id}:spread:${attr(t, 'seasonSeed')}`, 0) - 1);
+    const start = j * period + attr(t, 'seasonStart') + own + attr(t, 'seasonJitter') * (2 * unitHash(`${key}:${attr(t, 'seasonSeed')}`, j) - 1);
     if (now >= start && now < start + attr(t, 'seasonLength')) return true;
   }
   return false;
@@ -128,7 +140,7 @@ export function inSeason(t: ThingSnapshot, now: number): boolean {
 /** (育てる, 実をつける): 実る。実る時期に、育ちが自然から木へ移り、1 たまるごとに、上限まで、bears が指す定義の事物が木に生まれる。量は自然の蓄えから引く。 */
 export const ripen: Law = {
   id: 'ripen',
-  version: 'season-1',
+  version: 'season-2',
   pair: (a, b, dt, w) => {
     if (!has(a, 'grows') || typeof b.attr['bears'] !== 'string' || !inSeason(b, w.now)) return [];
     const rate = attr(b, 'ripenPerHour') / HOUR; // 実/分

@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, ForagerMind, PatrolMind, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
+import { World, ForagerMind, PatrolMind, unitHash, seasonWorld, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
 import type { ThingSnapshot } from '../packages/skeleton/index.js';
 
 const res = (t: ThingSnapshot | undefined, r: string): number => t?.res[r] ?? 0;
@@ -546,9 +546,11 @@ describe('skeleton: 間接さの段 2（穀物を自分で加工して食べる�
 
 describe('skeleton: 実る時期のある木と、時期を学んで巡回する心（docs/RESEARCH.md「巡回と時期の学習」）', () => {
   const near = (w: World, a: string, b: string) => w.distance(a, b) <= 1.5;
+  // 森ごとに一本だけ置く果樹園（森の中心に一本ずつ。以前の一本ずつの果樹園と同じ配置と生産量）。学習の検査はこれで速く走らせる。
+  const single = { treesPerForest: 1, ripenPerHour: 0.25 };
 
   it('木は種類ごとの時期にだけ実る。時期の外では育ちも実も増えず、年ごとのずれは木・種・年で決まる', () => {
-    const { world } = buildSeasonScenario({ persons: [] });
+    const { world } = buildSeasonScenario({ ...single, persons: [] });
     world.run(8 * DAY - DT, DT);
     expect(edibleOn(world, 'B1').length).toBe(0); // B は 8 日目から
     const aSpawnsAfter6 = flows(world, 'ripen').filter((e) => 'effect' in e && e.effect.kind === 'spawn' && e.a === 'nature' && e.b.startsWith('A') && e.at >= 6 * DAY);
@@ -561,29 +563,51 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
       return -1;
     });
     expect(starts(0)).toEqual(starts(0));
-    expect(new Set(starts(0)).size).toBeGreaterThan(1); // 年ごとにずれる
+    expect(Math.max(...starts(0)) - Math.min(...starts(0))).toBeGreaterThan(DAY / 2); // 年ごとにずれる（ずれ幅 ±1 日の半分以上）
+    // 決定的な値は、末尾の数が 1 違うだけでも散らばる（混ぜが無いと隣どうしがほぼ同じ値になり、年ごとのずれが毎年同じになる）。
+    const draws = Array.from({ length: 200 }, (_, n) => unitHash('X', n));
+    const mean = draws.reduce((a, b) => a + b, 0) / draws.length;
+    const lag1 = draws.slice(1).reduce((a, b, i) => a + (b - mean) * (draws[i]! - mean), 0) / draws.reduce((a, b) => a + (b - mean) ** 2, 0);
+    expect(Math.abs(mean - 0.5)).toBeLessThan(0.1);
+    expect(Math.abs(lag1)).toBeLessThan(0.2);
     expect(starts(1)).not.toEqual(starts(0)); // 種を変えれば別の年回り
     for (const s of starts(0)) expect(Math.abs(s - 2 * DAY)).toBeLessThanOrEqual(DAY);
   });
 
-  it('記憶の規則: 着いた刻みに一度だけ、その時期の見込みを予測誤差の learnRate 倍だけ直し、近くにいる間は最後に見た数を書き続ける。記録には残らない', () => {
-    const { world } = buildSeasonScenario({ persons: [{ id: 'P1', def: 'patroller' }] });
-    let arrived = -1;
-    for (let i = 0; i < 2 * DAY / DT && arrived < 0; i++) {
-      world.tick(DT);
-      if (typeof world.thing('P1')!.rel['A1']?.['visits'] === 'number') arrived = i;
-    }
-    expect(arrived).toBeGreaterThanOrEqual(0);
-    const e = world.thing('P1')!.rel['A1']!;
+  it('記憶の規則: 着いた刻みに一度だけ、種類の見込みと、その木のずれを、同じ予測誤差でそれぞれの速さ倍だけ直す。近くにいる間は最後に見た数を書き続ける。記録には残らない', () => {
+    const firstArrival = (attr: Record<string, number>) => {
+      const { world } = buildSeasonScenario({ ...single, persons: [{ id: 'P1', def: 'patroller', attr }] });
+      for (let i = 0; i < 2 * DAY / DT; i++) {
+        world.tick(DT);
+        if (typeof world.thing('P1')!.rel['A1']?.['visits'] === 'number') return world;
+      }
+      throw new Error('P1 did not reach A1');
+    };
+    // 初めの見込み prior 1、一年 12 区間の最初の区間。誤差 = 見た数 − 1。
+    const world = firstArrival({ kindRate: 0.25, learnRate: 0.25 });
+    const p = world.thing('P1')!;
+    const e = p.rel['A1']!;
+    const error = (e['lastCount'] as number) - 1;
+    expect(error).toBeGreaterThan(0);
     expect(e['visits']).toBe(1);
-    expect(e['fc0']).toBeCloseTo(1 + 0.5 * ((e['lastCount'] as number) - 1), 9); // 初めの見込み prior 1、学ぶ速さ 0.5、一年 12 区間の最初の区間
+    expect(p.rel['kind:treeA']!['fc0']).toBeCloseTo(1 + 0.25 * error, 9);
+    expect(e['dv0']).toBeCloseTo(0.25 * error, 9);
+    // 訪れていない同じ種類の木 A2 は、種類の見込みで当てる（ずれ 0）。別の種類の木は初めの見込みのまま。
+    const t = world.now;
+    expect(predict(p, { kind: 'treeA', bears: 'fruit' }, t)).toBeCloseTo(1 + 0.25 * error, 9);
+    expect(predict(p, { kind: 'treeB', bears: 'fruit' }, t)).toBe(1);
     world.tick(DT);
     if (near(world, 'P1', 'A1')) expect(world.thing('P1')!.rel['A1']!['visits']).toBe(1); // 居続けても数えない
     expect(world.ledger.some((x) => 'law' in x && x.law === 'forecast')).toBe(false);
+    // 種類の速さ 0 は一本ずつの学習: 種類の見込みは書かれず、prior + ずれ が一段の見込みを learnRate で直した値になる。
+    const solo = firstArrival({ kindRate: 0, learnRate: 0.5 }).thing('P1')!;
+    expect(solo.rel['kind:treeA']).toBeUndefined();
+    expect(1 + (solo.rel['A1']!['dv0'] as number)).toBeCloseTo(1 + 0.5 * ((solo.rel['A1']!['lastCount'] as number) - 1), 9);
+    expect(predict(solo, { kind: 'treeA', bears: 'fruit' }, t)).toBe(1);
   });
 
   it('巡回者の心は記憶を持たない: 同じ写しからは同じ意図。見込みは心象の値だけから計算する', () => {
-    const { world } = buildSeasonScenario({ persons: [{ id: 'P1', def: 'patroller' }] });
+    const { world } = buildSeasonScenario({ ...single, persons: [{ id: 'P1', def: 'patroller' }] });
     world.run(3 * DAY, DT);
     const mind = new PatrolMind();
     const snap = world.thing('P1')!;
@@ -591,32 +615,64 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
     expect(predict(snap, snap.rel['A1']!, world.now)).toBe(predict(snap, snap.rel['A1']!, world.now));
   });
 
-  it('季節の場面も、組の順に依らず同じ結果になり、初期状態と記録から再生すると心象の見込みまで同じになる', () => {
+  it('季節の場面も（木が枯れ、種から生える森でも）、組の順に依らず同じ結果になり、初期状態と記録から再生すると心象の見込みまで同じになる', () => {
     const dump = (w: World) => JSON.stringify(w.query(() => true));
     const run = (order: 'sorted' | 'reverse' | 'shuffle') => {
-      const s = buildSeasonScenario({ pairOrder: order, jitterDays: 2 });
+      const s = buildSeasonScenario({ pairOrder: order, jitterDays: 2, treesPerForest: 2, lifespanDays: 2, sowPerDay: 4 });
       s.world.run(3 * DAY, DT);
       return s.world;
     };
     const base = run('sorted');
     expect(dump(run('reverse'))).toBe(dump(base));
     expect(dump(run('shuffle'))).toBe(dump(base));
-    const s = buildSeasonScenario({ jitterDays: 2 });
+    const s = buildSeasonScenario({ jitterDays: 2, treesPerForest: 2, lifespanDays: 2, sowPerDay: 4 });
     const initial = s.world.save();
     s.world.run(5 * DAY, DT);
+    expect(s.world.ledger.some((e) => 'law' in e && e.law === 'sow')).toBe(true); // 種から生え、
+    expect(s.world.ledger.some((e) => 'law' in e && e.law === 'wither')).toBe(true); // 枯れた
     expect(dump(replaySeason(initial, s.world.ledger, s.world.now))).toBe(dump(s.world));
-  });
+  }, 30_000); // 3 日を 3 回と 5 日を 1 回、再生を 1 回
 
-  it('時期の学習は効くが万能ではない: 一人で 72 日、生産量と食欲しだいで、学ぶ心と学ばない心の生死が入れ替わる', () => {
-    // 数値は 2026-10-27 の実測（docs/DESIGN.md「時期と巡回」）。学ばない心は learnRate 0（直近の観察だけ）。
-    const survives = (ripenPerHour: number, attr: Record<string, number>) => {
-      const { world } = buildSeasonScenario({ persons: [{ id: 'X', def: 'patroller', attr }], ripenPerHour });
+  it('時期の学習は効くが、どの覚え方が最善かは条件で入れ替わる: 一人で 72 日、生産量しだいで、一本ずつ覚える心と二段で覚える心の生死が入れ替わる', () => {
+    // 数値は 2026-10-27 の実測（docs/DESIGN.md「種類と一本の二段の見込み」）。学ばない心（両方の速さ 0）は、どちらの生産量でも先に死ぬ。
+    const diedDay = (ripenPerHour: number, attr: Record<string, number>) => {
+      const { world } = buildSeasonScenario({ treesPerForest: 1, persons: [{ id: 'X', def: 'patroller', attr: { appetite: 4, ...attr } }], ripenPerHour });
       world.run(72 * DAY, DT);
-      return state(world.thing('X'), 'alive') === 'yes';
+      const died = world.ledger.find((e) => 'law' in e && e.law === 'starve');
+      return died ? died.at / DAY : Infinity;
     };
-    expect(survives(0.15, { appetite: 4 })).toBe(true);
-    expect(survives(0.15, { appetite: 4, learnRate: 0 })).toBe(false);
-    expect(survives(0.12, { appetite: 7 })).toBe(false);
-    expect(survives(0.12, { appetite: 7, learnRate: 0 })).toBe(true);
+    const none = { kindRate: 0, learnRate: 0 };
+    const tree = { kindRate: 0, learnRate: 0.5 };
+    const both = { kindRate: 0.25, learnRate: 0.25 };
+    expect(diedDay(0.25, both)).toBeGreaterThan(diedDay(0.25, tree)); // 71.9 日と 32.0 日
+    expect(diedDay(0.25, tree)).toBeGreaterThan(diedDay(0.25, none)); // 学ばない心は 16.7 日
+    expect(diedDay(0.15, tree)).toBe(Infinity); // 一本ずつは生き残り
+    expect(diedDay(0.15, both)).toBeLessThan(72); // 二段は 40.5 日に死ぬ
+  }, 60_000); // 72 日を 5 回走らせる
+
+  it('森と木を置くだけで、木は森の中の空いた所に種から生え、寿命で枯れる。森の外の木は増えない。木の数を決めるものは無く、森の広さで頭打ちになる', () => {
+    const w = seasonWorld();
+    place(w, [
+      { id: 'wood', def: 'forest', x: 0, y: 0 },
+      { id: 'T', def: 'treeB', x: 0, y: 0, attr: { sowPerDay: 2, lifespan: 12 * DAY, ripenPerHour: 0.1 } },
+      { id: 'lone', def: 'treeC', x: 200, y: 0, attr: { sowPerDay: 2 } },
+    ]);
+    const m0 = massTotal(w);
+    const trees = () => w.query((t) => typeof t.attr['bears'] === 'string');
+    w.run(6 * DAY, DT);
+    const young = trees().filter((t) => t.id !== 'T' && t.id !== 'lone');
+    expect(young.length).toBeGreaterThan(3);
+    for (const t of young) {
+      expect(t.kind).toBe('treeB'); // 親と同じ種類
+      expect(t.attr['ripenPerHour']).toBe(0.1); // 親の属性を受け継ぐ
+      expect(Math.hypot(t.state['x'] as number, t.state['y'] as number)).toBeLessThanOrEqual(15); // 森の中
+    }
+    w.run(36 * DAY, DT);
+    expect(w.thing('T')).toBeUndefined(); // 寿命（12 日の 0.5〜1.5 倍）で枯れた
+    const inWood = trees().filter((t) => t.id !== 'lone');
+    expect(inWood.length).toBeGreaterThan(3); // 森は種から続いている
+    expect(inWood.length).toBeLessThanOrEqual(9); // 広さ 15m・縄張り 10m の森に入るのはおよそ 7 本
+    expect(trees().filter((t) => Math.hypot(t.state['x'] as number, t.state['y'] as number) > 15).map((t) => t.id)).toEqual(['lone']); // 森の外の木は増えない
+    expect(massTotal(w)).toBeCloseTo(m0, 6);
   });
 });
