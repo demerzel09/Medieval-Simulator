@@ -2,6 +2,33 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "骨格: 記録の画面（季節の森）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "pattern": "http://127\\.0\\.0\\.1:([0-9]+)",
+        "uriFormat": "http://127.0.0.1:%s/?skeleton=season-forest",
+        "action": "debugWithChrome"
+      },
+      "presentation": {
+        "group": "00 骨格（現在）",
+        "order": 1
+      },
+      "command": "PATH=\"$HOME/.local/node/bin:$PATH\" npm run dev"
+    },
+    {
+      "name": "骨格: 設定から走らせて記録を確かめる（季節の森）",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "00 骨格（現在）",
+        "order": 2
+      },
+      "command": "mkdir -p artifacts/recordings && PATH=\"$HOME/.local/node/bin:$PATH\" npm run scenario -- run scenarios/season-forest.json --record artifacts/recordings/season-forest.recording.json.gz && PATH=\"$HOME/.local/node/bin:$PATH\" npm run scenario -- verify artifacts/recordings/season-forest.recording.json.gz"
+    },
+    {
       "name": "骨格: 30日走行（CLI）",
       "type": "node-terminal",
       "request": "launch",

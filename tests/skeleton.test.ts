@@ -716,6 +716,15 @@ describe('skeleton: 設定のファイルから世界を作り、記録して再
     expect(registryMismatch(changed)).toEqual(['recorded sow@old', `current sow@${rec.registry.laws.find((l) => l.id === 'sow')!.version}`]);
   }, 30_000);
 
+  it('途中の写しから再生を続けても、初めから再生したのと同じ世界になる（記録の画面の写しの取り方）', () => {
+    const config = JSON.parse(readFileSync('scenarios/season-forest.json', 'utf8')) as ScenarioConfig;
+    const rec = record(config, 2);
+    let w = replayRecording(rec, 0);
+    for (let t = 360; t <= rec.until; t += 360) w = replayRecording(rec, t, w.save());
+    expect(finalOf(w).thingsHash).toBe(rec.final.thingsHash);
+    expect(JSON.stringify(replayRecording(rec, 1000, replayRecording(rec, 700).save()).query(() => true))).toBe(JSON.stringify(replayRecording(rec, 1000).query(() => true)));
+  }, 30_000);
+
   it('設定の誤りは組み立てで止まる。番号付きの id を置けば、後で生まれる物はその番号を避ける', () => {
     expect(() => buildFromConfig({ format: 'skeleton-scenario/1', modules: ['nothing'], things: [] })).toThrow(/unknown module/);
     expect(() => buildFromConfig({ format: 'skeleton-scenario/1', modules: ['fruit'], defs: [{ name: 'orphan', parent: 'missing' }], things: [] })).toThrow(/unknown parent/);

@@ -11,6 +11,8 @@ npm run scenario -- verify out.json.gz                                    # 記�
 npm run scenario -- export season-forest > scenarios/season-forest.json  # 構築関数の場面を設定に書き出す
 ```
 
+画面で見るには、`npm run dev` のあと `http://127.0.0.1:5173/?skeleton=season-forest` を開きます（launch.json「骨格: 記録の画面（季節の森）」）。画面では設定のファイルを選んで走らせるか、記録のファイルを開いて再生します。
+
 記録のファイル（`skeleton-recording/1`）には、設定そのもの、使った法則・感覚・記憶の規則の名と版、初期状態、記録（ledger）、最後の状態の要約が入ります。`verify` は三つを確かめます。
 - 部品の版が、いまのコードと同じか
 - 記録から再生すると、最後の状態と記録が同じになるか

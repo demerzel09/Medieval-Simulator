@@ -151,13 +151,17 @@ export function finalOf(w: World): Recording['final'] {
   return { now: w.now, things: things.length, ledger: w.ledger.length, thingsHash: textDigest(JSON.stringify(things)), ledgerHash: textDigest(JSON.stringify(w.ledger)) };
 }
 
-/** 設定から走らせ、走らせた世界と記録を返す。days を渡せば設定の日数の代わりに使う。 */
-export function runConfig(config: ScenarioConfig, days?: number): { world: World; recording: Recording } {
+/** 設定から走らせ、走らせた世界と記録を返す。days を渡せば設定の日数の代わりに使う。onDay は一日走らせるごとに、そこまでの時刻（分）で呼ぶ（画面の進み具合）。 */
+export function runConfig(config: ScenarioConfig, days?: number, onDay?: (now: number, until: number) => void): { world: World; recording: Recording } {
   const w = buildFromConfig(config);
   const initial = w.save();
   const dt = stepOf(config);
   const until = untilOf(config, days);
-  w.run(until, dt);
+  for (let t = Math.min(DAY, until); ; t = Math.min(t + DAY, until)) {
+    w.run(t, dt);
+    onDay?.(w.now, until);
+    if (t >= until) break;
+  }
   return { world: w, recording: { format: 'skeleton-recording/1', scenario: config, registry: registryOf(config), dt, until, initial, ledger: w.ledger.slice(), final: finalOf(w) } };
 }
 
@@ -175,10 +179,10 @@ export function registryMismatch(rec: Recording): string[] {
 
 /**
  * 記録から時刻 until の世界を再現する（法則と心は使わず、記録の流れと意図を適用する。知覚と記憶は感覚・記憶の規則で計算し直す）。
- * until を省けば記録の終わりまで。
+ * until を省けば記録の終わりまで。from に途中の写し（同じ記録を再生した世界の save）を渡せば、そこから続ける（画面で時刻を動かすときの近道）。
  */
-export function replayRecording(rec: Recording, until = rec.until): World {
-  const w = World.load(rec.initial, { rangeAttrs: rec.scenario.world?.rangeAttrs ?? ['sight', 'reach', 'smell'], allPairs: rec.scenario.world?.allPairs ?? false, pairOrder: rec.scenario.world?.pairOrder ?? 'sorted' });
+export function replayRecording(rec: Recording, until = rec.until, from: WorldState = rec.initial): World {
+  const w = World.load(from, { rangeAttrs: rec.scenario.world?.rangeAttrs ?? ['sight', 'reach', 'smell'], allPairs: rec.scenario.world?.allPairs ?? false, pairOrder: rec.scenario.world?.pairOrder ?? 'sorted' });
   for (const m of modulesOf(rec.scenario)) {
     for (const s of m.senses) w.addSense(s);
     for (const s of m.memories) w.addMemory(s);

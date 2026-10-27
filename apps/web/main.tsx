@@ -11,6 +11,7 @@ const E1V2Debug = React.lazy(() => import("./e1-v2-debug"));
 const A1Debug = React.lazy(() => import("./a1-debug"));
 const IndividualDebug = React.lazy(() => import("./individual-debug"));
 const VillageDebug = React.lazy(() => import("./village-debug"));
+const SkeletonViewer = React.lazy(() => import("./skeleton-viewer"));
 const worker = new Worker(new URL("./worker.ts", import.meta.url), {
   type: "module",
 });
@@ -1137,6 +1138,8 @@ function App() {
   );
 }
 createRoot(document.getElementById("root")!).render(
+  new URLSearchParams(window.location.search).has("skeleton") ?
+    <React.Suspense fallback={<p>骨格の記録の画面を読み込んでいます…</p>}><SkeletonViewer /></React.Suspense> :
   new URLSearchParams(window.location.search).get("village") === "land-economy" ?
     <React.Suspense fallback={<p>土地経済の記録を読み込んでいます…</p>}><VillageDebug /></React.Suspense> :
   ["life", "market", "living"].includes(new URLSearchParams(window.location.search).get("individual") ?? "") ?
