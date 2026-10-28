@@ -1,7 +1,7 @@
 // 最小の骨格（全事物の組への Δt の法則、値の四区分、情報層の事象）の検査。
 // docs/DESIGN.md「更新規則と影響範囲」「細部へ降りる前に満たす条件」に対応する。
 import { describe, expect, it } from 'vitest';
-import { World, ForagerMind, seasonMind, textDigest, unitHash, kindModel, treeModel, responsibilities, responsibilityAssigner, winnerAssigner, artAssigner, uncertaintyAssigner, seasonWorld, buildFromConfig, record, registryMismatch, replayRecording, finalOf, buildSeasonScenario, replaySeason, inSeason, predict, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
+import { World, ForagerMind, seasonMind, textDigest, unitHash, kindModel, treeModel, responsibilities, responsibilityAssigner, winnerAssigner, artAssigner, uncertaintyAssigner, seasonWorld, buildFromConfig, record, registryMismatch, replayRecording, finalOf, buildSeasonScenario, replaySeason, inSeason, predict, BELIEF, beliefOf, binOf, SEASON_YEAR, buildFruitScenario, buildPlacedScenario, buildGrainScenario, fruitWorld, grainWorld, runFruitDays, runGrainDays, replayFruit, massTotal, fruitLaws, fruitDefs, sight, edibleOn, place, seedFruits, DAY, DT, HOUR, KIND } from '../packages/skeleton/index.js';
 import type { ScenarioConfig, ThingSnapshot } from '../packages/skeleton/index.js';
 import { readFileSync } from 'node:fs';
 
@@ -616,6 +616,47 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
     expect(predict(snap, snap.rel['A1']!, world.now)).toBe(predict(snap, snap.rel['A1']!, world.now));
   });
 
+  it('認識の一歩: 観測者ごとに一刻みに一度、信念（いまは暦の区間に 1）と、知っている木ごとの着く時刻の見込み expect を心象に書く。心は表出だけを読み、暦もモデルも読まない', () => {
+    const { world } = buildSeasonScenario({ ...single, persons: [{ id: 'P1', def: 'patroller' }] });
+    world.run(3 * DAY + 5 * HOUR, DT);
+    const p = world.thing('P1')!;
+    const stored = p.rel[`${BELIEF}forage`]!;
+    const belief = beliefOf(stored)!;
+    const at = world.now - DT; // 一歩は時刻を進める前の情報層で働く
+    expect(stored['at']).toBe(at);
+    expect(belief).toHaveLength(12);
+    expect(belief[binOf(p, at)]).toBe(1);
+    expect(belief.reduce((a, b) => a + b, 0)).toBe(1);
+    // 表出は、いまの位置から歩いて着く時刻の見込み（画面と検査の口 predict と同じ計算）。
+    const speed = (p.attr['speedPerHour'] as number) / HOUR;
+    const trees = Object.entries(p.rel).filter(([, e]) => 'bears' in e);
+    expect(trees.length).toBeGreaterThan(0);
+    for (const [, e] of trees) {
+      const d = Math.hypot((e['x'] as number) - (p.state['x'] as number), (e['y'] as number) - (p.state['y'] as number));
+      expect(e['expect']).toBeCloseTo(predict(p, e, at + d / speed), 12);
+    }
+    // 心は表出だけを読む: 同じ写しで expect だけを入れ替えると行き先が入れ替わり、モデルの値と信念を変えても行き先は変わらない。
+    const def = seasonWorld().def('patroller');
+    const mind = seasonMind();
+    const snap = (near: number, far: number, extra: Record<string, Record<string, number | string | boolean>> = {}): ThingSnapshot => ({
+      id: 'X',
+      kind: 'patroller',
+      attr: { ...def.attr, wander: 0 },
+      state: { x: 0, y: 0, alive: 'yes', intent: 'idle', target: '', targetX: 0, targetY: 0 },
+      res: { nutrition: 8, stomach: 0 },
+      rel: {
+        H: { home: true, stores: true, x: 0, y: 0 },
+        T1: { kind: 'treeA', bears: 'fruit', x: 10, y: 0, expect: near },
+        T2: { kind: 'treeA', bears: 'fruit', x: 50, y: 0, expect: far },
+        ...extra,
+      },
+    });
+    expect(mind.decide(snap(0.1, 5), 0)?.target).toBe('T2');
+    expect(mind.decide(snap(5, 0.1), 0)?.target).toBe('T1');
+    const noise = { 'kind:treeA': { fc0: 100, fc1: 100 }, [`${BELIEF}forage`]: { at: 0, p0: 0, p1: 1 } };
+    expect(mind.decide(snap(0.1, 5, noise), 0)?.target).toBe('T2');
+  });
+
   it('季節の場面も（木が枯れ、種から生える森でも）、組の順に依らず同じ結果になり、初期状態と記録から再生すると心象の見込みまで同じになる', () => {
     const dump = (w: World) => JSON.stringify(w.query(() => true));
     const run = (order: 'sorted' | 'reverse' | 'shuffle') => {
@@ -651,13 +692,15 @@ describe('skeleton: 実る時期のある木と、時期を学んで巡回する
     expect(diedDay(0.15, both)).toBeLessThan(72); // 二段は 40.5 日に死ぬ
   }, 60_000); // 72 日を 5 回走らせる
 
-  it('心象のモデルの枠組みの上の巡回者は、枠組みへ移す前の巡回者と同じ記録と心象になる（季節の果樹園、72 日）', () => {
+  it('心象のモデルの枠組みと認識の一歩の上の巡回者は、枠組みへ移す前の巡回者と同じ記録と心象になる（季節の果樹園、72 日）', () => {
     // 要約の値は、移す前（記憶の規則 forecast と心 PatrolMind、commit 26b6117）に同じ設定のファイルで取った値。振る舞いを変えると変わる。
     const w = buildFromConfig(JSON.parse(readFileSync('scenarios/season-orchard.json', 'utf8')) as ScenarioConfig);
     w.run(72 * DAY, DT);
     expect(w.ledger.length).toBe(144766);
     expect(textDigest(JSON.stringify(w.ledger))).toBe('0c11cec9a03f5c');
-    const relDigest = (id: string) => textDigest(JSON.stringify(Object.fromEntries(Object.entries(w.thing(id)!.rel).sort(([a], [b]) => (a < b ? -1 : 1)))));
+    // 認識の一歩（2026-10-28）が足した項目（信念 belief:、表出 expect）を除けば、心象も移す前と同じ。
+    const relDigest = (id: string) =>
+      textDigest(JSON.stringify(Object.fromEntries(Object.entries(w.thing(id)!.rel).filter(([k]) => !k.startsWith(BELIEF)).sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, e]) => [k, Object.fromEntries(Object.entries(e).filter(([f]) => f !== 'expect'))]))));
     expect([relDigest('P1'), relDigest('P2')]).toEqual(['03d2c66c3c5085', '1ce4f97ecbfa26']);
   }, 60_000);
 

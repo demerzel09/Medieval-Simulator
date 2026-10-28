@@ -2,8 +2,9 @@
 // 世界の側: 木の種類ごとに実る時期（周期・始まり・長さ、年ごとのずれ）があり、法則 ripen はその間だけ実らせる（fruit.ts の inSeason）。
 // 情報層: 心象のモデルの枠組み（modular.ts）の上に、源（実を付ける物）の組 forageModelSet を置く。着くたびに、付いている実の数を観察して、
 //   種類のモデル（心象の種類の知識 `kind:treeA`）と一本ずつのモデル（その木の心象のずれ）を、割り当て（既定は協調型）で直す。見込みは 種類 + その木のずれ。
-// 心: 巡回者は組み合わせの心（ModularMind）で、規則の組 patrolRules を優先の順に並べる。見込み ÷ 距離が最大の木へ行き、確率 exp(−最良の点数 / η) で探索に出る。
-//   記憶は持たない（心象を読むだけ）。どの組・どの割り当て・どの規則の組・どの選び方を使うかは、人の札で選ぶ（差し替えて比べるため）。
+//   記憶の規則は観測者ごとに一刻みに一度の認識の一歩で、いまの区間の信念（いまは暦と同じ）で直し、知っている木ごとに、着く時刻の見込み expect を心象に書く。
+// 心: 巡回者は組み合わせの心（ModularMind）で、規則の組 patrolRules を優先の順に並べる。見込み expect ÷ 距離が最大の木へ行き、確率 exp(−最良の点数 / η) で探索に出る。
+//   記憶は持たない（心象を読むだけ）。暦も、どのモデルで当てるかも読まない。どの組・どの割り当て・どの規則の組・どの選び方を使うかは、人の札で選ぶ（差し替えて比べるため）。
 // 木の一生: 生まれることと死ぬことは別の法則。法則 sow で木は一本ずつ、一定の確率で、森の広がりの中の、ほかの木の縄張りの外に同じ種類の若木を生み、
 //   法則 wither で寿命（札 lifespan）に達した木は消える。木の数は決めず、森の広さと縄張りと、生まれる数・死ぬ数の釣り合いから出てくる。
 //   森（定義 forest）は広さ area を持つ物で、木がどの森に属するかは位置で決まる（森の広がりの中に立つ木が、その森の木）。新しい木は、知られていない木として現れる。
@@ -100,12 +101,12 @@ export const forageModelSet: ModelSet = {
  */
 export const forageCompeteSet: ModelSet = { ...forageModelSet, id: 'forage-compete', models: [kindModel, treeModel] };
 
-/** 季節の段の見込みの仕組み。記憶の規則（forageModels.memory）を世界に登録し、見込みは predict で読む。割り当ては一覧 assigners から札で選ぶ。 */
+/** 季節の段の見込みの仕組み。記憶の規則（forageModels.memory、認識の一歩）を世界に登録する。割り当ては一覧 assigners から札で選ぶ。 */
 export const forageModels = createModelSystem({ forage: forageModelSet, 'forage-compete': forageCompeteSet }, assigners);
 
 /**
  * 見込み: 源の心象 entry から、時刻 t に付いている数の見込み。区間の見込み（種類 + その木のずれ）に、直近の観察のずれを経過時間で薄めて足す。
- * 訪れたことの無い木も、同じ種類の木で学んだ見込みで当てる（ずれは 0）。
+ * 訪れたことの無い木も、同じ種類の木で学んだ見込みで当てる（ずれは 0）。認識の一歩が表出 expect を書くのと同じ計算で、画面と検査が任意の時刻を読む口。心は使わない。
  */
 export const predict = (self: ThingSnapshot, entry: Relation, t: number): number => forageModels.forecast(self, entry, t);
 
@@ -179,7 +180,7 @@ interface PatrolSituation {
  * 巡回の規則の組。並びが優先の順（優先の順の選び方で、最初に勧めた規則の意図を採る）。
  * 採取者と同じく、栄養が食欲（appetite）を下回り実を持てば食べ、家が無ければ住み、手持ちが目標（carry）に足りれば家へ戻る。
  * 手の届く木に実が見えれば採る。向かっている木と探索の行き先は着くまで替えない。そうでなければ、知っている木ごとに
- * 「着く時刻の見込み ÷ (距離 + 1)」を点数にし、確率 exp(−最良の点数 / wander) で探索に出て、そうでなければ最良の木へ行く（Boyer・Walsh 2010 の形）。
+ * 「着く時刻の見込み（認識の一歩が心象に書いた expect）÷ (距離 + 1)」を点数にし、確率 exp(−最良の点数 / wander) で探索に出て、そうでなければ最良の木へ行く（Boyer・Walsh 2010 の形）。
  * 最良の点数がほぼ 0 なら、その場で待つ。巡回の順路は書かない。巡回は見込みと選び方から出てくるものとして観測する。
  * 気まぐれは自分の id と時刻から決まる値（unitHash）で引き、再現できる。探索の渦巻きの間隔は札 exploreSpacing（無ければ 1）。
  */
@@ -237,12 +238,10 @@ export const patrolRules: RuleSet<PatrolSituation> = {
     {
       id: 'choose-tree',
       propose: (s) => {
-        const speed = attr(s.self, 'speedPerHour') / HOUR; // m/分
         let best: { id: ThingId; e: Relation; score: number } | undefined;
         for (const [id, e] of s.trees) {
           if (s.near(e)) continue; // 手の届く木は見えている（実が無いので来た）
-          const d = s.dist(e);
-          const score = predict(s.self, e, s.now + d / Math.max(speed, 1e-9)) / (d + 1);
+          const score = num(e, 'expect', 0) / (s.dist(e) + 1);
           if (!best || score > best.score + 1e-12) best = { id, e, score };
         }
         const score = best?.score ?? 0;

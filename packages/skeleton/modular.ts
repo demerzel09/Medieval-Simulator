@@ -1,14 +1,17 @@
 // 心象のモデルの枠組み（階層のモデル選択の土台。docs/DESIGN.md「本命の仮説」、docs/RESEARCH.md「誤差をどこが引き受けるか」）。
-// 部品は四つで、どれも人の札（属性）の名で選び、差し替えられる。
+// 部品は五つで、どれも人の札（属性）の名で選び、差し替えられる。
+//   認識（Recognizer）: いまどの文脈（一年のどの区間）にいるかの信念を、前の信念と観察から決める。
 //   見込みのモデル（ModelKind）: 心象の一つの項目にパラメータを置き、時期の区間ごとの値（項）を出す。
 //   誤差の割り当て（Assigner）: 同じ相手を受け持つモデルたちの項から見込みを組み、観察との誤差を、どのモデルにどれだけ割り当てるかを決める。
 //   規則（Rule）: 状況から意図を一つ勧めるか、勧めない。規則は見込みを持たない制御のモジュール（MOSAIC の逆モデルの側）。
 //   選び方（Selector）: 規則たちの勧めから意図を一つ選ぶ。
-// 心象を書くのは記憶の規則（ModelSystem.memory。札 models のモデルの組と、札 assigner の割り当て）、意図を選ぶのは心 ModularMind（札 rules・selector）。
+// 心象を書くのは記憶の規則（ModelSystem.memory。札 models のモデルの組、札 assigner の割り当て、札 recognizer の認識）、意図を選ぶのは心 ModularMind（札 rules・selector）。
+// 記憶の規則は観測者ごとに一刻みに一度の認識の一歩で、状況の認識・記憶の形成・モデルの選択を一つの信念で行い、行動に使う見込み（表出）まで心象に書く。
+// 心は表出を読むだけで、文脈もモデルの選択も計算し直さない（docs/DESIGN.md「認識・記憶の形成・モデルの選択は一つの信念で行う」）。
 // 心は記憶を持たず、モデルのパラメータはすべて心象に置くので、記録から再生すると心象まで同じになる。
 // この枠組みは物の種類の名を知らない。何を源とみなし、何を観察するか、どの規則を並べるかは、段ごとの組（ModelSet・RuleSet）が決める。
 
-import type { Memory, Mind, Relation, Relations, ThingId, ThingSnapshot } from './types.js';
+import type { Memory, Mind, Relation, Relations, ThingId, ThingSnapshot, WorldView } from './types.js';
 import { HOUR, KIND } from './fruit.js';
 
 const attr = (t: ThingSnapshot | undefined, a: string): number => {
@@ -23,12 +26,62 @@ const opt = (t: ThingSnapshot, a: string, d: number): number => (typeof t.attr[a
 /** 意図（心が選ぶもの）。 */
 export type Intent = NonNullable<ReturnType<Mind['decide']>>;
 
-/** 時刻 t が、一年（札 calendar、分）を札 bins に分けたどの区間か。 */
+// ---- 認識: いまどの文脈（一年のどの区間）にいるかの信念 ----
+
+/** 時刻 t が、一年（札 calendar、分）を札 bins に分けたどの区間か。暦の認識だけが使う。 */
 export const binOf = (self: ThingSnapshot, t: number): number => {
   const cal = attr(self, 'calendar') || 1;
   const bins = Math.max(1, Math.round(attr(self, 'bins') || 1));
   return Math.min(bins - 1, Math.floor((((t % cal) + cal) % cal) / cal * bins));
 };
+
+/**
+ * 認識の部品: 文脈（区間）ごとの確率の並び（信念）を扱う。信念は心象の項目 `belief:{組}` に、時刻 at と区間ごとの確率 p{区間} として置く。
+ * prior は前の信念（無ければ初め）から時刻 now の信念を予測する（観察の前）。posterior はその刻みの観察で決め直す（観察の後）。
+ * ahead は時刻 now の信念から、別の時刻 t の文脈を予測する（表出で、着く時刻や最後に見た時刻の見込みに使う）。
+ */
+export interface Recognizer {
+  id: string;
+  version: string;
+  prior(self: ThingSnapshot, before: number[] | undefined, now: number): number[];
+  posterior(self: ThingSnapshot, prior: number[], observed: Relations, now: number): number[];
+  ahead(self: ThingSnapshot, belief: number[], now: number, t: number): number[];
+}
+
+const oneHot = (self: ThingSnapshot, t: number): number[] => {
+  const bins = Math.max(1, Math.round(attr(self, 'bins') || 1));
+  const b = binOf(self, t);
+  return Array.from({ length: bins }, (_, i) => (i === b ? 1 : 0));
+};
+
+/**
+ * 暦の認識: 文脈は暦（札 calendar・bins）の区間に確実に一致する（信念はその区間に 1）。観察は信念を変えない。
+ * 文脈を観察から推定しない仮の認識で、振る舞いは暦で区間を引いていた形と同じになる。暦を外す段で、観察から推定する認識に替える。
+ */
+export const calendarRecognizer: Recognizer = {
+  id: 'calendar',
+  version: 'recognize-1',
+  prior: (self, _before, now) => oneHot(self, now),
+  posterior: (_self, prior) => prior,
+  ahead: (self, _belief, _now, t) => oneHot(self, t),
+};
+
+/** 認識の一覧（札 recognizer の名）。 */
+export const recognizers: Record<string, Recognizer> = { calendar: calendarRecognizer };
+
+/** 心象の信念の項目の名の頭。続けてモデルの組の名（`belief:forage`）。 */
+export const BELIEF = 'belief:';
+
+/** 信念の項目から、区間ごとの確率の並び。項目が無ければ undefined。 */
+export const beliefOf = (entry: Relation | undefined): number[] | undefined => {
+  if (!entry) return undefined;
+  const out: number[] = [];
+  for (let b = 0; typeof entry[`p${b}`] === 'number'; b++) out.push(entry[`p${b}`] as number);
+  return out.length ? out : undefined;
+};
+
+/** 信念の最も確かな区間（同じなら並びの先）。 */
+export const phaseOf = (belief: number[]): number => belief.reduce((best, p, i) => (p > belief[best]! ? i : best), 0);
 
 // ---- 見込みのモデルと、誤差の割り当て ----
 
@@ -262,7 +315,10 @@ export interface ModelSet {
   models: ModelKind[];
 }
 
-/** モデルの組と割り当ての一覧から作る、見込みの仕組み。memory を世界に登録し、forecast で見込みを読む。 */
+/**
+ * モデルの組と割り当ての一覧から作る、見込みの仕組み。memory（認識の一歩）を世界に登録し、心は memory が心象に書いた表出 expect を読む。
+ * forecast は同じ計算で任意の時刻の見込みを読む口（画面と検査のため）。
+ */
 export interface ModelSystem {
   memory: Memory;
   forecast(self: ThingSnapshot, entry: Relation, t: number): number;
@@ -277,10 +333,14 @@ function partOf<T>(self: ThingSnapshot, tag: string, parts: Record<string, T>, f
   return part;
 }
 
-/** 札 models の組と札 assigner の割り当てで見込みを持つ仕組みを作る。札 models が無い人には働かない。札 assigner が無ければ協調型。 */
-export function createModelSystem(sets: Record<string, ModelSet>, assignerTable: Record<string, Assigner> = assigners): ModelSystem {
+/**
+ * 札 models の組、札 assigner の割り当て、札 recognizer の認識で見込みを持つ仕組みを作る。札 models が無い人には働かない。
+ * 札 assigner が無ければ協調型、札 recognizer が無ければ暦の認識。
+ */
+export function createModelSystem(sets: Record<string, ModelSet>, assignerTable: Record<string, Assigner> = assigners, recognizerTable: Record<string, Recognizer> = recognizers): ModelSystem {
   const setOf = (self: ThingSnapshot) => partOf(self, 'models', sets, undefined);
   const assignerOf = (self: ThingSnapshot) => partOf(self, 'assigner', assignerTable, additiveAssigner)!;
+  const recognizerOf = (self: ThingSnapshot) => partOf(self, 'recognizer', recognizerTable, calendarRecognizer)!;
   const paramsOf = (self: ThingSnapshot, m: ModelKind, entry: Relation): Relation | undefined => {
     if (m.own) return entry;
     const slot = m.slot(entry);
@@ -296,58 +356,108 @@ export function createModelSystem(sets: Record<string, ModelSet>, assignerTable:
     });
 
   /**
-   * 記憶の規則 models: 札 models の組を持つ観測者が、源の手の届く所にいるとき、その源と、モデルたちの項目を書き直す。
-   * 着いた刻み（前の刻みに近くにいなかった）に、いまの区間 b の項たちと観察から、割り当てが新しい項を決める。訪れた数 visits を数える。
+   * 記憶の形成（源一つ）: 観測者が源の手の届く所にいるとき、その源と、モデルたちの項目を書き直す。
+   * 着いた刻み（前の刻みに近くにいなかった）に、信念の区間 b の項たちと観察から、割り当てが新しい項を決める。訪れた数 visits を数える。
    * 近くにいる間は、最後に見た数 lastCount と時刻 lastAt を書き続ける（去るときに残っていた数が、直近の観察になる）。
-   * 同じ刻みに同じ共有の項目を二つの源が書くと、後の源（項目の並びで後）の書き直しだけが残る。
    */
-  const memory: Memory = {
-    id: 'models',
-    version: 'modular-1',
-    learn: (observer, about, entry, w, dt) => {
-      const set = setOf(observer);
-      if (!set || !set.isSource(entry) || w.distance(observer.id, about) > attr(observer, 'reach')) return null;
-      const count = set.observe(observer.rel, about);
-      const fields: Relation = { visitAt: w.now, lastCount: count, lastAt: w.now };
-      const ongoing = typeof entry['visitAt'] === 'number' && w.now - (entry['visitAt'] as number) <= dt + 1e-9;
-      if (ongoing) return { [about]: fields };
-      const b = binOf(observer, w.now);
-      const next = assignerOf(observer).assign(observer, termsAt(observer, set, entry, b), count, set.models);
-      const out: Relations = { [about]: fields };
-      set.models.forEach((m, i) => {
-        const u = next[i];
-        if (!u) return;
-        // 値と不確かさはモデルの項目へ、外し具合は源の項目へ。
-        const own: Relation = {};
-        if (u.value !== undefined) own[`${m.prefix}${b}`] = u.value;
-        if (u.variance !== undefined) own[`${m.prefix}q${b}`] = u.variance;
-        if (u.err !== undefined) fields[`${m.prefix}err`] = u.err;
-        if (m.own) Object.assign(fields, own);
-        else {
-          const slot = m.slot(entry);
-          if (slot && Object.keys(own).length) out[slot] = { ...(out[slot] ?? {}), ...own };
-        }
-      });
-      fields['visits'] = num(entry, 'visits', 0) + 1;
-      return out;
-    },
+  const formSource = (observer: ThingSnapshot, set: ModelSet, about: ThingId, entry: Relation, b: number, w: WorldView, dt: number): Relations | null => {
+    if (!set.isSource(entry) || w.distance(observer.id, about) > attr(observer, 'reach')) return null;
+    const now = w.now;
+    const count = set.observe(observer.rel, about);
+    const fields: Relation = { visitAt: now, lastCount: count, lastAt: now };
+    const ongoing = typeof entry['visitAt'] === 'number' && now - (entry['visitAt'] as number) <= dt + 1e-9;
+    if (ongoing) return { [about]: fields };
+    const next = assignerOf(observer).assign(observer, termsAt(observer, set, entry, b), count, set.models);
+    const out: Relations = { [about]: fields };
+    set.models.forEach((m, i) => {
+      const u = next[i];
+      if (!u) return;
+      // 値と不確かさはモデルの項目へ、外し具合は源の項目へ。
+      const own: Relation = {};
+      if (u.value !== undefined) own[`${m.prefix}${b}`] = u.value;
+      if (u.variance !== undefined) own[`${m.prefix}q${b}`] = u.variance;
+      if (u.err !== undefined) fields[`${m.prefix}err`] = u.err;
+      if (m.own) Object.assign(fields, own);
+      else {
+        const slot = m.slot(entry);
+        if (slot && Object.keys(own).length) out[slot] = { ...(out[slot] ?? {}), ...own };
+      }
+    });
+    fields['visits'] = num(entry, 'visits', 0) + 1;
+    return out;
+  };
+
+  /** 信念 belief で重みづけた見込み（区間ごとに割り当てが項から組んだ見込みの、確率での和）。確率 0 の区間は計算しない。 */
+  const valueUnder = (self: ThingSnapshot, set: ModelSet, entry: Relation, belief: number[]): number => {
+    const assigner = assignerOf(self);
+    let v = 0;
+    belief.forEach((p, b) => {
+      if (p > 0) v += p * assigner.combine(self, termsAt(self, set, entry, b));
+    });
+    return v;
   };
 
   /**
-   * 見込み: 源の心象 entry から、時刻 t に観察される数の見込み。区間の見込み（割り当てが項から組む）に、直近の観察のずれ（最後に見た数 − その区間の見込み）を
-   * 経過時間で薄めて足す（exp(−経過 / recallHours)）。取り尽くした木は、しばらくは少なく、時が経つと区間の見込みへ戻る。モデルの組が無ければ 0。
+   * 見込み: 源の心象 entry から、時刻 t に観察される数の見込み。信念を時刻 t へ進めた文脈での見込みに、直近の観察のずれ
+   * （最後に見た数 − 最後に見た時刻の文脈での見込み）を経過時間で薄めて足す（exp(−経過 / recallHours)）。
+   * 取り尽くした木は、しばらくは少なく、時が経つと文脈の見込みへ戻る。モデルの組が無ければ 0。信念の項目がまだ無ければ、認識の初めの信念で読む。
    */
   const forecast = (self: ThingSnapshot, entry: Relation, t: number): number => {
     const set = setOf(self);
     if (!set) return 0;
-    const assigner = assignerOf(self);
-    const at = (time: number) => assigner.combine(self, termsAt(self, set, entry, binOf(self, time)));
+    const recognizer = recognizerOf(self);
+    const stored = self.rel[`${BELIEF}${set.id}`];
+    const now = typeof stored?.['at'] === 'number' ? (stored['at'] as number) : t;
+    const belief = beliefOf(stored) ?? recognizer.prior(self, undefined, now);
+    const at = (time: number) => valueUnder(self, set, entry, recognizer.ahead(self, belief, now, time));
     const base = at(t);
     if (typeof entry['lastAt'] !== 'number') return Math.max(0, base);
     const lastAt = entry['lastAt'] as number;
     const tau = Math.max(1e-9, attr(self, 'recallHours') * HOUR);
     const surprise = num(entry, 'lastCount', 0) - at(lastAt);
     return Math.max(0, base + surprise * Math.exp(-Math.max(0, t - lastAt) / tau));
+  };
+
+  /**
+   * 認識の一歩（記憶の規則 models）: 札 models の組を持つ観測者ごとに、一刻みに一度、次の順で働く（docs/DESIGN.md「認識の一歩」）。
+   *   1. 予測: 前の信念から、いまの文脈の信念を予測する。
+   *   2. 観察と事後: その刻みの知覚（心象）で信念を決め直す。
+   *   3. 記憶の形成: 決め直した信念の文脈で、手の届く源ごとにモデルを直す（formSource）。
+   *   4. 表出: 直したモデルと信念から、知っている源ごとに、いまの位置から歩いて着く時刻の見込み expect を書く。心はこれだけを読む。
+   * 同じ刻みに同じ共有の項目を二つの源が書くと、後の源（項目の並びで後）の書き直しだけが残る。
+   * 事後で重みづけて直すのは文脈を観察から推定する段で入れる。いまは最も確かな区間だけを直す（暦の認識では信念が一つの区間に 1 なので同じ）。
+   */
+  const memory: Memory = {
+    id: 'models',
+    version: 'recognize-1',
+    recognize: (observer, w, dt) => {
+      const set = setOf(observer);
+      if (!set) return null;
+      const recognizer = recognizerOf(observer);
+      const key = `${BELIEF}${set.id}`;
+      const prior = recognizer.prior(observer, beliefOf(observer.rel[key]), w.now);
+      const belief = recognizer.posterior(observer, prior, observer.rel, w.now);
+      const b = phaseOf(belief);
+      const out: Relations = {};
+      const merge = (updates: Relations | null) => {
+        for (const [k, fields] of Object.entries(updates ?? {})) out[k] = { ...(out[k] ?? {}), ...fields };
+      };
+      for (const [about, entry] of Object.entries(observer.rel)) merge(formSource(observer, set, about, entry, b, w, dt));
+      merge({ [key]: { at: w.now, ...Object.fromEntries(belief.map((p, i) => [`p${i}`, p])) } });
+      // 表出は、直した後の心象で計算する（心が同じ刻みに読む心象）。
+      const rel: Relations = { ...observer.rel };
+      for (const [k, fields] of Object.entries(out)) rel[k] = { ...rel[k], ...fields };
+      const after: ThingSnapshot = { ...observer, rel };
+      const x = typeof observer.state['x'] === 'number' ? observer.state['x'] : 0;
+      const y = typeof observer.state['y'] === 'number' ? observer.state['y'] : 0;
+      const speed = attr(observer, 'speedPerHour') / HOUR; // m/分
+      for (const [about, entry] of Object.entries(rel)) {
+        if (!set.isSource(entry) || typeof entry['x'] !== 'number') continue;
+        const d = Math.hypot(num(entry, 'x', 0) - x, num(entry, 'y', 0) - y);
+        merge({ [about]: { expect: forecast(after, entry, w.now + d / Math.max(speed, 1e-9)) } });
+      }
+      return out;
+    },
   };
 
   return { memory, forecast };

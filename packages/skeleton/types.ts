@@ -134,19 +134,23 @@ export interface Sense {
 }
 
 /**
- * 記憶（情報層）: 知覚のあと、観測者の心象の一項目を観測から書き直す規則（見込みと、予測誤差による学習）。
+ * 記憶（情報層）: 知覚のあと、観測者の心象を観測から書き直す規則（見込みと、予測誤差による学習）。
  * 感覚と同じく世界に一度登録し、札（観測者の属性と、心象に写った相手の値）で当たる。学ぶ速さなどの値は観測者の属性（個性）から読む。
- * 心は記憶を持たず、書き直された心象を読むだけ。どの項目も同じ写し（知覚のあと、記憶の前）から計算するので、項目の順に依らない。
+ * 心は記憶を持たず、書き直された心象を読むだけ。どの記憶も同じ写し（知覚のあと、記憶の前）から計算するので、記憶と項目の順に依らない。
  * 記録には残さない（知覚と同じく、再生では世界の真実から計算し直す）。
+ * 口は二つある。recognize は観測者ごとに一刻みに一度働く認識の一歩で、状況の認識・記憶の形成・モデルの選択を一つの信念で行い、
+ * 行動に使う見込み（表出）まで心象に書く（docs/DESIGN.md「認識・記憶の形成・モデルの選択は一つの信念で行う」）。learn は項目ごとの口。
  */
 export interface Memory {
   id: string;
   version: string;
   /**
-   * 観測者の、相手 about についての心象 entry を見て、心象の項目に重ねる値（項目の名 → 値）。何もしなければ null。dt はこの刻みの長さ。
-   * 重ねる先は about 自身の項目のほか、種類の知識（`kind:名`）のような、物でない項目でもよい。
+   * 認識の一歩: 観測者の写しを見て、心象の項目に重ねる値（項目の名 → 値）。何もしなければ null。dt はこの刻みの長さ。
+   * 重ねる先は相手の物の項目のほか、種類の知識（`kind:名`）や信念のような、物でない項目でもよい。
    */
-  learn(observer: ThingSnapshot, about: ThingId, entry: Relation, w: WorldView, dt: number): Relations | null;
+  recognize?(observer: ThingSnapshot, w: WorldView, dt: number): Relations | null;
+  /** 観測者の、相手 about についての心象 entry を見て、心象の項目に重ねる値。何もしなければ null。 */
+  learn?(observer: ThingSnapshot, about: ThingId, entry: Relation, w: WorldView, dt: number): Relations | null;
 }
 
 /** 記録: 起きたことの記述。物理層は適用した流れ、情報層は事象。再現と検査に使う。 */

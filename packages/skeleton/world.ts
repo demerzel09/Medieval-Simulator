@@ -448,12 +448,17 @@ export class World implements WorldView {
         this.apply({ kind: 'forget', observer: pId, about: oId });
         this.ledger.push({ at: this.now, event: 'vanish', person: pId, about: oId });
       }
-      // 記憶: 知覚のあとの写しから、心象の各項目の書き直しを計算し、まとめて重ねる。
+      // 記憶: 知覚のあとの写しから、心象の書き直しを計算し、まとめて重ねる。認識の一歩は観測者ごとに一度、項目ごとの口は項目ごとに。
       if (!this.memories.length) continue;
       const perceived = snapshot(p);
-      // 同じ項目の同じ値を二つの書き直しが書けば、後の方（項目の並びで後の相手）が残る。
+      // 同じ項目の同じ値を二つの書き直しが書けば、後の方（記憶の登録順、項目の並びで後の相手）が残る。
       const updates: [string, Relation][] = [];
       for (const memory of this.memories) {
+        if (memory.recognize) {
+          const out = memory.recognize(perceived, this, this.dt);
+          if (out) updates.push(...Object.entries(out));
+        }
+        if (!memory.learn) continue;
         for (const [about, entry] of Object.entries(perceived.rel)) {
           const out = memory.learn(perceived, about, entry, this, this.dt);
           if (out) updates.push(...Object.entries(out));

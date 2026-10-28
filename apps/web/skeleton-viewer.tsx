@@ -2,7 +2,7 @@
 // 骨格の記録の画面。v24・v25 の画面（village-debug）と同じ配置と見た目で、骨格の記録（設定・初期状態・記録）を再生して見せる。
 // 世界の進行には触らない。画面は記録から任意の時刻の世界を作り直すだけで、物の描き分けは札（area・bears・stores・mind・attachedTo）で決める。
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DAY, World, inSeason, predict, replayRecording } from "../../packages/skeleton/index";
+import { BELIEF, DAY, World, beliefOf, inSeason, phaseOf, predict, replayRecording } from "../../packages/skeleton/index";
 import type { LedgerEntry, Recording, Relation, ScenarioConfig, ThingSnapshot, WorldState } from "../../packages/skeleton/index";
 import type { SkeletonWorkerResponse } from "./skeleton-worker";
 
@@ -171,11 +171,11 @@ function drawMap(canvas: HTMLCanvasElement, view: View, bounds: Bounds, trails: 
   }
 }
 
-/** 巡回者の見込みの表: 種類の見込み（fc）と、木ごとのずれ（dv。種類ごとに畳む）、いまの見込み。 */
+/** 巡回者の見込みの表: 種類の見込み（fc）と、木ごとのずれ（dv。種類ごとに畳む）、いまの見込み、認識の一歩が書いた着く時刻の見込み（expect）。いまの区間は心象の信念から読む。 */
 function ForecastTable({ self, now }: { self: ThingSnapshot; now: number }) {
   const bins = Math.max(1, Math.round(num(self.attr["bins"], 1)));
-  const cal = num(self.attr["calendar"], 1) || 1;
-  const current = Math.min(bins - 1, Math.floor(((now % cal) / cal) * bins));
+  const belief = beliefOf(Object.entries(self.rel).find(([k]) => k.startsWith(BELIEF))?.[1]);
+  const current = belief ? phaseOf(belief) : -1;
   const kinds = Object.entries(self.rel).filter(([k]) => k.startsWith("kind:")).sort(([a], [b]) => (a < b ? -1 : 1));
   const trees = Object.entries(self.rel).filter(([, e]) => "bears" in e).sort(([a], [b]) => (a < b ? -1 : 1));
   const treeKinds = [...new Set(trees.map(([, e]) => String(e["kind"])))].sort();
@@ -184,12 +184,12 @@ function ForecastTable({ self, now }: { self: ThingSnapshot; now: number }) {
     const v = e?.[`${key}${b}`];
     return <td key={b} style={{ ...cell, ...(b === current ? { background: "#3b5a40" } : {}) }}>{typeof v === "number" ? v.toFixed(1) : "·"}</td>;
   });
-  const head = <thead><tr><th style={cell}>相手</th>{Array.from({ length: bins }, (_, b) => <th key={b} style={cell}>{b + 1}</th>)}<th style={cell}>いま</th></tr></thead>;
+  const head = <thead><tr><th style={cell}>相手</th>{Array.from({ length: bins }, (_, b) => <th key={b} style={cell}>{b + 1}</th>)}<th style={cell}>いま</th><th style={cell}>着く時</th></tr></thead>;
   return <section className="village-status-card" aria-label="見込みの表" style={{ marginTop: 6 }}>
-    <h3>見込みの表（一年 {bins} 区間、いまは {current + 1} 番目）</h3>
+    <h3>見込みの表（一年 {bins} 区間、信念でいまは {current >= 0 ? `${current + 1} 番目` : "未定"}）</h3>
     <small>割り当て {String(self.attr["assigner"] ?? "")}（組 {String(self.attr["models"] ?? "")}）。種類の行は種類のモデルの値 fc。木の行は、協調型ならその木のずれ dv、競合型ならその木のモデルの値 tv。外し具合は誤差の二乗の移動平均（種類 / 木）。いまの見込みは割り当てが組んだ値 + 直近の観察のずれ。</small>
     <table className="village-log-table" style={{ fontSize: 11 }}>{head}<tbody>
-      {kinds.map(([k, e]) => <tr key={k}><td style={cell}><b>{k.slice(5)}</b></td>{cells(e, "fc")}<td style={cell}></td></tr>)}
+      {kinds.map(([k, e]) => <tr key={k}><td style={cell}><b>{k.slice(5)}</b></td>{cells(e, "fc")}<td style={cell}></td><td style={cell}></td></tr>)}
     </tbody></table>
     {treeKinds.map((kind) => {
       const rows = trees.filter(([, e]) => String(e["kind"]) === kind);
@@ -198,7 +198,7 @@ function ForecastTable({ self, now }: { self: ThingSnapshot; now: number }) {
           {rows.map(([id, e]) => {
             const key = Object.keys(e).some((k) => /^tv\d+$/.test(k)) ? "tv" : "dv";
             const err = [e["fcerr"], e["tverr"]].map((v) => (typeof v === "number" ? v.toFixed(2) : "·")).join(" / ");
-            return <tr key={id}><td style={cell}>{id}{typeof e["visits"] === "number" ? ` (${e["visits"]}回)` : ""}{err !== "· / ·" ? ` 外し ${err}` : ""}</td>{cells(e, key)}<td style={cell}>{predict(self, e, now).toFixed(2)}</td></tr>;
+            return <tr key={id}><td style={cell}>{id}{typeof e["visits"] === "number" ? ` (${e["visits"]}回)` : ""}{err !== "· / ·" ? ` 外し ${err}` : ""}</td>{cells(e, key)}<td style={cell}>{predict(self, e, now).toFixed(2)}</td><td style={cell}>{typeof e["expect"] === "number" ? e["expect"].toFixed(2) : "·"}</td></tr>;
           })}
         </tbody></table></details>;
     })}
