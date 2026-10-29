@@ -305,8 +305,12 @@ export const affordanceMemory: Memory = {
           const prev = num(h, `n.${kind}`, -1);
           const gone = num(h, 'leftAt', -1);
           if (!wasHere && prev >= 0 && gone >= 0 && w.now > gone) {
-            const rate = Math.max(0, n - prev) / (w.now - gone);
-            fields[`g.${kind}`] = h?.[`g.${kind}`] === undefined ? rate : num(h, `g.${kind}`) + 0.3 * (rate - num(h, `g.${kind}`));
+            // 増え方は、増えた数の和 ÷ 離れていた時間の和（比の和でなく和の比。短く離れただけの回の比が大きく振れて、無い実を見込むのを防ぐ）。
+            const sumN = num(h, `gn.${kind}`) + Math.max(0, n - prev);
+            const sumT = num(h, `gt.${kind}`) + (w.now - gone);
+            fields[`gn.${kind}`] = sumN;
+            fields[`gt.${kind}`] = sumT;
+            fields[`g.${kind}`] = sumN / sumT;
           }
           fields[`m.${kind}`] = Math.max(num(h, `m.${kind}`), n);
         }
