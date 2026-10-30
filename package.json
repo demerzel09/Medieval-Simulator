@@ -29,7 +29,8 @@
     "fixtures": "tsx packages/tools/combat-report.ts",
     "skeleton": "tsx packages/tools/skeleton.ts",
     "scenario": "tsx packages/tools/scenario.ts",
-    "novel": "tsx packages/tools/novel.ts"
+    "novel": "tsx packages/tools/novel.ts",
+    "village": "tsx packages/tools/village.ts"
   },
   "dependencies": {
     "@fontsource/noto-sans-jp": "5.3.0",
