@@ -92,7 +92,12 @@ export type InfoEffect =
   | { kind: 'inform'; observer: ThingId; about: ThingId; fields: string[] }
   /** 消えた: 見えるはずの場所に無いと確かめた事物を関係から消す。 */
   | { kind: 'forget'; observer: ThingId; about: ThingId }
-  /** 意図: 人物が自分の状態 intent・target を定める。心だけが自分に対して使える。 */
+  /**
+   * 記憶: 記憶の規則の答えを、観測者の関係の項目 rel[key] に重ねる（名ごとに上書きし、他の値は残す）。
+   * 項目は物でなくてもよい（種類の知識 `kind:名`、信念 `belief:名`）。知覚と同じく記録に残さず、再生では計算し直す。
+   */
+  | { kind: 'remember'; observer: ThingId; key: string; fields: Relation }
+  /** 意図:人物が自分の状態 intent・target を定める。心だけが自分に対して使える。 */
   | { kind: 'intend'; person: ThingId; intent: string; target?: ThingId; targetX?: number; targetY?: number };
 
 /** 世界の読み取り専用の窓。法則と世界の進行だけが使う。心には渡さない。 */

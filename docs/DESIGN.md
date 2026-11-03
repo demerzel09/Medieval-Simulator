@@ -156,7 +156,7 @@
 
 事物の派生クラスにメソッドを持たせる形を採らないのは、相互作用が二つの事物の間で起こるため、派生は片側しか選べず、相手側の分岐（種類 × 種類）が残るからである。札の組で選ぶ法則なら、法則の数は相互作用の種類の数に比例し、事物の種類の数には比例しない。派生が向くのは、判断の仕組みだけが違う心の実装、法則どうしの共通処理、種類の定義の既定値の継承である。この書き方は、継承より合成、式の問題、多重ディスパッチ、ECS、データ駆動の種類の定義という既知の定石に一致する（[定石の確認](RESEARCH.md#conventions)）。
 
-図1の各箱の最下行は、その段を担う実装の名である。図4は実装の構造で、クラス・データ・関数の関連を示す。場面と入口が `World` を組み立て、`World` が刻みごとに `tick` を回し、`tick` が `Law.pair`・`Sense.observe`・`Mind.decide` を呼び、法則は要求 `Effect` を返し、感覚と心は `inform`・`forget`・`intend` を返し、`apply` が `ThingRecord` の状態・関係・資源だけを書く。`ThingDef` は初期配置と `spawn` の雛形である。録画は `save`（世界の写し `WorldState`）、`load`（写しから世界を作る）、`replay`（記録を刻みごとに適用し直す）で、どれも `World` の中にある。クラスは `World` と心の実装だけで、事物・定義・効果はデータ、法則・感覚はインターフェースを満たすオブジェクトである。
+図1の各箱の最下行は、その段を担う実装の名である。図4は実装の構造で、クラス・データ・関数の関連を示す。場面と入口が `World` を組み立て、`World` が刻みごとに `tick` を回し、`tick` が物理層の三段（要求 `request`・解決 `resolve`・適用 `applyBundles`）と情報層の三段（知覚 `perceive`・記憶 `remember`・心 `decide`）を順に進める。各段は `Law.pair`・`Sense.observe`・`Memory.recognize`・`Mind.decide` を呼び、法則は要求 `Effect` を返し、感覚・記憶・心は `inform`・`forget`・`remember`・`intend` を返し、`apply` が `ThingRecord` の状態・関係・資源だけを書く。取り合いの解決は、変わりやすい規則なので `resolve.ts` に分けてある。`ThingDef` は初期配置と `spawn` の雛形である。録画は `save`（世界の写し `WorldState`）、`load`（写しから世界を作る）、`replay`（記録を刻みごとに適用し直す）で、どれも `World` の中にある。クラスは `World` と心の実装だけで、事物・定義・効果はデータ、法則・感覚・記憶はインターフェースを満たすオブジェクトである。コードは `world.ts` の `tick` から読む。`tick` には六つの段の名が並ぶだけで、段の中身はファイルの中に同じ順に並ぶ（組み立て → 進行 → 物理層の三段 → 情報層の三段 → 書く経路 → 読む窓 → 録画と再生）。
 
 ![図4　実装の構造](figures/design-fig4-impl.svg)
 <!-- 図の正本は figures/src/design-fig4-impl.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
@@ -175,7 +175,7 @@
 ![図6　オブジェクト図](figures/design-fig6-object.svg)
 <!-- 図の正本は figures/src/design-fig6-object.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
 
-**図7 シーケンス図（一刻みで誰が誰を呼ぶか）。** 主語はすべて `World.tick` である。法則・感覚・記憶・心は呼ばれて答えを返すだけで、自分からは何もしないし、何も書かない。事物の表を書くのは `tick` の中の二つだけである。一つは `apply` で、物理層の流れと、知覚の写し・忘れと、意図を書く。もう一つは `setRel` で、記憶の答えを心象にまとめて重ねる（記録に残さない）。
+**図7 シーケンス図（一刻みで誰が誰を呼ぶか）。** 主語はすべて `World.tick` である。法則・感覚・記憶・心は呼ばれて答えを返すだけで、自分からは何もしないし、何も書かない。事物の表を書くのは `apply` だけで、それも `tick`（と再生・初期状態の `seed`）の中からしか呼ばれない。記憶の答えも `apply(remember)` で心象に重ねる（知覚と同じく記録に残さない）。
 
 ![図7　シーケンス図](figures/design-fig7-sequence.svg)
 <!-- 図の正本は figures/src/design-fig7-sequence.mmd。scripts/docs/render-figures.cjs で SVG を再生成する -->
@@ -193,8 +193,8 @@
 | 段 | 呼ぶ所 | 読む | 書く | 記録 |
 |---|---|---|---|---|
 | 知覚 `Sense.observe`・`expected` | `perceive`（生きている観測者ごと、相手ごと） | 観測者と相手の写し、世界の位置と範囲 | `apply(inform・forget)` が `rel[相手 id]` | 「現れた」「消えた」の事象だけ |
-| 記憶 `Memory.recognize` | `perceive`（観測者ごとに一刻みに一度） | 知覚のあとの自分の写し、時刻、手の届く距離 | 返した値を `setRel` が `rel` に重ねる（`apply` を通らない） | 記録しない。再生では計算し直す |
-| 心 `Mind.decide` | `tick`（心を持つ生きている事物を id の順に） | 自分の写しだけ | `apply(intend)` が状態の intent・target・targetX・targetY | 意図が変わったときだけ intend の事象 |
+| 記憶 `Memory.recognize` | `remember`（すべての知覚のあと、観測者ごとに一刻みに一度） | 知覚のあとの自分の写し、時刻、手の届く距離 | 返した値を `apply(remember)` が `rel` に重ねる | 記録しない。再生では計算し直す |
+| 心 `Mind.decide` | `decide`（心を持つ生きている事物を id の順に） | 自分の写しだけ | `apply(intend)` が状態の intent・target・targetX・targetY | 意図が変わったときだけ intend の事象 |
 | 物理層の法則 | 次の刻みの `tick` | 状態の intent・target（と両者の札・状態・資源） | 要求 → 解決 → 適用 | 流れ |
 
 心象 `rel` の項目は三種類ある（季節の巡回者の場合）。
@@ -211,7 +211,7 @@
 
 - 記憶の口は二つあり、図は認識の一歩 `recognize` だけを描いた。項目ごとの口 `learn` は型にあるが、いまの記憶はどれも使っていない。
 - 記憶は世界の読み取りの窓 `WorldView` を受け取る。時刻のほか、源が手の届く所にあるかを世界の距離で判定している（`modular.ts` の `formSource`）。心は世界を見ない。記憶が世界の真実をどこまで読んでよいかは、まだ決めていない（知覚が写した位置からも同じ判定ができる。[P05](#p05)）。
-- 枝 `study/new-things` の試作（`affordance.ts`）も同じ場所に入る。記憶 affordance と心 `AffordanceMind` を登録し、感覚 appearance・behaviour を足すだけで、`tick` は変えていない。
+- 新しい事物の試作（`affordance.ts`。[RESEARCH 10.10](RESEARCH.md#new-things)）も同じ場所に入る。記憶 affordance と心 `AffordanceMind` を登録し、感覚 appearance・behaviour を足すだけで、`tick` は変えていない。
 
 ### 実装に渡す語彙
 

@@ -614,7 +614,7 @@ BFOは、時間を通じて存在を保つものと、時間に展開する過�
 
 **問い（2026-10-30、ユーザー）。** 採取以外の次の段を設計・実装するときなど、新しい事物に自律的に対応できるようにするには、どういう設計・仕組みが要るか。検討と実験をしてよい。今の実装には、いつでも戻れるようにする。途中でユーザーの見立てが加わった。「新しい事物に自律的に対応するには、メタ的な認識の仕組みが要りそう」。
 
-**作業の置き場。** 調査と試作は枝 `study/new-things` で行った。main は変えていない。調査を始める前の状態には札 `before-new-things-study`（`0209dcc`）を付けた。試作は `packages/skeleton/affordance.ts`（記憶の規則と心）と `packages/skeleton/novel.ts`（実験の世界）、比べる道具は `npm run novel`、検査は `tests/novel.test.ts` である。
+**作業の置き場。** 調査と試作は枝 `study/new-things` で行い、2026-11-04 にユーザーの指示で main に入れた。調査を始める前の状態には札 `before-new-things-study`（`0209dcc`）を付けてある。試作は `packages/skeleton/affordance.ts`（記憶の規則と心）と `packages/skeleton/novel.ts`（実験の世界）、比べる道具は `npm run novel`、検査は `tests/novel.test.ts` である。
 
 **確認の範囲。** 四つの方向で調べた。
 - 動物の行動: 新しい物・食べ物にどう対処するか。

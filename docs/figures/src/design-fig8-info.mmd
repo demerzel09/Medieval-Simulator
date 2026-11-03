@@ -11,7 +11,7 @@ flowchart TD
     M2 --> M3["3 記憶の形成<br/>formSource<br/>手の届く源ごとに<br/>Assigner が<br/>ModelKind の項を直す<br/>kind:種類 の fc<br/>木の dv・visits"]
     M3 --> M4["4 表出<br/>知っている源ごとに<br/>着く時刻の見込み<br/>木の expect"]
   end
-  M4 -->|"setRel で<br/>心象に重ねる"| D
+  M4 -->|"apply remember で<br/>心象に重ねる"| D
   subgraph MIND["心 Mind.decide"]
     D["RuleSet.situation<br/>自分の写しから<br/>状況を一度作る"] --> RU["Rule.propose<br/>を優先の順に<br/>食べる・住む・持ち帰る<br/>ここで採る・向かい続ける<br/>探索を続ける・木を選ぶ"]
     RU --> SE["Selector.select<br/>最初に勧めた<br/>規則の意図"]
