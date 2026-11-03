@@ -1,0 +1,21 @@
+flowchart TD
+  W["世界の真実<br/>他の事物の ThingRecord<br/>位置・札・状態・資源"]
+  W -->|"Sense.observe<br/>見えるか、何を写すか"| I["inform<br/>rel[相手 id] に写す<br/>x, y, at と、見えた値<br/>初めてなら 現れた"]
+  R["覚えている項目<br/>rel[相手 id]"] -->|"Sense.expected<br/>見えるはずか"| F["forget<br/>見えるはずなのに<br/>見えなければ消す<br/>消えた"]
+  I --> P["知覚のあとの<br/>自分の写し<br/>state・res・rel"]
+  F --> P
+  P --> M1
+  subgraph MEM["記憶 Memory.recognize"]
+    M1["1 予測<br/>Recognizer.prior<br/>前の信念 belief:forage<br/>から、いまの信念"]
+    M1 --> M2["2 事後<br/>Recognizer.posterior<br/>知覚で信念を決め直す<br/>暦の認識では変えない"]
+    M2 --> M3["3 記憶の形成<br/>formSource<br/>手の届く源ごとに<br/>Assigner が<br/>ModelKind の項を直す<br/>kind:種類 の fc<br/>木の dv・visits"]
+    M3 --> M4["4 表出<br/>知っている源ごとに<br/>着く時刻の見込み<br/>木の expect"]
+  end
+  M4 -->|"setRel で<br/>心象に重ねる"| D
+  subgraph MIND["心 Mind.decide"]
+    D["RuleSet.situation<br/>自分の写しから<br/>状況を一度作る"] --> RU["Rule.propose<br/>を優先の順に<br/>食べる・住む・持ち帰る<br/>ここで採る・向かい続ける<br/>探索を続ける・木を選ぶ"]
+    RU --> SE["Selector.select<br/>最初に勧めた<br/>規則の意図"]
+  end
+  SE -->|"変わったときだけ"| IN["intend<br/>state の intent<br/>target・targetX<br/>targetY を書く"]
+  IN -->|"次の刻み"| L["物理層の法則<br/>walk・pick・eat・settle<br/>が state.intent を読む"]
+  L -->|"適用で<br/>世界が変わる"| W

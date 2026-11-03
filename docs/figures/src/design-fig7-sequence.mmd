@@ -2,6 +2,7 @@ sequenceDiagram
   participant W as World.tick(Δt)
   participant L as Law 法則
   participant S as Sense 感覚
+  participant Me as Memory 記憶
   participant M as Mind 心
   participant T as ThingRecord 事物の表
   W->>T: 写し ThingSnapshot を取る（読むだけ）
@@ -14,15 +15,24 @@ sequenceDiagram
   loop 束の効果
     W->>T: apply 状態・関係・資源だけを書く。ledger に記録
   end
-  loop 生きている事物 × 他の事物
-    W->>S: observe(観測者, 対象)
-    S-->>W: 写す値の名、または null
-    W->>T: apply(inform / forget) 観測者の rel（心象）
+  loop 生きている観測者
+    loop 感覚 × 他の事物
+      W->>S: observe(観測者, 対象)
+      S-->>W: 写す値の名、または null
+      W->>T: apply(inform) 観測者の rel（心象）。初めてなら 現れた
+    end
+    loop 覚えているのに観測できなかった項目
+      W->>S: expected(観測者, 覚えている値)
+      S-->>W: 見えるはずか
+      W->>T: 見えるはずなら apply(forget)。消えた
+    end
+    W->>Me: recognize(知覚のあとの写し) 観測者ごとに一度
+    Me-->>W: 心象に重ねる値（信念・モデル・見込み）
+    W->>T: setRel でまとめて重ねる（apply を通らず、記録しない）
   end
-  loop 心を持つ事物
+  loop 心を持つ生きている事物（id の順）
     W->>M: decide(自分の写し)
     M-->>W: 意図
-    W->>T: apply(intend) 状態 intent
+    W->>T: 変わったときだけ apply(intend) 状態 intent。ledger に記録
   end
-  W->>T: 死亡の確定（栄養が尽きた生者）
   W->>W: now += Δt

@@ -5,6 +5,7 @@ classDiagram
     defs: Map~name, ThingDef~
     laws: Law[]
     senses: Sense[]
+    memories: Memory[]
     mindKinds: Map~name, make~
     minds: Map~id, Mind~
     ledger: LedgerEntry[]
@@ -35,11 +36,17 @@ classDiagram
     observe(observer, object, w)
     expected(observer, remembered, w)
   }
+  class Memory {
+    <<interface>>
+    recognize(observer, w, dt) 心象に重ねる値
+    learn(observer, about, entry, w, dt)
+  }
   class Mind {
     <<interface>>
     decide(self, now) 意図
   }
   class ForagerMind
+  class ModularMind
   class Effect {
     transfer, convert, reassign
     spawn, despawn, move, use
@@ -49,13 +56,15 @@ classDiagram
   World *-- "n" ThingDef : defs　持つ
   World o-- "n" Law : laws　登録
   World o-- "n" Sense : senses　登録
+  World o-- "n" Memory : memories　登録
   World o-- "n" Mind : minds　札 mind で付く
-  ThingRecord --> ThingRecord : state.attachedTo　付属。実→木、実→人
-  ThingRecord --> ThingRecord : rel　心象。相手ごとの状態
+  ThingRecord --> ThingRecord : state.attachedTo 付属と、rel 心象＝相手ごとの状態
   ThingDef --> ThingDef : parent　既定値を継ぐ
   ThingDef ..> ThingRecord : 雛形　初期配置と spawn
   Law ..> ThingRecord : 写しを読む
   Law ..> Effect : 要求を返す
   World ..> Effect : apply が状態・関係・資源に書く
   Mind ..> ThingRecord : 自分の写しだけ読む
+  Memory ..> ThingRecord : 知覚のあとの写しを読み、心象に重ねる値を返す
   ForagerMind ..|> Mind
+  ModularMind ..|> Mind
