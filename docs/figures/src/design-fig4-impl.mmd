@@ -1,5 +1,5 @@
 flowchart TD
-  SC["場面と入口<br/>fruit.ts: fruitDefs, fruitLaws, sight, ForagerMind, buildFruitScenario, runFruitDays<br/>tools/skeleton.ts（CLI）、apps/skeleton/main.ts（ブラウザ）"]
+  SC["場面と入口<br/>fruit.ts: fruitDefs, fruitLaws, sight, ForagerMind, buildFruitScenario, runFruitDays<br/>tools/skeleton.ts（CLI）<br/>web/skeleton-viewer.tsx<br/>（記録の画面）"]
   WD["World（クラス）<br/>持つ: things（ThingRecord の表）, defs（ThingDef の表）, laws, senses, minds, ledger, stats<br/>addDef / def / addFromDef / addLaw / addSense / addMind（心の種類）/ seed<br/>録画と再生: save（写し WorldState）/ load / replay（記録を適用し直す）"]
   TK["tick(dt)（唯一の進行）<br/>orderedIds → active → Law.pair → Bundle<br/>resolve（比例・要求の力）→ Claim → 係数 → scaleEffect → apply → ledger<br/>perceive → Mind.decide → 死亡の確定 → now += dt"]
   LW["Law（インターフェース）<br/>id, version, pair(a, b, dt, w): Effect の列<br/>実装: walk, pick, stow, give, eat, digest, wear, starve, ripen, rot, settle"]
